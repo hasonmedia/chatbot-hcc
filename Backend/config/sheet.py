@@ -6,6 +6,8 @@ from config.database import AsyncSessionLocal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import UnstructuredExcelLoader
+
 
 async def insert_chunks(chunks_data: list):
     async with AsyncSessionLocal() as session:
@@ -24,43 +26,24 @@ async def insert_chunks(chunks_data: list):
             await session.rollback()
             raise
 
-
 async def get_sheet(sheet_id: str, id: int):
-    scopes = [
-        'https://www.googleapis.com/auth/spreadsheets'
-    ]
-    
+    all_chunks = []
+    loader = UnstructuredExcelLoader("config/chatbot.xlsx", mode="elements")
+    docs = loader.load()
     async with AsyncSessionLocal() as session:
         # Xóa tất cả dữ liệu cũ
         await session.execute(delete(DocumentChunk))
         await session.commit()  # commit để xác nhận bảng trống
-    
-    creds = Credentials.from_service_account_file('config/config_sheet.json', scopes=scopes)
-    client = gspread.authorize(creds)
+    # Không cần ghi file MD ở đây nếu chỉ dùng để insert DB
+    for doc in docs:
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1500,
+            chunk_overlap=200
+        )
+        row_chunks = splitter.split_text(doc.page_content)
+        all_chunks.extend(row_chunks)
 
-    workbook = client.open_by_key(sheet_id)
-    worksheets = workbook.worksheets()
-
-    all_chunks = []
-
-    for sheet in worksheets:
-        records = sheet.get_all_records()
-        
-        for row in records:
-            # Biến row thành JSON string
-            row_str = "{ " + ",".join(
-                [f"\"{k}\":\"{v}\"" for k, v in row.items() if v not in ("", None)]
-            ) + " }"
-
-            # Nếu hàng quá dài, mới chunk, không cần overlap nhiều
-            splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,   # nhỏ hơn chunk size trước
-                chunk_overlap=0   # tránh trộn hàng khác
-            )
-            row_chunks = splitter.split_text(row_str)
-            all_chunks.extend(row_chunks)
-
-    # Tạo vector và lưu
+    # Insert từng chunk
     for chunk in all_chunks:
         vector = await get_embedding_gemini(chunk)
         await insert_chunks([{
@@ -68,13 +51,65 @@ async def get_sheet(sheet_id: str, id: int):
             "search_vector": vector.tolist(),
             "knowledge_base_id": id
         }])
-    
+
     return {
         "success": True,
-        "message": f"Đã xử lý {len(all_chunks)} chunks từ Google Sheet",
-        "chunks_created": len(all_chunks),
-        "sheets_processed": len(worksheets)
+        "message": f"Đã xử lý {len(all_chunks)} chunks từ Excel",
+        "chunks_created": len(all_chunks)
     }
+
+# async def get_sheet(sheet_id: str, id: int):
+#     scopes = [
+#         'https://www.googleapis.com/auth/spreadsheets'
+#     ]
+    
+#     async with AsyncSessionLocal() as session:
+#         # Xóa tất cả dữ liệu cũ
+#         await session.execute(delete(DocumentChunk))
+#         await session.commit()  # commit để xác nhận bảng trống
+    
+#     creds = Credentials.from_service_account_file('config/config_sheet.json', scopes=scopes)
+#     client = gspread.authorize(creds)
+
+#     workbook = client.open_by_key(sheet_id)
+#     worksheets = workbook.worksheets()
+
+#     all_chunks = []
+
+#     for sheet in worksheets:
+#         records = sheet.get_all_records()
+        
+#         for row in records:
+#             # Biến row thành JSON string
+#             row_str = "{ " + ",".join(
+#                 [f"\"{k}\":\"{v}\"" for k, v in row.items() if v not in ("", None)]
+#             ) + " }"
+
+#             # Nếu hàng quá dài, mới chunk, không cần overlap nhiều
+#             splitter = RecursiveCharacterTextSplitter(
+#                 chunk_size=1000,   # nhỏ hơn chunk size trước
+#                 chunk_overlap=0   # tránh trộn hàng khác
+#             )
+#             row_chunks = splitter.split_text(row_str)
+#             all_chunks.extend(row_chunks)
+
+#     # Tạo vector và lưu
+#     for chunk in all_chunks:
+#         vector = await get_embedding_gemini(chunk)
+#         await insert_chunks([{
+#             "chunk_text": chunk,
+#             "search_vector": vector.tolist(),
+#             "knowledge_base_id": id
+#         }])
+    
+#     return {
+#         "success": True,
+#         "message": f"Đã xử lý {len(all_chunks)} chunks từ Google Sheet",
+#         "chunks_created": len(all_chunks),
+#         "sheets_processed": len(worksheets)
+#     }
+
+
     
         
         

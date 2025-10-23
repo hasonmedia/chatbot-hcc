@@ -238,7 +238,7 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
             chatSession.current_receiver = "Bot" if new_status == "true" else user.get("fullname")
             chatSession.previous_receiver = receiver_name
             chatSession.status = new_status
-            chatSession.time = new_time 
+            chatSession.time = datetime.strptime(new_time, '%m/%d/%Y, %I:%M:%S %p')
         
         if "tags" in data and isinstance(data["tags"], list):
             from models.tag import Tag
