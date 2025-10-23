@@ -1,0 +1,48 @@
+name: Build and Deploy FE
+
+on:
+  push:
+    branches:
+      - deploy_test   # chỉ chạy khi push lên nhánh main
+permissions:
+  contents: write
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./Frontend
+
+      - name: Build project
+        run: npm run build
+        working-directory: ./Frontend
+
+      - name: Deploy to branch
+        run: |
+          rm -rf .git
+          mkdir deploy
+          # copy nguyên dist folder
+          cp -r Frontend/dist deploy/
+          # copy Dockerfile và nginx.conf
+          cp Frontend/Dockerfile deploy/
+          cp Frontend/nginx.conf deploy/
+
+          cd deploy
+          git init
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Deploy FE"
+          git branch -M deploy
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git push -f origin deploy

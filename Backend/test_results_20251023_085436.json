@@ -1,0 +1,339 @@
+{
+  "test_info": {
+    "num_users": 10,
+    "num_rounds": 3,
+    "total_requests": 30,
+    "test_message": "Xin chào, tôi muốn tư vấn về sản phẩm của bạn",
+    "start_time": "2025-10-23T08:51:35.965827",
+    "end_time": "2025-10-23T08:54:36.273413",
+    "total_time_seconds": 180.307586,
+    "avg_time_per_round": 60.102528666666664
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "start_time": "2025-10-23T08:51:35.967491",
+      "end_time": "2025-10-23T08:52:38.996583",
+      "round_time_seconds": 63.029092,
+      "successful": 10,
+      "failed": 0,
+      "avg_wait_time": 3.954,
+      "min_wait_time": 3.45,
+      "max_wait_time": 4.13,
+      "results": [
+        {
+          "user_id": 1,
+          "session_id": 589,
+          "send_time": "08:51:38.529",
+          "receive_time": "08:51:41.975",
+          "wait_time_seconds": 3.45,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 1"
+        },
+        {
+          "user_id": 2,
+          "session_id": 590,
+          "send_time": "08:51:44.305",
+          "receive_time": "08:51:48.414",
+          "wait_time_seconds": 4.11,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 4"
+        },
+        {
+          "user_id": 3,
+          "session_id": 591,
+          "send_time": "08:51:50.747",
+          "receive_time": "08:51:54.568",
+          "wait_time_seconds": 3.82,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 2"
+        },
+        {
+          "user_id": 4,
+          "session_id": 592,
+          "send_time": "08:51:56.906",
+          "receive_time": "08:52:01.036",
+          "wait_time_seconds": 4.13,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 5"
+        },
+        {
+          "user_id": 5,
+          "session_id": 593,
+          "send_time": "08:52:03.359",
+          "receive_time": "08:52:07.493",
+          "wait_time_seconds": 4.13,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key test 3"
+        },
+        {
+          "user_id": 6,
+          "session_id": 594,
+          "send_time": "08:52:09.823",
+          "receive_time": "08:52:13.694",
+          "wait_time_seconds": 3.87,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 1"
+        },
+        {
+          "user_id": 7,
+          "session_id": 595,
+          "send_time": "08:52:16.010",
+          "receive_time": "08:52:20.060",
+          "wait_time_seconds": 4.05,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 4"
+        },
+        {
+          "user_id": 8,
+          "session_id": 596,
+          "send_time": "08:52:22.382",
+          "receive_time": "08:52:26.429",
+          "wait_time_seconds": 4.05,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 2"
+        },
+        {
+          "user_id": 9,
+          "session_id": 597,
+          "send_time": "08:52:28.745",
+          "receive_time": "08:52:32.650",
+          "wait_time_seconds": 3.9,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 5"
+        },
+        {
+          "user_id": 10,
+          "session_id": 598,
+          "send_time": "08:52:34.963",
+          "receive_time": "08:52:38.992",
+          "wait_time_seconds": 4.03,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key test 3"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "start_time": "2025-10-23T08:52:41.008269",
+      "end_time": "2025-10-23T08:53:39.801196",
+      "round_time_seconds": 58.792927,
+      "successful": 10,
+      "failed": 0,
+      "avg_wait_time": 3.549,
+      "min_wait_time": 2.74,
+      "max_wait_time": 4.06,
+      "results": [
+        {
+          "user_id": 1,
+          "session_id": 599,
+          "send_time": "08:52:43.320",
+          "receive_time": "08:52:47.191",
+          "wait_time_seconds": 3.87,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 1"
+        },
+        {
+          "user_id": 2,
+          "session_id": 600,
+          "send_time": "08:52:49.537",
+          "receive_time": "08:52:52.509",
+          "wait_time_seconds": 2.97,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 4"
+        },
+        {
+          "user_id": 3,
+          "session_id": 601,
+          "send_time": "08:52:54.837",
+          "receive_time": "08:52:58.901",
+          "wait_time_seconds": 4.06,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 2"
+        },
+        {
+          "user_id": 4,
+          "session_id": 602,
+          "send_time": "08:53:01.216",
+          "receive_time": "08:53:04.929",
+          "wait_time_seconds": 3.71,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 5"
+        },
+        {
+          "user_id": 5,
+          "session_id": 603,
+          "send_time": "08:53:07.266",
+          "receive_time": "08:53:11.110",
+          "wait_time_seconds": 3.84,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key test 3"
+        },
+        {
+          "user_id": 6,
+          "session_id": 604,
+          "send_time": "08:53:13.435",
+          "receive_time": "08:53:17.153",
+          "wait_time_seconds": 3.72,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 1"
+        },
+        {
+          "user_id": 7,
+          "session_id": 605,
+          "send_time": "08:53:19.469",
+          "receive_time": "08:53:22.892",
+          "wait_time_seconds": 3.42,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 4"
+        },
+        {
+          "user_id": 8,
+          "session_id": 606,
+          "send_time": "08:53:25.227",
+          "receive_time": "08:53:27.969",
+          "wait_time_seconds": 2.74,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 2"
+        },
+        {
+          "user_id": 9,
+          "session_id": 607,
+          "send_time": "08:53:30.300",
+          "receive_time": "08:53:33.831",
+          "wait_time_seconds": 3.53,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 5"
+        },
+        {
+          "user_id": 10,
+          "session_id": 608,
+          "send_time": "08:53:36.166",
+          "receive_time": "08:53:39.792",
+          "wait_time_seconds": 3.63,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key test 3"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "start_time": "2025-10-23T08:53:41.810927",
+      "end_time": "2025-10-23T08:54:36.273413",
+      "round_time_seconds": 54.462486,
+      "successful": 10,
+      "failed": 0,
+      "avg_wait_time": 3.121,
+      "min_wait_time": 2.51,
+      "max_wait_time": 4.02,
+      "results": [
+        {
+          "user_id": 1,
+          "session_id": 609,
+          "send_time": "08:53:44.133",
+          "receive_time": "08:53:46.640",
+          "wait_time_seconds": 2.51,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 1"
+        },
+        {
+          "user_id": 2,
+          "session_id": 610,
+          "send_time": "08:53:48.963",
+          "receive_time": "08:53:51.542",
+          "wait_time_seconds": 2.58,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 4"
+        },
+        {
+          "user_id": 3,
+          "session_id": 611,
+          "send_time": "08:53:53.860",
+          "receive_time": "08:53:56.513",
+          "wait_time_seconds": 2.65,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key test 3"
+        },
+        {
+          "user_id": 4,
+          "session_id": 612,
+          "send_time": "08:53:58.815",
+          "receive_time": "08:54:02.568",
+          "wait_time_seconds": 3.75,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 1"
+        },
+        {
+          "user_id": 5,
+          "session_id": 613,
+          "send_time": "08:54:04.894",
+          "receive_time": "08:54:08.863",
+          "wait_time_seconds": 3.97,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 4"
+        },
+        {
+          "user_id": 6,
+          "session_id": 614,
+          "send_time": "08:54:11.174",
+          "receive_time": "08:54:14.780",
+          "wait_time_seconds": 3.61,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 2"
+        },
+        {
+          "user_id": 7,
+          "session_id": 615,
+          "send_time": "08:54:17.136",
+          "receive_time": "08:54:19.857",
+          "wait_time_seconds": 2.72,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 5"
+        },
+        {
+          "user_id": 8,
+          "session_id": 616,
+          "send_time": "08:54:22.174",
+          "receive_time": "08:54:24.776",
+          "wait_time_seconds": 2.6,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key test 3"
+        },
+        {
+          "user_id": 9,
+          "session_id": 617,
+          "send_time": "08:54:27.104",
+          "receive_time": "08:54:29.900",
+          "wait_time_seconds": 2.8,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 1"
+        },
+        {
+          "user_id": 10,
+          "session_id": 618,
+          "send_time": "08:54:32.240",
+          "receive_time": "08:54:36.262",
+          "wait_time_seconds": 4.02,
+          "bot_response": "Em là nhân viên tư vấn của hệ thống đào tạo tiếng Trung THANHMAIHSK. Em rất vui được hỗ trợ anh/chị!...",
+          "key_used": "key 4"
+        }
+      ]
+    }
+  ],
+  "overall_statistics": {
+    "total_successful": 30,
+    "total_failed": 0,
+    "success_rate": 100.0,
+    "avg_wait_time": 3.541333333333333,
+    "min_wait_time": 2.51,
+    "max_wait_time": 4.13,
+    "std_wait_time": 0.5560620985746685,
+    "key_distribution": {
+      "key 1": 7,
+      "key 4": 7,
+      "key 2": 5,
+      "key 5": 5,
+      "key test 3": 6
+    }
+  }
+}

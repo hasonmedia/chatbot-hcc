@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Chatbot Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 3em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .feature-desc {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .integration-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+        }
+
+        .integration-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .code-block code {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #764ba2;
+        }
+
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .note-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+
+        .note-text {
+            color: #856404;
+            line-height: 1.6;
+        }
+
+        .cta-section {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #999;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Chatbot Widget Demo</h1>
+        <p class="subtitle">Nhúng chatbot AI vào website của bạn chỉ với 1 dòng code!</p>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">💬</div>
+                <div class="feature-title">Chat Realtime</div>
+                <div class="feature-desc">Trò chuyện trực tiếp với khách hàng qua WebSocket</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <div class="feature-title">AI Powered</div>
+                <div class="feature-desc">Tự động trả lời câu hỏi với công nghệ AI</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <div class="feature-title">Responsive</div>
+                <div class="feature-desc">Hoạt động mượt mà trên mọi thiết bị</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <div class="feature-title">Auto Reconnect</div>
+                <div class="feature-desc">Tự động kết nối lại khi mất kết nối</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📜</div>
+                <div class="feature-title">Lịch sử Chat</div>
+                <div class="feature-desc">Lưu trữ và hiển thị lịch sử trò chuyện</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <div class="feature-title">UI Đẹp</div>
+                <div class="feature-desc">Giao diện hiện đại, dễ sử dụng</div>
+            </div>
+        </div>
+
+        <div class="integration-section">
+            <h2 class="integration-title">📦 Cách tích hợp</h2>
+            
+            <h3 style="margin-bottom: 15px; color: #333;">1️⃣ Cơ bản (192.168.1.45)</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this, 'code1')">Copy</button>
+                <code id="code1">&lt;!-- Thêm vào trước thẻ &lt;/body&gt; --&gt;
+&lt;script src="http://192.168.1.45:5173/widget.js"&gt;&lt;/script&gt;</code>
+            </div>
+
+            <h3 style="margin-bottom: 15px; margin-top: 30px; color: #333;">2️⃣ Production (Tùy chỉnh API)</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyCode(this, 'code2')">Copy</button>
+                <code id="code2">&lt;!-- Thêm vào trước thẻ &lt;/body&gt; --&gt;
+&lt;script 
+    src="https://yourdomain.com/widget.js"
+    data-api-url="https://chatbotbe.a2alab.vn"
+    data-ws-url="wss://chatbotbe.a2alab.vn"
+&gt;&lt;/script&gt;</code>
+            </div>
+
+            <div class="note">
+                <div class="note-title">💡 Lưu ý:</div>
+                <div class="note-text">
+                    • <strong>data-api-url</strong>: URL của backend API (HTTP/HTTPS)<br>
+                    • <strong>data-ws-url</strong>: URL của WebSocket server (WS/WSS)<br>
+                    • Widget sẽ tự động lưu <strong>sessionId</strong> vào localStorage<br>
+                    • <strong>url_channel</strong> sẽ tự động được lưu là URL của trang hiện tại
+                </div>
+            </div>
+        </div>
+
+        <div class="integration-section">
+            <h2 class="integration-title">🎯 Tính năng nổi bật</h2>
+            
+            <div style="padding: 0 20px;">
+                <p style="margin-bottom: 15px; line-height: 1.8;">
+                    ✅ <strong>Session Management:</strong> Tự động tạo session lần đầu, kiểm tra session cũ từ lần 2<br>
+                    ✅ <strong>Load History:</strong> Tải lịch sử chat khi mở lại<br>
+                    ✅ <strong>Typing Indicator:</strong> Hiển thị khi bot đang trả lời<br>
+                    ✅ <strong>Auto-resize Textarea:</strong> Tự động tăng chiều cao khi nhập nhiều dòng<br>
+                    ✅ <strong>Image Support:</strong> Hỗ trợ hiển thị hình ảnh trong tin nhắn<br>
+                    ✅ <strong>Connection Status:</strong> Hiển thị trạng thái kết nối realtime<br>
+                    ✅ <strong>Shift+Enter:</strong> Xuống dòng, Enter gửi tin nhắn
+                </p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <button class="cta-button" onclick="alert('Chatbot widget đang hoạt động! Nhấn nút chat ở góc dưới bên phải →')">
+                🚀 Test Ngay
+            </button>
+        </div>
+
+        <div class="footer">
+            <p>Powered by THANHMAIHSK • © 2025 A2A Lab</p>
+            <p style="margin-top: 10px;">🔒 Bảo mật • ⚡ Nhanh chóng • 🎨 Đẹp mắt</p>
+        </div>
+    </div>
+
+    <!-- 🎯 CHATBOT WIDGET - CHỈ CẦN 1 DÒNG CODE NÀY! -->
+    <script 
+        src="widget.js"
+        data-api-url="http://192.168.1.45:8000"
+        data-ws-url="ws://192.168.1.45:8000"
+    ></script>
+
+    <script>
+        function copyCode(button, codeId) {
+            const code = document.getElementById(codeId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied!';
+                button.style.background = '#10b981';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#667eea';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
