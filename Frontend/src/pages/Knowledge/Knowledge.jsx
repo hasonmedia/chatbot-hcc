@@ -1,4 +1,4 @@
-import { getKnowledgeById, postKnowledge, updateKnowledge } from "../../services/knowledgeService";
+import { getKnowledgeById, postKnowledge, updateKnowledge, updateKnowledgeWithFile, uploadKnowledgeFile, deleteKnowledgeDetail } from "../../services/knowledgeService";
 import { useState, useEffect } from "react";
 import { Edit, BookOpen, Search } from "lucide-react";
 import { KnowledgeForm } from "../../components/knowledge/KnowledgeForm";
@@ -9,11 +9,7 @@ const KnowledgePage = () => {
     const [knowledge, setKnowledge] = useState(null);
     const [formData, setFormData] = useState({
         title: "",
-        content: "",
-        source: "",
-        category: "",
-        customer_id: "",
-        is_active: true
+        customer_id: ""
     });
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
@@ -46,10 +42,6 @@ const KnowledgePage = () => {
         if (!knowledge) return;
         setFormData({
             title: knowledge.title || "",
-            content: knowledge.content || "",
-            source: knowledge.source || "",
-            category: knowledge.category || "",
-            is_active: knowledge.is_active || false,
             customer_id: knowledge.customer_id || ""
         });
         setIsEdit(true);
@@ -60,10 +52,7 @@ const KnowledgePage = () => {
     const handleAdd = () => {
         setFormData({
             title: "",
-            content: "",
-            source: "",
-            category: "",
-            is_active: true
+            customer_id: ""
         });
         setIsEdit(false);
         setCurrentView('form');
@@ -78,33 +67,69 @@ const KnowledgePage = () => {
         setCurrentView('detail');
         setFormData({
             title: "",
-            content: "",
-            source: "",
-            category: "",
-            is_active: true
+            customer_id: ""
         });
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e, selectedFiles, uploadMode) => {
         e.preventDefault();
         setLoading(true);
         try {
-            // console.log("Submitting form data:", formData);
-            if (isEdit) {
-                // console.log(formData.id || knowledge.id);
-                const updated = await updateKnowledge(formData.id || knowledge.id, formData);
-                // console.log(updated)
-                setKnowledge(updated.knowledge_base);
-                alert("Cập nhật thành công!");
+            if (uploadMode === 'file' && selectedFiles && selectedFiles.length > 0) {
+                // Upload files mode
+                const formDataToSend = new FormData();
+                
+                // Thêm tất cả files vào FormData
+                selectedFiles.forEach((file) => {
+                    formDataToSend.append('files', file);
+                });
+                
+                formDataToSend.append('title', formData.title);
+                formDataToSend.append('customer_id', formData.customer_id || 'manual');
+
+                if (isEdit) {
+                    // Update với files
+                    const updated = await updateKnowledgeWithFile(formData.id || knowledge.id, formDataToSend);
+                    setKnowledge(updated.knowledge_base);
+                    alert(`Cập nhật thành công! Đã xử lý ${updated.files_processed} file(s)`);
+                } else {
+                    // Tạo mới với files
+                    const created = await uploadKnowledgeFile(formDataToSend);
+                    setKnowledge(created.knowledge_base);
+                    alert(`Thêm mới thành công! Đã xử lý ${created.files_processed} file(s)`);
+                }
             } else {
-                const created = await postKnowledge(formData);
-                setKnowledge(created.knowledge_base);
-                alert("Thêm mới thành công!");
+                // Manual mode (JSON)
+                if (isEdit) {
+                    const updated = await updateKnowledge(formData.id || knowledge.id, formData);
+                    setKnowledge(updated.knowledge_base);
+                    alert("Cập nhật thành công!");
+                } else {
+                    const created = await postKnowledge(formData);
+                    setKnowledge(created.knowledge_base);
+                    alert("Thêm mới thành công!");
+                }
             }
             setCurrentView('detail');
         } catch (err) {
             console.error(err);
-            alert("Có lỗi xảy ra!");
+            alert("Có lỗi xảy ra: " + (err.response?.data?.detail || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteFile = async (detailId) => {
+        try {
+            setLoading(true);
+            await deleteKnowledgeDetail(detailId);
+            // Refresh knowledge data
+            const data = await getKnowledgeById();
+            setKnowledge(data);
+            alert("Xóa file thành công!");
+        } catch (err) {
+            console.error(err);
+            alert("Có lỗi khi xóa file: " + (err.response?.data?.detail || err.message));
         } finally {
             setLoading(false);
         }
@@ -143,7 +168,7 @@ const KnowledgePage = () => {
                                         Chỉnh sửa
                                     </button>
                                 </div>
-                                <KnowledgeView knowledge={knowledge} />
+                                <KnowledgeView knowledge={knowledge} onDeleteFile={handleDeleteFile} />
                             </div>
                         )}
 

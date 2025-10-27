@@ -60,9 +60,9 @@ Thêm đoạn code sau vào **cuối thẻ `<body>`** của trang web:
 ### Local Development
 ```html
 <script 
-    src="http://192.168.1.45:5173/widget.js"
-    data-api-url="http://192.168.1.45:8000"
-    data-ws-url="ws://192.168.1.45:8000"
+    src="http://localhost:5173/widget.js"
+    data-api-url="http://localhost:8000"
+    data-ws-url="ws://localhost:8000"
 ></script>
 ```
 

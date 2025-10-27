@@ -1,6 +1,6 @@
 import axios from "axios";
 // const Url = `https://chatbotbe.a2alab.vn`;
-const Url = `http://192.168.1.45:8000`;
+const Url = `http://localhost:8000`;
 
 const axiosClient = axios.create({
     baseURL: Url,

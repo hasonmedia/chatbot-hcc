@@ -23,12 +23,12 @@ import aiohttp
 import redis.asyncio as aioredis
 
 # ================== CẤU HÌNH ==================
-WEBSOCKET_URL = "ws://192.168.1.45:8000/chat/ws/customer"
+WEBSOCKET_URL = "ws://localhost:8000/chat/ws/customer"
 NUM_USERS = 10  # Số lượng người dùng (chạy tuần tự)
 NUM_ROUNDS = 3  # Số vòng test
 TEST_MESSAGE = "Xin chào, tôi muốn tư vấn về sản phẩm của bạn"
-BACKEND_URL = "http://192.168.1.45:8000"
-REDIS_HOST = "192.168.1.45"
+BACKEND_URL = "http://localhost:8000"
+REDIS_HOST = "localhost"
 REDIS_PORT = 6379
 SEQUENTIAL_MODE = True  # True = tuần tự (user1 xong mới đến user2), False = song song
 
@@ -473,7 +473,7 @@ if __name__ == "__main__":
     """)
     
     print("⚙️  YÊU CẦU:")
-    print("  1. Backend server đang chạy ở http://192.168.1.45:8000")
+    print("  1. Backend server đang chạy ở http://localhost:8000")
     print("  2. Redis đang chạy")
     print("  3. Có API keys trong bảng llm_key")
     print()

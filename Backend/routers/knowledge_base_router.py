@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Query, Request, Depends
+from fastapi import APIRouter, Query, Request, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db
 from controllers import knowledge_base_controller
+from typing import Optional, List
 
 
 router = APIRouter(prefix="/knowledge-base", tags=["Knowledge Base"])
@@ -16,9 +17,50 @@ async def create_kb(request: Request, db: AsyncSession = Depends(get_db)):
     return await knowledge_base_controller.create_kb_controller(data, db)
 
 @router.patch("/{kb_id}")
-async def update_kb(kb_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    data = await request.json()
-    return await knowledge_base_controller.update_kb_controller(kb_id, data, db)
+async def update_kb(
+    kb_id: int,
+    title: Optional[str] = Form(None),
+    customer_id: Optional[str] = Form(None),
+    files: List[UploadFile] = File(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update knowledge base - hỗ trợ cả JSON và form-data với nhiều files upload
+    """
+    return await knowledge_base_controller.update_kb_with_files_controller(
+        kb_id=kb_id,
+        title=title,
+        customer_id=customer_id,
+        files=files,
+        db=db
+    )
+
+@router.post("/upload")
+async def upload_files_kb(
+    title: str = Form(...),
+    customer_id: str = Form("manual"),
+    files: List[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Tạo knowledge base mới từ nhiều files upload
+    """
+    return await knowledge_base_controller.create_kb_with_files_controller(
+        title=title,
+        customer_id=customer_id,
+        files=files,
+        db=db
+    )
+
+@router.delete("/detail/{detail_id}")
+async def delete_kb_detail(
+    detail_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Xóa một file detail khỏi knowledge base
+    """
+    return await knowledge_base_controller.delete_kb_detail_controller(detail_id, db)
 
 @router.get("/search")
 async def search_kb(query: str = Query(...), db: AsyncSession = Depends(get_db)):
