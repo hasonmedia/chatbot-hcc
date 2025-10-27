@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from models.knowledge_base import KnowledgeBase, KnowledgeBaseDetail
+from models.knowledge_base import KnowledgeBase, KnowledgeBaseDetail, DocumentChunk
 from config.sheet import get_sheet
 from fastapi import UploadFile
-from helper.file_processor import process_uploaded_file
+from helper.file_processor import process_uploaded_file, delete_chunks_by_detail_id
 from typing import Optional, List
 import logging
 import os
@@ -103,6 +103,8 @@ async def update_kb_with_files_service(
     # Xử lý files nếu có
     if files and len(files) > 0:
         for file in files:
+            detail = None
+            file_path = None
             try:
                 # Lưu file
                 file_path = os.path.join(UPLOAD_DIR, file.filename)
@@ -110,30 +112,55 @@ async def update_kb_with_files_service(
                     content_file = await file.read()
                     await f.write(content_file)
                 
-                # Xử lý file và extract content
-                file_result = process_uploaded_file(file_path, file.filename)
+                # Tạo knowledge_base_detail mới
+                detail = KnowledgeBaseDetail(
+                    knowledge_base_id=kb.id,
+                    file_name=file.filename,
+                    file_type=os.path.splitext(file.filename)[1].upper().replace('.', ''),
+                    file_path=file_path,
+                    is_active=True
+                )
+                db.add(detail)
+                await db.flush()  # Để lấy detail.id
+                await db.commit()  # Commit detail trước khi chunk
+                
+                # Xử lý file, chunk và lưu vào database
+                file_result = await process_uploaded_file(
+                    file_path, 
+                    file.filename,
+                    knowledge_base_detail_id=detail.id
+                )
                 
                 if file_result['success']:
-                    # Tạo knowledge_base_detail mới
-                    detail = KnowledgeBaseDetail(
-                        knowledge_base_id=kb.id,
-                        file_name=file.filename,
-                        file_type=file_result['metadata'].get('file_type', 'unknown'),
-                        file_path=file_path,
-                        is_active=True
-                    )
-                    db.add(detail)
-                    logger.info(f"Đã thêm file: {file.filename}")
+                    logger.info(f"Đã thêm file: {file.filename} với {file_result.get('chunks_created', 0)} chunks")
                 else:
                     logger.error(f"Lỗi xử lý file {file.filename}: {file_result.get('error')}")
+                    # Xóa chunks nếu có
+                    await delete_chunks_by_detail_id(detail.id)
+                    # Xóa detail vì xử lý thất bại
+                    await db.delete(detail)
+                    await db.commit()
+                    # Xóa file vật lý
                     if os.path.exists(file_path):
                         os.remove(file_path)
                         
             except Exception as e:
                 logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
+                # Rollback và cleanup
+                if detail and detail.id:
+                    await delete_chunks_by_detail_id(detail.id)
+                    try:
+                        await db.delete(detail)
+                        await db.commit()
+                    except:
+                        pass
+                if file_path and os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
                 continue
     
-    await db.commit()
     await db.refresh(kb, ['details'])
     
     return kb
@@ -159,6 +186,8 @@ async def create_kb_with_files_service(
         
         # Xử lý từng file
         for file in files:
+            detail = None
+            file_path = None
             try:
                 # Lưu file
                 file_path = os.path.join(UPLOAD_DIR, file.filename)
@@ -166,30 +195,55 @@ async def create_kb_with_files_service(
                     content_file = await file.read()
                     await f.write(content_file)
                 
-                # Xử lý file và extract content
-                file_result = process_uploaded_file(file_path, file.filename)
+                # Tạo knowledge_base_detail
+                detail = KnowledgeBaseDetail(
+                    knowledge_base_id=kb.id,
+                    file_name=file.filename,
+                    file_type=os.path.splitext(file.filename)[1].upper().replace('.', ''),
+                    file_path=file_path,
+                    is_active=True
+                )
+                db.add(detail)
+                await db.flush()  # Để lấy detail.id
+                await db.commit()  # Commit detail trước khi chunk
+                
+                # Xử lý file, chunk và lưu vào database
+                file_result = await process_uploaded_file(
+                    file_path, 
+                    file.filename,
+                    knowledge_base_detail_id=detail.id
+                )
                 
                 if file_result['success']:
-                    # Tạo knowledge_base_detail
-                    detail = KnowledgeBaseDetail(
-                        knowledge_base_id=kb.id,
-                        file_name=file.filename,
-                        file_type=file_result['metadata'].get('file_type', 'unknown'),
-                        file_path=file_path,
-                        is_active=True
-                    )
-                    db.add(detail)
-                    logger.info(f"Đã xử lý file: {file.filename}")
+                    logger.info(f"Đã xử lý file: {file.filename} với {file_result.get('chunks_created', 0)} chunks")
                 else:
                     logger.error(f"Lỗi xử lý file {file.filename}: {file_result.get('error')}")
+                    # Xóa chunks nếu có
+                    await delete_chunks_by_detail_id(detail.id)
+                    # Xóa detail vì xử lý thất bại
+                    await db.delete(detail)
+                    await db.commit()
+                    # Xóa file vật lý
                     if os.path.exists(file_path):
                         os.remove(file_path)
                         
             except Exception as e:
                 logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
+                # Rollback và cleanup
+                if detail and detail.id:
+                    await delete_chunks_by_detail_id(detail.id)
+                    try:
+                        await db.delete(detail)
+                        await db.commit()
+                    except:
+                        pass
+                if file_path and os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
                 continue
         
-        await db.commit()
         await db.refresh(kb, ['details'])
         
         logger.info(f"Đã tạo knowledge base với {len(files)} files")
@@ -202,14 +256,21 @@ async def create_kb_with_files_service(
 
 
 async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
-    """Xóa một file detail khỏi knowledge base"""
+    """
+    Xóa một file detail khỏi knowledge base
+    Đồng thời xóa tất cả chunks liên quan
+    """
     result = await db.execute(
         select(KnowledgeBaseDetail).filter(KnowledgeBaseDetail.id == detail_id)
     )
     detail = result.scalar_one_or_none()
     
     if detail:
-        # Xóa file vật lý nếu có
+        # Bước 1: Xóa tất cả chunks liên quan
+        await delete_chunks_by_detail_id(detail_id)
+        logger.info(f"Đã xóa chunks của detail_id={detail_id}")
+        
+        # Bước 2: Xóa file vật lý nếu có
         if detail.file_path and os.path.exists(detail.file_path):
             try:
                 os.remove(detail.file_path)
@@ -217,7 +278,7 @@ async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
             except Exception as e:
                 logger.error(f"Lỗi xóa file: {str(e)}")
         
-        # Xóa record trong DB
+        # Bước 3: Xóa record trong DB
         await db.delete(detail)
         await db.commit()
         return True

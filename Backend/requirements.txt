@@ -18,7 +18,7 @@ bcrypt==4.1.1
 
 # Data Validation
 pydantic>=2.7.4
-pydantic-settings==2.1.0
+pydantic-settings==2.4.0
 
 # Google APIs
 google-generativeai==0.8.5
@@ -39,20 +39,20 @@ Pillow==10.1.0
 pypdf==4.0.1
 python-docx==1.1.0
 openpyxl==3.1.2
+docx2txt==0.8  # Simple DOCX text extraction
 
-# LangChain Stack (Updated versions)
-langchain>=0.2.5
-langchain-core>=0.3.67
-langchain-text-splitters>=0.2.1
-langsmith>=0.1.81
-langgraph>=1.0.1
-langgraph-checkpoint>=3.0.0
-langgraph-prebuilt>=1.0.1
-langchain-community
-unstructured
-unstructured[xlsx]
-networkx
-msoffcrypto-tool
+# LangChain Stack (Compatible versions)
+langsmith==0.1.125
+langchain-core==0.3.32
+langchain-text-splitters==0.3.4
+langchain==0.3.16
+langchain-community==0.3.16
+langgraph-checkpoint==2.0.12
+langgraph==0.2.62
+langgraph-prebuilt==0.2.3
+unstructured==0.15.13
+networkx==3.2.1
+msoffcrypto-tool==5.4.1
 
 # Networking
 requests==2.31.0

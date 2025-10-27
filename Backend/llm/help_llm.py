@@ -142,24 +142,7 @@ async def get_llm_model_info_cached(db_session: AsyncSession) -> dict:
 
 
 async def get_current_model(db_session: AsyncSession, chat_session_id: int = None) -> dict:
-    """
-    Lấy thông tin model hiện tại từ database với Redis cache
-    
-    Args:
-        db_session: AsyncSession - Database session
-        chat_session_id: int (optional) - ID của chat session. 
-                         Nếu có, sẽ sử dụng Round-Robin để chọn API key
-    
-    Returns:
-        dict - Dictionary chứa thông tin model:
-            - name: str - Tên model (gpt, gemini, etc.)
-            - key: str - API key của model (từ llm_key nếu có chat_session_id, 
-                        hoặc từ llm.key nếu không)
-            - key_name: str (optional) - Tên của key được chọn (chỉ có khi dùng Round-Robin)
-    
-    Raises:
-        ValueError - Nếu không tìm thấy model có id = 1
-    """
+   
     try:
         # Lấy thông tin LLM model từ cache (giảm thiểu query DB)
         model_info = await get_llm_model_info_cached(db_session)
@@ -575,25 +558,26 @@ async def generate_response_prompt(
     try:
         # Lấy lịch sử và thông tin khách hàng
         history = await get_latest_messages(db_session, chat_session_id, limit=10)
-        customer_info = await get_customer_infor(db_session, chat_session_id)
+        
+        # customer_info = await get_customer_infor(db_session, chat_session_id)
         
         if not query or query.strip() == "":
             return "Nội dung câu hỏi trống, vui lòng nhập lại."
         
         # Tạo search key
-        search_key = await build_search_key(
-            model=model,
-            db_session=db_session,
-            chat_session_id=chat_session_id,
-            question=query,
-            customer_info=customer_info
-        )
-        print(f"🔍 Search key: {search_key}")
+        # search_key = await build_search_key(
+        #     model=model,
+        #     db_session=db_session,
+        #     chat_session_id=chat_session_id,
+        #     question=query,
+        #     customer_info=customer_info
+        # )
+        # print(f"🔍 Search key: {search_key}")
         
         # Tìm kiếm tài liệu liên quan (truyền model_name để tránh query DB thêm lần nữa)
         knowledge = await search_similar_documents(
             db_session, 
-            search_key, 
+            query, 
             top_k=10,
             api_key=api_key_for_embedding,
             model_name=model_name  # Truyền model_name để tránh gọi get_current_model()
@@ -601,11 +585,11 @@ async def generate_response_prompt(
         
         
         # Lấy cấu hình fields
-        required_fields, optional_fields = await get_field_configs(db_session)
+        # required_fields, optional_fields = await get_field_configs(db_session)
         
         # Tạo danh sách thông tin cần thu thập
-        required_info_list = "\n".join([f"- {field_name} (bắt buộc)" for field_name in required_fields.values()])
-        optional_info_list = "\n".join([f"- {field_name} (tùy chọn)" for field_name in optional_fields.values()])
+        # required_info_list = "\n".join([f"- {field_name} (bắt buộc)" for field_name in required_fields.values()])
+        # optional_info_list = "\n".join([f"- {field_name} (tùy chọn)" for field_name in optional_fields.values()])
         
         # Import prompt_builder từ prompt.py
         from llm.prompt import prompt_builder
@@ -613,9 +597,6 @@ async def generate_response_prompt(
         # Tạo prompt
         prompt = await prompt_builder(
             knowledge=knowledge,
-            customer_info=customer_info,
-            required_info_list=required_info_list,
-            optional_info_list=optional_info_list,
             history=history,
             query=query
         )
