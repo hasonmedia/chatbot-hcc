@@ -1,6 +1,8 @@
-import { FileText, Trash2, Calendar, Tag } from "lucide-react";
+import { FileText, Trash2, Calendar, Tag, Edit } from "lucide-react";
 
-export const KnowledgeView = ({ knowledge, onDeleteFile }) => {
+// (THÊM PROP MỚI) onEditDetail
+export const KnowledgeView = ({ knowledge, onDeleteFile, onEditDetail }) => {
+
     const formatFileSize = (bytes) => {
         if (!bytes) return 'N/A';
         if (bytes === 0) return '0 Bytes';
@@ -19,10 +21,8 @@ export const KnowledgeView = ({ knowledge, onDeleteFile }) => {
     };
 
     const handleDeleteFile = async (detailId, fileName) => {
-        if (window.confirm(`Bạn có chắc muốn xóa file "${fileName}"?`)) {
-            if (onDeleteFile) {
-                await onDeleteFile(detailId);
-            }
+        if (onDeleteFile) {
+            await onDeleteFile(detailId);
         }
     };
 
@@ -40,12 +40,11 @@ export const KnowledgeView = ({ knowledge, onDeleteFile }) => {
                     )}
                 </div>
 
-                {/* Hiển thị danh sách files nếu có */}
                 {knowledge.details && knowledge.details.length > 0 && (
                     <div className="mb-6">
                         <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                             <FileText className="w-4 h-4" />
-                            Files đã upload ({knowledge.details.length}):
+                            Các mục kiến thức ({knowledge.details.length}):
                         </h3>
                         <div className="space-y-2">
                             {knowledge.details.map((detail) => (
@@ -54,10 +53,19 @@ export const KnowledgeView = ({ knowledge, onDeleteFile }) => {
                                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
                                 >
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <span className="text-3xl">{getFileIcon(detail.file_type)}</span>
+                                        {/* Kiểm tra source_type */}
+                                        {detail.source_type === 'RICH_TEXT' ? (
+                                            <span className="text-3xl"><FileText className="w-6 h-6 text-blue-600" /></span>
+                                        ) : (
+                                            <span className="text-3xl">{getFileIcon(detail.file_type)}</span>
+                                        )}
+
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-gray-900 truncate">
                                                 {detail.file_name}
+                                                {detail.source_type === 'RICH_TEXT' && (
+                                                    <span className="ml-2 text-xs font-normal text-blue-600">(Nội dung thủ công)</span>
+                                                )}
                                             </p>
                                             <div className="flex gap-4 text-xs text-gray-500 mt-1">
                                                 {detail.created_at && (
@@ -66,10 +74,23 @@ export const KnowledgeView = ({ knowledge, onDeleteFile }) => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Nút Sửa (MỚI) */}
+                                    {detail.source_type === 'RICH_TEXT' && (
+                                        <button
+                                            onClick={() => onEditDetail(detail)}
+                                            className="ml-3 p-2 rounded-full hover:bg-blue-50 text-blue-500 transition-colors"
+                                            title="Sửa nội dung"
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                    )}
+
+                                    {/* Nút Xóa */}
                                     <button
                                         onClick={() => handleDeleteFile(detail.id, detail.file_name)}
                                         className="ml-3 p-2 rounded-full hover:bg-red-50 text-red-500 transition-colors"
-                                        title="Xóa file"
+                                        title="Xóa mục này"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
@@ -78,6 +99,7 @@ export const KnowledgeView = ({ knowledge, onDeleteFile }) => {
                         </div>
                     </div>
                 )}
+                {/* (HẾT SỬA LOGIC RENDER) */}
 
                 <div className="flex items-center gap-2 text-sm text-gray-500 mt-6 pt-4 border-t">
                     <Calendar className="w-4 h-4" />

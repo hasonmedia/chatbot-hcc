@@ -3,7 +3,7 @@ import { X, Plus, Save, Loader2, AlertCircle, CheckCircle, BarChart3, Download, 
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { format } from "date-fns";
 import { getFieldConfig, updateFieldConfig, createFieldConfig, deleteFieldConfig, syncFieldConfigsToSheet } from '../../services/fieldConfigService';
-import { getKnowledgeById } from '../../services/knowledgeService';
+import { getAllKnowledgeBases } from '../../services/knowledgeService';
 import { getCustomerInfor } from '../../services/userService';
 import TableMapping from '../../components/exportData/TableMapping';
 import PageLayout from '../../components/common/PageLayout';
@@ -41,7 +41,7 @@ const ExportData = () => {
         try {
             setLoading(true);
             const [sheet, fieldConfigResponse] = await Promise.all([
-                getKnowledgeById(),
+                getAllKnowledgeBases(),
                 getFieldConfig()
             ]);
 

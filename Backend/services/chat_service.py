@@ -5,17 +5,11 @@ import io
 from typing import Any, Dict
 from sqlalchemy.orm import Session
 from models.chat import ChatSession, Message, CustomerInfo
-from models.facebook_page import FacebookPage
-from models.telegram_page import TelegramBot
-from models.zalo import ZaloBot 
-from config.database import SessionLocal, AsyncSessionLocal
 from sqlalchemy import text, select
 from models.llm import LLM  # Import LLM model để check name
 from datetime import datetime, timedelta
-from fastapi import WebSocket
 import random
 import json
-import requests
 import traceback
 from config.redis_cache import cache_delete
 

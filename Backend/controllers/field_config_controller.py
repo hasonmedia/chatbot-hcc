@@ -6,7 +6,7 @@ from services.field_config_service import (
     get_field_config_by_id_service,
     get_all_field_configs_service
 )
-from services.knowledge_base_service import get_all_kb_service
+from services.knowledge_base_service import get_all_kbs_service
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -27,7 +27,7 @@ def _create_field_config_response(config, message_prefix, sync_success):
 # Google Sheets setup
 async def get_sheet(db: AsyncSession):
     try:
-        sheet = await get_all_kb_service(db)
+        sheet = await get_all_kbs_service(db)
         # creds = Credentials.from_service_account_file(
         #     "config/config_sheet.json",
         #     scopes=["https://www.googleapis.com/auth/spreadsheets"]

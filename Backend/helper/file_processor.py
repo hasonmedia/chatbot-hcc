@@ -1,21 +1,86 @@
 """
 File Processor Helper
-Xử lý đọc nội dung từ các file PDF, WORD, Excel
+Xử lý đọc nội dung từ các file PDF, WORD, Excel và chunk vào database
 """
 import os
 import logging
-from typing import Dict, Optional
-from pypdf import PdfReader
-from docx import Document
-from openpyxl import load_workbook
+from typing import Dict, Optional, List, Union
+from langchain_community.document_loaders import (
+    UnstructuredExcelLoader,
+    PyPDFLoader,
+    Docx2txtLoader  # Loader đơn giản hơn, không cần internet
+)
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from config.get_embedding import get_embedding_gemini
+from models.knowledge_base import DocumentChunk
+from config.database import AsyncSessionLocal
+from sqlalchemy import delete, select
+from bs4 import BeautifulSoup # Cần cho rich text: pip install beautifulsoup4
 
 logger = logging.getLogger(__name__)
 
 
+async def insert_chunks_to_db(chunks_data: list):
+    """
+    Insert chunks vào database (BULK)
+    
+    Args:
+        chunks_data: List của dict chứa chunk_text, search_vector, knowledge_base_detail_id
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            new_chunks = []
+            for d in chunks_data:
+                new_chunks.append(
+                    DocumentChunk(
+                        chunk_text=str(d['chunk_text']),
+                        search_vector=d.get('search_vector'),
+                        knowledge_base_detail_id=d['knowledge_base_detail_id']
+                    )
+                )
+            
+            # Thêm tất cả vào session một lần
+            session.add_all(new_chunks) 
+            
+            # Commit một lần duy nhất
+            await session.commit()
+            
+            logger.info(f"Đã insert {len(new_chunks)} chunks vào database")
+        except Exception as e:
+            logger.error(f"Lỗi bulk insert chunks: {str(e)}")
+            await session.rollback()
+            raise
+
+
+async def delete_chunks_by_detail_id(detail_id: int):
+    """
+    Xóa tất cả chunks liên quan đến một knowledge_base_detail_id
+    
+    Args:
+        detail_id: ID của knowledge_base_detail
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            await session.execute(
+                delete(DocumentChunk).where(DocumentChunk.knowledge_base_detail_id == detail_id)
+            )
+            await session.commit()
+            logger.info(f"Đã xóa tất cả chunks của detail_id={detail_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Lỗi xóa chunks: {str(e)}")
+            await session.rollback()
+            return False
+
+
 class FileProcessor:
-    """Class xử lý đọc nội dung từ các loại file khác nhau"""
+    """Class xử lý đọc nội dung từ các loại file khác nhau sử dụng Langchain loaders"""
     
     SUPPORTED_EXTENSIONS = {'.pdf', '.docx', '.doc', '.xlsx', '.xls'}
+    
+    # Cấu hình chunking
+    CHUNK_SIZE = 1500
+    CHUNK_OVERLAP = 200
     
     @staticmethod
     def is_supported_file(filename: str) -> bool:
@@ -24,45 +89,33 @@ class FileProcessor:
         return ext in FileProcessor.SUPPORTED_EXTENSIONS
     
     @staticmethod
-    def extract_text_from_pdf(file_path: str) -> Dict[str, any]:
+    async def extract_text_from_pdf(file_path: str) -> Dict[str, any]:
         """
-        Đọc nội dung từ file PDF
-        
-        Args:
-            file_path: Đường dẫn đến file PDF
-            
-        Returns:
-            Dict chứa content và metadata
+        Đọc nội dung từ file PDF sử dụng PyPDFLoader
         """
         try:
-            reader = PdfReader(file_path)
-            text_content = []
+            loader = PyPDFLoader(file_path)
+            documents = loader.load()
             
-            # Đọc từng trang
-            for page_num, page in enumerate(reader.pages, 1):
-                text = page.extract_text()
-                if text.strip():
-                    text_content.append(f"[Trang {page_num}]\n{text}")
+            # Kết hợp nội dung từ tất cả các trang
+            full_text = "\n\n".join([doc.page_content for doc in documents])
             
-            full_text = "\n\n".join(text_content)
-            
-            # Lấy metadata
+            # Metadata
             metadata = {
-                'num_pages': len(reader.pages),
+                'num_pages': len(documents),
                 'file_type': 'PDF'
             }
             
-            if reader.metadata:
+            if documents and documents[0].metadata:
                 metadata.update({
-                    'title': reader.metadata.get('/Title', ''),
-                    'author': reader.metadata.get('/Author', ''),
-                    'subject': reader.metadata.get('/Subject', ''),
+                    'source': documents[0].metadata.get('source', ''),
                 })
             
             return {
                 'success': True,
                 'content': full_text,
-                'metadata': metadata
+                'metadata': metadata,
+                'documents': documents  # Để chunk sau
             }
             
         except Exception as e:
@@ -74,115 +127,123 @@ class FileProcessor:
             }
     
     @staticmethod
-    def extract_text_from_docx(file_path: str) -> Dict[str, any]:
+    async def extract_text_from_docx(file_path: str) -> Dict[str, any]:
         """
-        Đọc nội dung từ file DOCX
-        
-        Args:
-            file_path: Đường dẫn đến file DOCX
-            
-        Returns:
-            Dict chứa content và metadata
+        Đọc nội dung từ file DOCX sử dụng Docx2txtLoader
+        (Fallback sang python-docx nếu Docx2txtLoader lỗi)
         """
         try:
-            doc = Document(file_path)
-            text_content = []
-            
-            # Đọc các đoạn văn
-            for para in doc.paragraphs:
-                if para.text.strip():
-                    text_content.append(para.text)
-            
-            # Đọc nội dung trong bảng
-            for table in doc.tables:
-                for row in table.rows:
-                    row_text = " | ".join([cell.text.strip() for cell in row.cells])
-                    if row_text.strip():
-                        text_content.append(row_text)
-            
-            full_text = "\n\n".join(text_content)
-            
-            # Metadata
-            metadata = {
-                'num_paragraphs': len(doc.paragraphs),
-                'num_tables': len(doc.tables),
-                'file_type': 'DOCX'
-            }
-            
-            # Thêm core properties nếu có
-            if doc.core_properties:
-                metadata.update({
-                    'title': doc.core_properties.title or '',
-                    'author': doc.core_properties.author or '',
-                    'subject': doc.core_properties.subject or '',
-                })
-            
-            return {
-                'success': True,
-                'content': full_text,
-                'metadata': metadata
-            }
-            
+            # Thử dùng Docx2txtLoader trước (đơn giản, không cần internet)
+            try:
+                loader = Docx2txtLoader(file_path)
+                documents = loader.load()
+                
+                # Kết hợp nội dung
+                full_text = "\n\n".join([doc.page_content for doc in documents])
+                
+                # Metadata
+                metadata = {
+                    'num_elements': len(documents),
+                    'file_type': 'DOCX'
+                }
+                
+                if documents and documents[0].metadata:
+                    metadata.update({
+                        'source': documents[0].metadata.get('source', ''),
+                    })
+                
+                return {
+                    'success': True,
+                    'content': full_text,
+                    'metadata': metadata,
+                    'documents': documents
+                }
+            except Exception as e:
+                logger.warning(f"Docx2txtLoader failed: {str(e)}, trying python-docx...")
+                # Fallback sang python-docx
+                raise
+                
         except Exception as e:
-            logger.error(f"Lỗi đọc file DOCX: {str(e)}")
-            return {
-                'success': False,
-                'content': '',
-                'error': str(e)
-            }
+            # Fallback: Dùng python-docx trực tiếp
+            try:
+                # Cần cài: pip install python-docx
+                from docx import Document 
+                
+                doc = Document(file_path)
+                text_content = []
+                
+                # Đọc các đoạn văn
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        text_content.append(para.text)
+                
+                # Đọc nội dung trong bảng
+                for table in doc.tables:
+                    for row in table.rows:
+                        row_text = " | ".join([cell.text.strip() for cell in row.cells])
+                        if row_text.strip():
+                            text_content.append(row_text)
+                
+                full_text = "\n\n".join(text_content)
+                
+                # Metadata
+                metadata = {
+                    'num_paragraphs': len(doc.paragraphs),
+                    'num_tables': len(doc.tables),
+                    'file_type': 'DOCX'
+                }
+                
+                # Thêm core properties nếu có
+                if doc.core_properties:
+                    metadata.update({
+                        'title': doc.core_properties.title or '',
+                        'author': doc.core_properties.author or '',
+                        'subject': doc.core_properties.subject or '',
+                    })
+                
+                logger.info(f"✅ Đã đọc DOCX bằng python-docx fallback")
+                return {
+                    'success': True,
+                    'content': full_text,
+                    'metadata': metadata
+                    # Lưu ý: fallback này không trả về 'documents'
+                }
+            except Exception as e2:
+                logger.error(f"Lỗi đọc file DOCX (cả 2 methods): {str(e2)}")
+                return {
+                    'success': False,
+                    'content': '',
+                    'error': str(e2)
+                }
     
     @staticmethod
-    def extract_text_from_excel(file_path: str) -> Dict[str, any]:
+    async def extract_text_from_excel(file_path: str) -> Dict[str, any]:
         """
-        Đọc nội dung từ file Excel
-        
-        Args:
-            file_path: Đường dẫn đến file Excel
-            
-        Returns:
-            Dict chứa content và metadata
+        Đọc nội dung từ file Excel sử dụng UnstructuredExcelLoader
         """
         try:
-            wb = load_workbook(file_path, data_only=True)
-            text_content = []
+            loader = UnstructuredExcelLoader(file_path, mode="elements")
+            documents = loader.load()
             
-            # Đọc từng sheet
-            for sheet_name in wb.sheetnames:
-                sheet = wb[sheet_name]
-                text_content.append(f"[Sheet: {sheet_name}]")
-                
-                # Đọc từng hàng
-                for row in sheet.iter_rows(values_only=True):
-                    # Lọc bỏ các ô None và chuyển thành string
-                    row_text = " | ".join([str(cell) for cell in row if cell is not None])
-                    if row_text.strip():
-                        text_content.append(row_text)
-                
-                text_content.append("")  # Thêm dòng trống giữa các sheet
-            
-            full_text = "\n".join(text_content)
+            # Kết hợp nội dung
+            full_text = "\n\n".join([doc.page_content for doc in documents])
             
             # Metadata
             metadata = {
-                'num_sheets': len(wb.sheetnames),
-                'sheet_names': wb.sheetnames,
+                'num_elements': len(documents),
                 'file_type': 'Excel'
             }
             
-            # Thêm properties nếu có
-            if wb.properties:
+            if documents and documents[0].metadata:
                 metadata.update({
-                    'title': wb.properties.title or '',
-                    'creator': wb.properties.creator or '',
-                    'subject': wb.properties.subject or '',
+                    'source': documents[0].metadata.get('source', ''),
                 })
-            
-            wb.close()
             
             return {
                 'success': True,
                 'content': full_text,
-                'metadata': metadata
+                'metadata': metadata,
+                'documents': documents  # Để chunk sau
             }
             
         except Exception as e:
@@ -194,25 +255,18 @@ class FileProcessor:
             }
     
     @classmethod
-    def process_file(cls, file_path: str, filename: str) -> Dict[str, any]:
+    async def process_file(cls, file_path: str, filename: str) -> Dict[str, any]:
         """
         Xử lý file dựa trên extension
-        
-        Args:
-            file_path: Đường dẫn đến file
-            filename: Tên file gốc
-            
-        Returns:
-            Dict chứa content và metadata
         """
         ext = os.path.splitext(filename)[1].lower()
         
         if ext == '.pdf':
-            result = cls.extract_text_from_pdf(file_path)
+            result = await cls.extract_text_from_pdf(file_path)
         elif ext in ['.docx', '.doc']:
-            result = cls.extract_text_from_docx(file_path)
+            result = await cls.extract_text_from_docx(file_path)
         elif ext in ['.xlsx', '.xls']:
-            result = cls.extract_text_from_excel(file_path)
+            result = await cls.extract_text_from_excel(file_path)
         else:
             return {
                 'success': False,
@@ -226,17 +280,166 @@ class FileProcessor:
             result['metadata']['file_extension'] = ext
         
         return result
+    
+    @classmethod
+    async def process_and_chunk_file(
+        cls, 
+        file_path: str, 
+        filename: str,
+        knowledge_base_detail_id: int
+    ) -> Dict[str, any]:
+        """
+        Xử lý file, chunk nội dung và lưu vào database
+        """
+        try:
+            # Bước 1: Extract text từ file
+            result = await cls.process_file(file_path, filename)
+            
+            if not result.get('success'):
+                return result
+            
+            # Bước 2: Chunk nội dung
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=cls.CHUNK_SIZE,
+                chunk_overlap=cls.CHUNK_OVERLAP
+            )
+            
+            all_chunks = []
+            if 'documents' in result:
+                # Split từ langchain documents (ưu tiên)
+                for doc in result['documents']:
+                    chunks = text_splitter.split_text(doc.page_content)
+                    all_chunks.extend(chunks)
+            else:
+                # Split từ text content (fallback)
+                all_chunks = text_splitter.split_text(result['content'])
+            
+            if not all_chunks:
+                return {
+                    'success': False,
+                    'error': 'Không có nội dung để chunk'
+                }
+            
+            # === SỬA ĐỔI: BATCH EMBEDDING ===
+            # 1. Gom tất cả text vào một list
+            all_texts = [chunk for chunk in all_chunks if chunk] 
+            logger.info(f"Chuẩn bị tạo embedding cho {len(all_texts)} chunks từ file {filename}.")
+
+            # 2. Gọi API embedding MỘT LẦN cho cả batch
+            try:
+                all_vectors = await get_embedding_gemini(all_texts)
+                logger.info(f"Đã tạo thành công {len(all_vectors)} vectors.")
+            except Exception as e:
+                logger.error(f"Lỗi khi gọi batch embedding: {str(e)}")
+                return {'success': False, 'error': f"Lỗi embedding: {str(e)}"}
+
+            # 3. Chuẩn bị data
+            chunks_data = []
+            for text, vector in zip(all_texts, all_vectors):
+                chunks_data.append({
+                    'chunk_text': text,
+                    'search_vector': vector, # Giả sử hàm gemini trả về list
+                    'knowledge_base_detail_id': knowledge_base_detail_id
+                })
+            
+            # 4. Insert MỘT LẦN vào CSDL (dùng hàm đã sửa)
+            if chunks_data:
+                await insert_chunks_to_db(chunks_data)
+            
+            return {
+                'success': True,
+                'message': f'Đã xử lý file {filename}',
+                'chunks_created': len(chunks_data),
+                'metadata': result['metadata']
+            }
+            # === KẾT THÚC SỬA ĐỔI ===
+            
+        except Exception as e:
+            logger.error(f"Lỗi xử lý và chunk file {filename}: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
 
 
-def process_uploaded_file(file_path: str, filename: str) -> Dict[str, any]:
+async def process_uploaded_file(
+    file_path: str, 
+    filename: str,
+    knowledge_base_detail_id: int = None
+) -> Dict[str, any]:
     """
     Function wrapper để xử lý file upload
-    
-    Args:
-        file_path: Đường dẫn đến file đã upload
-        filename: Tên file gốc
-        
-    Returns:
-        Dict chứa content và metadata
     """
-    return FileProcessor.process_file(file_path, filename)
+    if knowledge_base_detail_id is not None:
+        # Xử lý và chunk vào database
+        return await FileProcessor.process_and_chunk_file(
+            file_path, 
+            filename, 
+            knowledge_base_detail_id
+        )
+    else:
+        # Chỉ extract text, không chunk
+        return await FileProcessor.process_file(file_path, filename)
+
+
+# ==========================================================
+# HÀM MỚI ĐỂ XỬ LÝ RICH TEXT (NHẬP THỦ CÔNG)
+# ==========================================================
+async def process_rich_text(
+    raw_content: str, 
+    knowledge_base_detail_id: int
+) -> Dict[str, any]:
+    """
+    Xử lý nội dung rich text (HTML), chunk, tạo vector và lưu vào CSDL
+    """
+    try:
+        # Bước 1: Làm sạch HTML để lấy text
+        soup = BeautifulSoup(raw_content, "html.parser")
+        text_content = soup.get_text(separator="\n", strip=True)
+        
+        if not text_content:
+            return {'success': False, 'error': 'Nội dung text rỗng sau khi lọc HTML'}
+
+        # Bước 2: Chunk text
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=FileProcessor.CHUNK_SIZE,
+            chunk_overlap=FileProcessor.CHUNK_OVERLAP
+        )
+        all_chunks = text_splitter.split_text(text_content)
+        
+        if not all_chunks:
+            return {'success': False, 'error': 'Không có nội dung để chunk sau khi lọc'}
+
+        logger.info(f"Đã chunk nội dung rich text thành {len(all_chunks)} chunks.")
+
+        # Bước 3: Tạo Embeddings (Batch)
+        all_texts = [chunk for chunk in all_chunks if chunk]
+        
+        try:
+            all_vectors = await get_embedding_gemini(all_texts)
+            logger.info(f"Đã tạo thành công {len(all_vectors)} vectors cho rich text.")
+        except Exception as e:
+            logger.error(f"Lỗi khi gọi batch embedding cho rich text: {str(e)}")
+            return {'success': False, 'error': f"Lỗi embedding: {str(e)}"}
+        
+        # Bước 4: Chuẩn bị data và Lưu vào CSDL (Batch)
+        chunks_data = []
+        for text, vector in zip(all_texts, all_vectors):
+            chunks_data.append({
+                'chunk_text': text,
+                'search_vector': vector,
+                'knowledge_base_detail_id': knowledge_base_detail_id
+            })
+        
+        if chunks_data:
+            await insert_chunks_to_db(chunks_data) # Gọi hàm đã sửa
+        
+        return {
+            'success': True,
+            'chunks_created': len(chunks_data),
+            'source_type': 'RICH_TEXT'
+        }
+
+    except Exception as e:
+        logger.error(f"Lỗi khi xử lý rich text: {str(e)}")
+        return {'success': False, 'error': str(e)}

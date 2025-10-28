@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import {
     MessageSquare,
@@ -19,9 +17,8 @@ import {
 import { getUsers } from "../../services/userService"
 import { useNavigate } from "react-router-dom"
 import { get_llm_by_id } from "../../services/llmService"
-import { getKnowledgeById } from "../../services/knowledgeService"
 import { getAllChatHistory } from "../../services/messengerService"
-
+import { getAllKnowledgeBases } from "../../services/knowledgeService"
 export const Dashboard = () => {
     const [data, setData] = useState([])
     const [bot, setBot] = useState()
@@ -36,7 +33,7 @@ export const Dashboard = () => {
             const [users, chatbot, knowledge, historyChat] = await Promise.all([
                 getUsers(),
                 get_llm_by_id(1),
-                getKnowledgeById(1),
+                getAllKnowledgeBases(),
                 getAllChatHistory(),
             ])
 

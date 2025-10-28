@@ -1,15 +1,29 @@
-import { Upload, FileText, X, File, Eye } from "lucide-react";
-import { useState } from "react";
-
+import { Upload, FileText, X, Eye, Edit } from "lucide-react";
+import { useState, useEffect } from "react";
+import TiptapEditor from "../TiptapEditor.jsx";
 export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCancel, loading, isEdit }) => {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [uploadMode, setUploadMode] = useState('manual'); // 'manual' or 'file'
     const [previewFile, setPreviewFile] = useState(null);
 
-    const handleCheckboxChange = (e) => {
-        const { name, checked } = e.target;
-        handleChange({ target: { name, value: checked } });
-    };
+    // (MỚI) Tự động chọn tab khi edit
+    useEffect(() => {
+        if (isEdit) {
+            // Nếu đang edit và có raw_content (tức là sửa rich text)
+            // -> tự động chuyển sang tab 'manual'
+            if (formData.raw_content) {
+                setUploadMode('manual');
+            } else {
+                // Ngược lại, nếu đang edit (VD: thêm file)
+                // -> tự động chuyển sang tab 'file'
+                setUploadMode('file');
+            }
+        } else {
+            // Khi tạo mới, luôn bắt đầu bằng 'manual'
+            setUploadMode('manual');
+        }
+    }, [isEdit, formData.raw_content]); // Chạy khi isEdit hoặc formData thay đổi
+
 
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
@@ -21,16 +35,15 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'application/vnd.ms-excel'
             ];
-            
+
             const validFiles = files.filter(file => allowedTypes.includes(file.type));
             const invalidFiles = files.filter(file => !allowedTypes.includes(file.type));
-            
+
             if (invalidFiles.length > 0) {
                 alert(`Các file sau không được hỗ trợ: ${invalidFiles.map(f => f.name).join(', ')}`);
             }
-            
+
             if (validFiles.length > 0) {
-                // Thêm file mới vào danh sách, tránh trùng lặp
                 setSelectedFiles(prev => {
                     const existingNames = prev.map(f => f.name);
                     const newFiles = validFiles.filter(f => !existingNames.includes(f.name));
@@ -39,6 +52,17 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
             }
         }
     };
+
+    const handleRichTextChange = (htmlContent) => {
+        const syntheticEvent = {
+            target: {
+                name: 'raw_content', // Tên này phải khớp với state của cha
+                value: htmlContent
+            }
+        };
+        handleChange(syntheticEvent);
+    };
+
 
     const removeFile = (index) => {
         setSelectedFiles(prev => prev.filter((_, i) => i !== index));
@@ -67,10 +91,26 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
         setPreviewFile(null);
     };
 
+    const isRichTextEmpty = !formData.raw_content || formData.raw_content === '<p></p>';
+
+    // Cập nhật logic:
+    // 1. Phải có title
+    // 2. Nếu mode 'file':
+    //    - Nếu isEdit=true: có thể 0 file (chỉ sửa title)
+    //    - Nếu isEdit=false: phải > 0 file
+    // 3. Nếu mode 'manual':
+    //    - Phải có content (không rỗng)
+    const isSubmitDisabled = loading ||
+        !formData.title ||
+        (uploadMode === 'file' && !isEdit && selectedFiles.length === 0) ||
+        (uploadMode === 'manual' && isRichTextEmpty && !isEdit) ||
+        (uploadMode === 'manual' && isEdit && !formData.detail_id && isRichTextEmpty);
+
+
     return (
         <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-bold mb-6">
-                {isEdit ? "Sửa kiến thức" : "Thêm kiến thức mới"}
+                {isEdit ? "Sửa / Thêm kiến thức" : "Thêm kiến thức mới"}
             </h2>
 
             <div className="space-y-4">
@@ -83,11 +123,21 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                         <button
                             type="button"
                             onClick={() => setUploadMode('manual')}
-                            className={`flex-1 py-2 px-4 rounded-md border transition-colors ${
-                                uploadMode === 'manual'
-                                    ? 'bg-blue-50 border-blue-500 text-blue-700'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                            }`}
+
+                            // === SỬA LOGIC DISABLED ===
+                            // Chỉ disable khi đang SỬA 1 DETAIL CỤ THỂ
+                            disabled={isEdit && !!formData.detail_id}
+                            // === KẾT THÚC SỬA ===
+
+                            className={`flex-1 py-2 px-4 rounded-md border transition-colors ${uploadMode === 'manual'
+                                ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                } disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                            title={
+                                (isEdit && !!formData.detail_id) // Sửa title
+                                    ? "Đang sửa nội dung, không thể chuyển tab"
+                                    : "Nhập thủ công"
+                            }
                         >
                             <FileText className="w-4 h-4 inline mr-2" />
                             Nhập thủ công
@@ -95,11 +145,21 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                         <button
                             type="button"
                             onClick={() => setUploadMode('file')}
-                            className={`flex-1 py-2 px-4 rounded-md border transition-colors ${
-                                uploadMode === 'file'
-                                    ? 'bg-blue-50 border-blue-500 text-blue-700'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                            }`}
+
+                            // === SỬA LOGIC DISABLED ===
+                            // Chỉ disable khi đang SỬA 1 DETAIL CỤ THỂ
+                            disabled={isEdit && !!formData.detail_id}
+                            // === KẾT THÚC SỬA ===
+
+                            className={`flex-1 py-2 px-4 rounded-md border transition-colors ${uploadMode === 'file'
+                                ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                } disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                            title={
+                                (isEdit && !!formData.detail_id) // Sửa title
+                                    ? "Đang sửa nội dung, không thể chuyển tab"
+                                    : "Upload file"
+                            }
                         >
                             <Upload className="w-4 h-4 inline mr-2" />
                             Upload file
@@ -136,13 +196,13 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                     />
                 </div>
 
-                {/* Hiển thị theo chế độ */}
+                {/* 3. THAY ĐỔI JSX HIỂN THỊ */}
                 {uploadMode === 'file' ? (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Upload files *
+                            {isEdit ? "Thêm files mới" : "Upload files *"}
                         </label>
-                        
+
                         {/* Drag & Drop Area */}
                         <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-blue-400 transition-colors">
                             <div className="space-y-1 text-center w-full">
@@ -219,9 +279,15 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                         )}
                     </div>
                 ) : (
-                    <div className="text-center py-8 text-gray-500">
-                        <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                        <p>Chọn chế độ "Upload file" để tải lên tài liệu</p>
+                    // === KHỐI NHẬP THỦ CÔNG ===
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Nội dung *
+                        </label>
+                        <TiptapEditor
+                            content={formData.raw_content || ''}
+                            onChange={handleRichTextChange}
+                        />
                     </div>
                 )}
 
@@ -229,7 +295,7 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                     <button
                         type="submit"
                         onClick={(e) => handleSubmit(e, selectedFiles, uploadMode)}
-                        disabled={loading || (uploadMode === 'file' && selectedFiles.length === 0)}
+                        disabled={isSubmitDisabled} // Sử dụng logic mới
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? "Đang xử lý..." : (isEdit ? "Cập nhật" : "Tạo mới")}
@@ -244,7 +310,7 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                 </div>
             </div>
 
-            {/* Preview Modal */}
+            {/* Preview Modal (Giữ nguyên) */}
             {previewFile && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">

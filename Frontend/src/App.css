@@ -1,10 +1,11 @@
 @import "tailwindcss";
+@import "./Tiptap.css";
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* cho IE và Edge */
-  scrollbar-width: none;     /* cho Firefox */
+  -ms-overflow-style: none; /* cho IE và Edge */
+  scrollbar-width: none; /* cho Firefox */
 }

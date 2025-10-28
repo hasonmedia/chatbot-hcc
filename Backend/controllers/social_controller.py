@@ -35,9 +35,6 @@ async def customer_chat(websocket: WebSocket, session_id: int):
                     await manager.broadcast_to_admins(msg)
                     await manager.send_to_customer(session_id, msg)
                 
-            
-            # ✅ Thu thập thông tin khách hàng (background)
-            asyncio.create_task(extract_customer_info_background(session_id, manager))
 
     except WebSocketDisconnect:
         manager.disconnect_customer(websocket, session_id)
