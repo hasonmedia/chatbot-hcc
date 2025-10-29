@@ -8,80 +8,81 @@ import { getUsers, postUsers, updateUser } from "../../services/userService";
 import { useAuth } from "../../components/context/AuthContext";
 
 const UserPage = () => {
-    const { user } = useAuth();
+    const { user } = useAuth(); // user object from context, e.g., { ..., abilities: { users: { can_create: true, available_roles: [...] } } }
+
+    // 'data' state now stores the full API response: [{ user: {...}, permission: {...} }, ...]
     const [data, setData] = useState([]);
+
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [showForm, setShowForm] = useState(false);
-    const [editingUser, setEditingUser] = useState(null);
-    const [viewingUser, setViewingUser] = useState(null);
+    const [editingUser, setEditingUser] = useState(null); // Stores ONLY the user object for the form
+    const [viewingUser, setViewingUser] = useState(null); // Stores ONLY the user object for the view
 
-    const roleHierarchy = ['viewer', 'admin', 'superadmin', 'root'];
-
-    // Helper functions for permission checking
-    const getRoleLevel = (role) => {
-        return roleHierarchy.indexOf(role.toLowerCase());
-    };
-
-    const canModifyUser = (currentUserRole, targetUserRole) => {
-        const currentLevel = getRoleLevel(currentUserRole);
-        const targetLevel = getRoleLevel(targetUserRole);
-        return currentLevel > targetLevel;
-    };
-
-    const canCreateUser = (currentUserRole) => {
-        return currentUserRole?.toLowerCase() !== 'viewer';
-    };
-
-    const canViewUser = (currentUserRole, targetUserRole) => {
-        const currentLevel = getRoleLevel(currentUserRole);
-        const targetLevel = getRoleLevel(targetUserRole);
-        return currentLevel >= targetLevel;
-    };
-
-    // Filter users based on current user's role
-    const getFilteredUsers = () => {
-        if (!user?.role) return [];
-
-        return data.filter((u) => {
-            const matchesSearch = u.full_name.toLowerCase().includes(searchTerm.toLowerCase());
-            const canView = canViewUser(user.role, u.role);
-            return matchesSearch && canView;
-        });
-    };
-
+    // Fetch data
     useEffect(() => {
         const fetchData = async () => {
-            const users = await getUsers();
-            setData(users);
+            const usersWithPermissions = await getUsers();
+            setData(usersWithPermissions); // Store the full [{ user, permission }, ...] array
             setLoading(false);
         };
         fetchData();
     }, []);
 
+    // Filter users based on search and backend's 'can_view' permission
+    // This function now returns an array of USER objects, not the wrapper object,
+    // so UserTable doesn't need to be changed.
+    const getFilteredUsers = () => {
+        if (!user) return [];
+
+        return data
+            .filter((item) => {
+                // 1. Filter based on backend permission
+                if (!item.permission.can_view) {
+                    return false;
+                }
+                // 2. Filter based on search term
+                const matchesSearch = item.user.full_name
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase());
+
+                return matchesSearch;
+            })
+            .map(item => item.user); // Return only the user object for the table
+    };
+
     const handleAddUser = async (formData) => {
-        const newUser = await postUsers({ ...formData, company_id: 1 });
-        setData([...data, newUser.user]);
+        // We assume postUsers returns the new item in the same format: { user: {...}, permission: {...} }
+        const newItem = await postUsers({ ...formData, company_id: user.company_id }); // Use current user's company_id
+        setData([...data, newItem]); // Add the full new item to state
         setShowForm(false);
     };
 
     const handleEditUser = async (id, formData) => {
-        const userToEdit = data.find(u => u.id === id);
-        if (!canModifyUser(user.role, userToEdit.role)) {
-            alert("Bạn không có quyền chỉnh sửa người dùng này!");
-            return;
-        }
-
-        const dataToSend = { ...formData, company_id: 1 };
+        const dataToSend = { ...formData, company_id: user.company_id };
         if (dataToSend.password === "") {
             delete dataToSend.password;
         }
-        console.log(dataToSend);
-        const updated = await updateUser(id, dataToSend);
-        setData(data.map((u) => (u.id === id ? updated.user : u)));
+
+        const updatedItem = await updateUser(id, dataToSend);
+
+        setData(data.map((item) => (item.user.id === id ? updatedItem : item)));
         setEditingUser(null);
         setShowForm(false);
     };
+
+    const handleEditClick = (targetUser) => {
+        const item = data.find(i => i.user.id === targetUser.id);
+        if (!item || !item.permission.can_edit) {
+            alert("Bạn không có quyền chỉnh sửa người dùng này!");
+            return;
+        }
+        setEditingUser(targetUser);
+        setShowForm(true);
+    };
+
+    // Check if the current user can create new users based on their 'abilities'
+    const canCreate = user?.abilities?.users?.can_create || false;
 
     return (
         <div className="container mx-auto p-2 sm:p-4 lg:p-6 bg-gray-50 min-h-screen max-w-full">
@@ -97,7 +98,6 @@ const UserPage = () => {
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 lg:p-6 mx-2 sm:mx-0">
-                {/* Search + Create - Responsive Layout */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3 sm:gap-0">
                     {/* Search Input */}
                     <div className="relative w-full sm:w-auto sm:min-w-[250px] lg:min-w-[300px]">
@@ -111,8 +111,8 @@ const UserPage = () => {
                         <FaSearch className="absolute left-3 top-2.5 sm:top-3 text-gray-400 text-sm sm:text-base" />
                     </div>
 
-                    {/* Create Button - Only show if user has create permission */}
-                    {canCreateUser(user?.role) && (
+                    {/* Create Button - Use 'abilities' from logged-in user */}
+                    {canCreate && (
                         <button
                             onClick={() => {
                                 setEditingUser(null);
@@ -126,8 +126,8 @@ const UserPage = () => {
                     )}
                 </div>
 
-                {/* Permission Notice for Viewer */}
-                {user?.role?.toLowerCase() === 'viewer' && (
+                {/* Permission Notice for users who cannot create */}
+                {!canCreate && (
                     <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <p className="text-yellow-800 text-sm">
                             <strong>Chế độ xem:</strong> Bạn chỉ có quyền xem danh sách người dùng, không thể tạo mới hoặc chỉnh sửa.
@@ -135,7 +135,7 @@ const UserPage = () => {
                     </div>
                 )}
 
-                {/* Table Container with Horizontal Scroll */}
+                {/* Table Container */}
                 <div className="overflow-x-auto -mx-3 sm:-mx-4 lg:-mx-6">
                     <div className="inline-block min-w-full align-middle px-3 sm:px-4 lg:px-6">
                         {loading ? (
@@ -145,17 +145,11 @@ const UserPage = () => {
                         ) : (
                             <UserTable
                                 data={getFilteredUsers()}
-                                onEdit={(targetUser) => {
-                                    if (!canModifyUser(user?.role, targetUser.role)) {
-                                        alert("Bạn không có quyền chỉnh sửa người dùng này!");
-                                        return;
-                                    }
-                                    setEditingUser(targetUser);
-                                    setShowForm(true);
-                                }}
+                                onEdit={handleEditClick} // Pass the handler
                                 onView={(targetUser) => setViewingUser(targetUser)}
-                                currentUserRole={user?.role}
-                                canModifyUser={canModifyUser}
+                                permissionsMap={Object.fromEntries(
+                                    data.map(item => [item.user.id, item.permission])
+                                )}
                             />
                         )}
                     </div>
@@ -177,7 +171,7 @@ const UserPage = () => {
                             setShowForm(false);
                             setEditingUser(null);
                         }}
-                        currentUserRole={user?.role}
+                        availableRoles={user?.abilities?.users?.avalilable_roles || []}
                     />
                 )}
             </div>

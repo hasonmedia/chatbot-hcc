@@ -14,7 +14,8 @@ import {
     MessageCircle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
+import { Outlet } from "react-router-dom";
+import { ProtectedRoute } from "../context/ProtectedRoute";
 const viewerMenuItems = [
     {
         label: "Dashboard",
@@ -53,7 +54,7 @@ const viewerMenuItems = [
     }
 ];
 
-export default function ViewerSidebar({ children }) {
+function ViewerSidebar({ children }) {
     const location = useLocation();
     const currentPath = location.pathname;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -266,3 +267,15 @@ export default function ViewerSidebar({ children }) {
         </div>
     );
 }
+
+
+const UserLayout = () => {
+    return (
+        <ProtectedRoute allowedRoles={["user"]}>
+            <ViewerSidebar>
+                <Outlet />
+            </ViewerSidebar>
+        </ProtectedRoute>
+    );
+};
+export default UserLayout;

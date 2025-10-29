@@ -1,6 +1,7 @@
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+import { FaEdit, FaEye } from "react-icons/fa";
 
-const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => {
+const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
+
     const getRoleInfo = (role) => {
         switch (role?.toLowerCase()) {
             case 'root':
@@ -9,12 +10,8 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                 return { label: 'Quản trị cấp cao', color: 'bg-red-100 text-red-700 border-red-200' };
             case 'admin':
                 return { label: 'Quản trị viên', color: 'bg-blue-100 text-blue-700 border-blue-200' };
-            case 'viewer':
+            case 'user':
                 return { label: 'Nhân viên', color: 'bg-gray-100 text-gray-700 border-gray-200' };
-            case 'manager':
-                return { label: 'Quản lý', color: 'bg-green-100 text-green-700 border-green-200' };
-            case 'agent':
-                return { label: 'Nhân viên', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
             default:
                 return { label: role || 'Không xác định', color: 'bg-gray-100 text-gray-700 border-gray-200' };
         }
@@ -58,8 +55,10 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {data.map((user, index) => {
+                        {data.map((user) => {
                             const roleInfo = getRoleInfo(user.role);
+                            // Get permissions for this specific user from the map
+                            const userPermissions = permissionsMap[user.id] || { can_edit: false, can_delete: false };
 
                             return (
                                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
@@ -147,7 +146,9 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                             >
                                                 <FaEye className="w-4 h-4" />
                                             </button>
-                                            {canModifyUser && canModifyUser(currentUserRole, user.role) && (
+
+                                            {/* === LOGIC CHANGED HERE === */}
+                                            {userPermissions.can_edit && (
                                                 <button
                                                     onClick={() => onEdit(user)}
                                                     className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 rounded-lg transition-colors"
@@ -156,6 +157,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                                     <FaEdit className="w-4 h-4" />
                                                 </button>
                                             )}
+                                            {/* Note: You can add a delete button here checking userPermissions.can_delete */}
                                         </div>
                                     </td>
                                 </tr>
@@ -168,8 +170,10 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
             {/* Mobile Card View */}
             <div className="lg:hidden">
                 <div className="divide-y divide-gray-200">
-                    {data.map((user, index) => {
+                    {data.map((user) => {
                         const roleInfo = getRoleInfo(user.role);
+                        // Get permissions for this specific user from the map
+                        const userPermissions = permissionsMap[user.id] || { can_edit: false, can_delete: false };
 
                         return (
                             <div key={user.id} className="p-4 hover:bg-gray-50 transition-colors">
@@ -205,7 +209,9 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                         >
                                             <FaEye className="w-4 h-4" />
                                         </button>
-                                        {canModifyUser && canModifyUser(currentUserRole, user.role) && (
+
+                                        {/* === LOGIC CHANGED HERE === */}
+                                        {userPermissions.can_edit && (
                                             <button
                                                 onClick={() => onEdit(user)}
                                                 className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors"
@@ -268,10 +274,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                         <span className="text-xl sm:text-2xl text-gray-500">👥</span>
                     </div>
                     <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-2">Chưa có người dùng nào</h3>
-                    <p className="text-gray-500 text-sm sm:text-base mb-4">Thêm thành viên đầu tiên để bắt đầu quản lý hệ thống</p>
-                    <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
-                        <span className="text-sm sm:text-base">Nhấn nút "Tạo người dùng mới" để bắt đầu</span>
-                    </div>
+                    <p className="text-gray-500 text-sm sm:text-base mb-4">Danh sách lọc của bạn không trả về kết quả nào.</p>
                 </div>
             )}
         </div>

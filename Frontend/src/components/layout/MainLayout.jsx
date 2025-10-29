@@ -1,5 +1,5 @@
 import Sidebar from "./Sildebar";
-export default function MainLayout({ children }) {
+function MainLayout({ children }) {
     return (
         <div className="flex h-screen bg-gray-50">
             <Sidebar />
@@ -11,3 +11,18 @@ export default function MainLayout({ children }) {
         </div>
     );
 }
+
+
+import { Outlet } from "react-router-dom";
+import { ProtectedRoute } from "../context/ProtectedRoute";
+
+const AdminLayout = () => {
+    return (
+        <ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
+            <MainLayout>
+                <Outlet />
+            </MainLayout>
+        </ProtectedRoute>
+    );
+};
+export default AdminLayout;

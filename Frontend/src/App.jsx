@@ -6,12 +6,11 @@ import Messager_admin from './pages/Messenger/ChatPage';
 import UserPage from './pages/User/UserPage';
 import KnowledgePage from './pages/Knowledge/Knowledge';
 import FacebookPage from './pages/ConnectPlaform/FacebookPage'
-import { ProtectedRoute } from './components/context/ProtectedRoute'
 import { RoleBasedRedirect } from './components/context/RoleBasedRedirect'
 import LLM from './pages/LLM/LLM';
 import ExportData from './pages/ExportData/ExportData';
-import MainLayout from './components/layout/MainLayout';
-import ViewerLayout from './components/layout/ViewerLayout';
+import AdminLayout from './components/layout/MainLayout';
+import UserLayout from './components/layout/ViewerLayout';
 import Profile from './pages/User/Profile';
 import TagManagement from './pages/Tag/Tag';
 import SendMessage from './pages/SendMessage/SendMessage.jsx';
@@ -28,114 +27,32 @@ const App = () => {
         <Router>
             <Routes>
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/" element={<RoleBasedRedirect />} />
-
-                {/* Admin Routes */}
-                <Route path="/dashboard" element={
-                    <ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                        <MainLayout>
-                            <DashBoard />
-                        </MainLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/dashboard/cau-hinh-he-thong" element={
-                    <ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                        <MainLayout>
-                            <LLM />
-                        </MainLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/admin/admin-analytics" element={
-                    <ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                        <MainLayout>
-                            <Chart />
-                        </MainLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/dashboard/send-messages" element={
-                    <ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                        <MainLayout>
-                            <SendMessage />
-                        </MainLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/chat" element={<Messager_home />} />
-                <Route path="/admin/chat" element={<ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                    <Messager_admin />
-                </ProtectedRoute>} />
-                <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["root", "superadmin", "admin"]}>
-                    <MainLayout>
-                        <UserPage />
-                    </MainLayout></ProtectedRoute>} />
-                <Route path="/dashboard/cau-hinh-kien-thuc" element={<ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                    <MainLayout>
-                        <KnowledgePage />
-                    </MainLayout></ProtectedRoute>} />
-                <Route path="/admin/facebook_page" element={<ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                    <MainLayout>
-                        <FacebookPage />
-                    </MainLayout>
-                </ProtectedRoute>} />
-                <Route path='/dashboard/export' element={<ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                    <MainLayout>
-                        <ExportData />
-                    </MainLayout></ProtectedRoute>} />
-                <Route path='/profile' element={<ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                    <MainLayout>
-                        <Profile />
-                    </MainLayout></ProtectedRoute>} />
-                <Route path='/admin/tag' element={<ProtectedRoute allowedRoles={["admin", "root", "superadmin"]}>
-                    <MainLayout>
-                        <TagManagement />
-                    </MainLayout></ProtectedRoute>} />
-                <Route path='/admin/dashboard-guide' element={
-                    <MainLayout>
-                        <Guide />
-                    </MainLayout>} />
                 <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="/" element={<RoleBasedRedirect />} />
+                <Route path="/chat" element={<Messager_home />} />
 
-                {/* Viewer Routes */}
-                <Route path="/viewer" element={
-                    <ProtectedRoute allowedRoles={["viewer"]}>
-                        <ViewerLayout>
-                            <ViewerDashboard />
-                        </ViewerLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/viewer/send-messages" element={
-                    <ProtectedRoute allowedRoles={["viewer"]}>
-                        <ViewerLayout>
-                            <SendMessage />
-                        </ViewerLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/viewer/export-data" element={
-                    <ProtectedRoute allowedRoles={["viewer"]}>
-                        <ViewerLayout>
-                            <ExportData />
-                        </ViewerLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/viewer/tags" element={
-                    <ProtectedRoute allowedRoles={["viewer"]}>
-                        <ViewerLayout>
-                            <ViewerTagManagement />
-                        </ViewerLayout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/viewer/chat" element={
-                    <ProtectedRoute allowedRoles={["viewer"]}>
-                        <ChatPage />
-                    </ProtectedRoute>
-                } />
-                <Route path="/viewer/profile" element={
-                    <ProtectedRoute allowedRoles={["viewer"]}>
-                        <ViewerLayout>
-                            <Profile />
-                        </ViewerLayout>
-                    </ProtectedRoute>
-                } />
-
+                <Route element={<AdminLayout />}>
+                    <Route path="/dashboard" element={<DashBoard />} />
+                    <Route path="/dashboard/cau-hinh-he-thong" element={<LLM />} />
+                    <Route path="/admin/admin-analytics" element={<Chart />} />
+                    <Route path="/dashboard/send-messages" element={<SendMessage />} />
+                    <Route path="/admin/chat" element={<Messager_admin />} />
+                    <Route path="/admin/users" element={<UserPage />} />
+                    <Route path="/dashboard/cau-hinh-kien-thuc" element={<KnowledgePage />} />
+                    <Route path="/admin/facebook_page" element={<FacebookPage />} />
+                    <Route path="/dashboard/export" element={<ExportData />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/admin/tag" element={<TagManagement />} />
+                    <Route path="/admin/dashboard-guide" element={<Guide />} />
+                </Route>
+                <Route element={<UserLayout />}>
+                    <Route path="/viewer" element={<ViewerDashboard />} />
+                    <Route path="/viewer/send-messages" element={<SendMessage />} />
+                    <Route path="/viewer/export-data" element={<ExportData />} />
+                    <Route path="/viewer/tags" element={<ViewerTagManagement />} />
+                    <Route path="/viewer/chat" element={<ChatPage />} />
+                    <Route path="/viewer/profile" element={<Profile />} />
+                </Route>
             </Routes>
         </Router>
     );
