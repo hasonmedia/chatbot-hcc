@@ -32,7 +32,8 @@ gspread==5.12.4
 openai==1.40.0
 
 # Data Processing
-numpy==1.26.0
+numpy==1.26.4
+pandas==2.2.3
 Pillow==10.1.0
 
 # File Processing

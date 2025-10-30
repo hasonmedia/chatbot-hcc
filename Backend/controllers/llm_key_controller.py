@@ -20,6 +20,7 @@ async def create_llm_key_controller(llm_id: int, data: dict, db: AsyncSession):
             "id": llm_key.id,
             "name": llm_key.name,
             "key": llm_key.key,
+            "type": llm_key.type,
             "llm_id": llm_key.llm_id,
             "created_at": llm_key.created_at,
             "updated_at": llm_key.updated_at
@@ -42,6 +43,7 @@ async def update_llm_key_controller(key_id: int, data: dict, db: AsyncSession):
             "id": llm_key.id,
             "name": llm_key.name,
             "key": llm_key.key,
+            "type": llm_key.type,
             "llm_id": llm_key.llm_id,
             "created_at": llm_key.created_at,
             "updated_at": llm_key.updated_at
@@ -69,6 +71,7 @@ async def get_llm_keys_controller(llm_id: int, db: AsyncSession):
             "id": k.id,
             "name": k.name,
             "key": k.key,
+            "type": k.type,
             "llm_id": k.llm_id,
             "created_at": k.created_at,
             "updated_at": k.updated_at

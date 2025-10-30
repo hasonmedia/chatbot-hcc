@@ -33,9 +33,6 @@ class KnowledgeBaseDetail(Base):
     file_type = Column(String(50), nullable=True)  # PDF, DOCX, XLSX
     file_path = Column(String(500), nullable=True)  # Đường dẫn lưu file
     
-
-    
-    # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)

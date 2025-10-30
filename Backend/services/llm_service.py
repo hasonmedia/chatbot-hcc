@@ -42,6 +42,7 @@ async def update_llm_service(llm_id: int, data: dict, db: AsyncSession):
             new_key = LLMKey(
                 name=key_data.get('name'),
                 key=key_data.get('key'),
+                type=key_data.get('type', 'bot'),
                 llm_id=llm_id
             )
             db.add(new_key)
@@ -90,6 +91,7 @@ async def create_llm_key_service(llm_id: int, data: dict, db: AsyncSession):
     llm_key = LLMKey(
         name=data.get("name"),
         key=data.get("key"),
+        type=data.get("type", "bot"),  # Mặc định là "bot"
         llm_id=llm_id
     )
     db.add(llm_key)
@@ -107,6 +109,7 @@ async def update_llm_key_service(key_id: int, data: dict, db: AsyncSession):
     
     llm_key.name = data.get('name', llm_key.name)
     llm_key.key = data.get('key', llm_key.key)
+    llm_key.type = data.get('type', llm_key.type)
     await db.commit()
     await db.refresh(llm_key)
     return llm_key

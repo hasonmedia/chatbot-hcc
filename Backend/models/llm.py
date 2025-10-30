@@ -26,6 +26,7 @@ class LLMKey(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(150), nullable=False)
     key = Column(String(150), nullable=False)
+    type = Column(String(50), nullable=False, default="bot")  # "bot" hoặc "embedding"
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     llm_id = Column(Integer, ForeignKey("llm.id"), nullable=False)

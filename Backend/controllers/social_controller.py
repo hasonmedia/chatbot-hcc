@@ -12,7 +12,6 @@ import datetime
 import json
 import asyncio
 manager = ConnectionManager()
-from helper.task import extract_customer_info_background
 
 
 
@@ -159,8 +158,5 @@ async def chat_platform(channel, body: dict, db: AsyncSession):
     for msg in message:
         await manager.broadcast_to_admins(msg)
     
-    # Thu thập thông tin khách hàng sau MỖI tin nhắn từ platform - chạy background task
-    if message:
-        session_id = message[0].get("chat_session_id")
-        asyncio.create_task(extract_customer_info_background(session_id, manager))
+
 

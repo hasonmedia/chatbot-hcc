@@ -73,6 +73,7 @@ async def get_llm_by_id_controller(llm_id: int, db: AsyncSession):
                 "id": key.id,
                 "name": key.name,
                 "key": key.key,
+                "type": key.type,
                 "created_at": key.created_at,
                 "updated_at": key.updated_at
             }
@@ -96,6 +97,7 @@ async def get_all_llms_controller(db: AsyncSession):
                     "id": key.id,
                     "name": key.name,
                     "key": key.key,
+                    "type": key.type,
                     "created_at": key.created_at,
                     "updated_at": key.updated_at
                 }

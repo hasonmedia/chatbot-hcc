@@ -220,7 +220,8 @@ class FileProcessor:
     @staticmethod
     async def extract_text_from_excel(file_path: str) -> Dict[str, any]:
         """
-        Đọc nội dung từ file Excel sử dụng UnstructuredExcelLoader
+        Đọc nội dung từ file Excel sử dụng pandas để giữ nguyên cấu trúc bảng
+        Mỗi sheet sẽ được chuyển thành text có header
         
         Args:
             file_path: Đường dẫn đến file Excel
@@ -229,28 +230,71 @@ class FileProcessor:
             Dict chứa content và metadata
         """
         try:
-            loader = UnstructuredExcelLoader(file_path, mode="elements")
-            documents = loader.load()
+            import pandas as pd
             
-            # Kết hợp nội dung
-            full_text = "\n\n".join([doc.page_content for doc in documents])
+            # Đọc tất cả các sheet
+            excel_file = pd.ExcelFile(file_path)
+            sheet_contents = []
+            total_rows = 0
+            
+            for sheet_name in excel_file.sheet_names:
+                try:
+                    # Đọc sheet
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    
+                    if df.empty:
+                        continue
+                    
+                    # Chuyển DataFrame thành text có cấu trúc
+                    # Format: Sheet name, header, và từng dòng dữ liệu
+                    sheet_text = f"=== SHEET: {sheet_name} ===\n\n"
+                    
+                    # Thêm header
+                    headers = df.columns.tolist()
+                    sheet_text += "HEADER: " + " | ".join([str(h) for h in headers]) + "\n\n"
+                    
+                    # Thêm từng dòng dữ liệu với header
+                    for idx, row in df.iterrows():
+                        row_text = []
+                        for col in df.columns:
+                            value = row[col]
+                            # Bỏ qua giá trị NaN
+                            if pd.notna(value):
+                                row_text.append(f"{col}: {value}")
+                        
+                        if row_text:
+                            sheet_text += " | ".join(row_text) + "\n"
+                    
+                    sheet_contents.append(sheet_text)
+                    total_rows += len(df)
+                    
+                except Exception as e:
+                    logger.warning(f"Lỗi đọc sheet '{sheet_name}': {str(e)}")
+                    continue
+            
+            if not sheet_contents:
+                return {
+                    'success': False,
+                    'content': '',
+                    'error': 'Không thể đọc nội dung từ file Excel'
+                }
+            
+            # Kết hợp tất cả các sheet
+            full_text = "\n\n".join(sheet_contents)
             
             # Metadata
             metadata = {
-                'num_elements': len(documents),
-                'file_type': 'Excel'
+                'num_sheets': len(excel_file.sheet_names),
+                'total_rows': total_rows,
+                'file_type': 'Excel',
+                'source': file_path
             }
-            
-            if documents and documents[0].metadata:
-                metadata.update({
-                    'source': documents[0].metadata.get('source', ''),
-                })
             
             return {
                 'success': True,
                 'content': full_text,
                 'metadata': metadata,
-                'documents': documents  # Để chunk sau
+                'sheet_contents': sheet_contents  # Để chunk theo sheet nếu cần
             }
             
         except Exception as e:
@@ -320,16 +364,46 @@ class FileProcessor:
             if not result.get('success'):
                 return result
             
+            ext = os.path.splitext(filename)[1].lower()
+            
             # Bước 2: Chunk nội dung
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=cls.CHUNK_SIZE,
                 chunk_overlap=cls.CHUNK_OVERLAP
             )
             
-            # Sử dụng documents nếu có, nếu không thì dùng content
-            if 'documents' in result:
+            all_chunks = []
+            
+            # Xử lý đặc biệt cho file Excel
+            if ext in ['.xlsx', '.xls'] and 'sheet_contents' in result:
+                # Chunk từng sheet riêng để giữ context
+                for sheet_text in result['sheet_contents']:
+                    # Extract header từ sheet_text
+                    lines = sheet_text.split('\n')
+                    sheet_name = lines[0] if lines else ""
+                    header_line = ""
+                    
+                    # Tìm dòng HEADER
+                    for line in lines:
+                        if line.startswith("HEADER:"):
+                            header_line = line
+                            break
+                    
+                    # Chunk sheet content
+                    chunks = text_splitter.split_text(sheet_text)
+                    
+                    # Thêm header vào mỗi chunk nếu chunk không có header
+                    for chunk in chunks:
+                        if header_line and "HEADER:" not in chunk:
+                            # Thêm sheet name và header vào đầu chunk
+                            enhanced_chunk = f"{sheet_name}\n{header_line}\n\n{chunk}"
+                            all_chunks.append(enhanced_chunk)
+                        else:
+                            all_chunks.append(chunk)
+            
+            # Xử lý cho các file khác (PDF, DOCX)
+            elif 'documents' in result:
                 # Split từ langchain documents
-                all_chunks = []
                 for doc in result['documents']:
                     chunks = text_splitter.split_text(doc.page_content)
                     all_chunks.extend(chunks)

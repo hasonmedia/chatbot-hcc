@@ -290,9 +290,52 @@ export default function ChatPage() {
                                                             ))}
                                                         </div>
                                                     )}
-                                                    <div className="text-sm leading-relaxed break-words whitespace-pre-line">
-                                                        {msg.content}
-                                                    </div>
+                                                    {(() => {
+                                                        // Parse JSON nếu là bot message
+                                                        if (msg.sender_type === 'bot' && msg.content) {
+                                                            try {
+                                                                const data = JSON.parse(msg.content);
+                                                                return (
+                                                                    <>
+                                                                        <div className="text-sm leading-relaxed break-words whitespace-pre-line">
+                                                                            {data.message}
+                                                                        </div>
+                                                                        {data.links && data.links.length > 0 && (
+                                                                            <div className="mt-2 space-y-1">
+                                                                                {data.links.map((link, idx) => (
+                                                                                    <a
+                                                                                        key={idx}
+                                                                                        href={link}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-xs text-blue-600 hover:text-blue-700"
+                                                                                    >
+                                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                                                        </svg>
+                                                                                        <span className="truncate">{link}</span>
+                                                                                    </a>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                );
+                                                            } catch (e) {
+                                                                // Fallback nếu không parse được JSON
+                                                                return (
+                                                                    <div className="text-sm leading-relaxed break-words whitespace-pre-line">
+                                                                        {msg.content}
+                                                                    </div>
+                                                                );
+                                                            }
+                                                        }
+                                                        // Message thông thường (customer, admin)
+                                                        return (
+                                                            <div className="text-sm leading-relaxed break-words whitespace-pre-line">
+                                                                {msg.content}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
 
                                                 {/* Time - compact */}
