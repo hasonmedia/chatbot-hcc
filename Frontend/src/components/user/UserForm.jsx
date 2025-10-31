@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 
 const UserForm = ({ initialData, onSubmit, onCancel, availableRoles = [], isProfileMode = false }) => {
-
-    // 1. Ánh xạ TÊN VAI TRÒ (key) sang TÊN HIỂN THỊ (label)
-    // Đây là map để hiển thị tên cho đẹp, không phải logic phân quyền.
     const allRoleInfo = {
         root: "Siêu quản trị (Root)",
         superadmin: "Quản trị cấp cao",
@@ -20,35 +17,28 @@ const UserForm = ({ initialData, onSubmit, onCancel, availableRoles = [], isProf
     }));
 
     const isEditing = Boolean(initialData);
-
     // 3. Khởi tạo state
     const [formData, setFormData] = useState({
-        full_name: initialData?.full_name || "",
-        username: initialData?.username || "",
-        email: initialData?.email || "",
-        // Nếu sửa: dùng role hiện tại.
-        // Nếu tạo mới: dùng role ĐẦU TIÊN trong danh sách được phép.
-        role: initialData?.role || (roleOptions.length > 0 ? roleOptions[0].value : ""),
+        full_name: initialData?.user.full_name || "",
+        username: initialData?.user.username || "",
+        email: initialData?.user.email || "",
+        role: initialData?.user.role || (roleOptions.length > 0 ? roleOptions[0].value : ""),
         password: "",
-        is_active: initialData?.is_active ?? true,
+        is_active: initialData?.user.is_active ?? true,
     });
 
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
-    // 4. XÓA BỎ: roleHierarchy, getRoleLevel, getAvailableRoleOptions
-    // (Toàn bộ logic này đã bị xóa)
-
-    // 5. Cập nhật state khi 'initialData' thay đổi (khi bấm 'Edit')
     useEffect(() => {
         if (initialData) {
             setFormData({
-                full_name: initialData.full_name,
-                username: initialData.username,
-                email: initialData.email,
-                role: initialData.role,
+                full_name: initialData?.user.full_name,
+                username: initialData?.user.username,
+                email: initialData?.user.email,
+                role: initialData?.user.role,
                 password: "",
-                is_active: initialData.is_active ?? true, // Dùng ?? true để đảm bảo
+                is_active: initialData?.user.is_active ?? true, // Dùng ?? true để đảm bảo
             });
         }
     }, [initialData]);
@@ -192,7 +182,7 @@ const UserForm = ({ initialData, onSubmit, onCancel, availableRoles = [], isProf
                                         className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                                         required
                                         // Vô hiệu hóa nếu không có role nào để chọn (cả khi edit lẫn create)
-                                        disabled={roleOptions.length === 0 && !initialData?.role}
+                                        disabled={roleOptions.length === 0 && !initialData?.user.role}
                                     >
                                         <option value="">Chọn vai trò...</option>
 
@@ -204,12 +194,6 @@ const UserForm = ({ initialData, onSubmit, onCancel, availableRoles = [], isProf
                                             </option>
                                         ))}
 
-                                        {/* Trường hợp đặc biệt: Đang Edit 
-                                          Và role hiện tại của user (initialData.role)
-                                          KHÔNG có trong danh sách role được phép (roleOptions)
-                                          (VD: admin sửa 1 admin khác, nhưng chỉ được phép gán 'user')
-                                          -> Ta phải thêm role 'admin' vào list để nó hiển thị đúng.
-                                        */}
                                         {isEditing && !roleOptions.some(opt => opt.value === initialData.role) && (
                                             <option key={initialData.role} value={initialData.role}>
                                                 {allRoleInfo[initialData.role] || initialData.role} (Vai trò hiện tại)

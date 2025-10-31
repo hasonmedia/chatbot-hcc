@@ -59,27 +59,6 @@ const menuItems = [
         bgColor: "bg-purple-100"
     },
     {
-        label: "Dữ liệu khách hàng",
-        icon: Database,
-        href: "/dashboard/export",
-        color: "text-orange-600",
-        bgColor: "bg-orange-100"
-    },
-    {
-        label: "Quản lý Tag",
-        icon: Tag,
-        href: "/admin/tag",
-        color: "text-indigo-600",
-        bgColor: "bg-indigo-100"
-    },
-    {
-        label: "Gửi tin nhắn hàng loạt",
-        icon: MessageCircleCode,
-        href: "/dashboard/send-messages",
-        color: "text-purple-600",
-        bgColor: "bg-purple-100"
-    },
-    {
         label: "Chat Interface",
         icon: MessageSquare,
         href: "/admin/chat",

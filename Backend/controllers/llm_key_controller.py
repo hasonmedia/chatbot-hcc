@@ -3,16 +3,16 @@ from services.llm_service import (
     create_llm_key_service,
     update_llm_key_service,
     delete_llm_key_service,
-    get_llm_keys_by_llm_id_service
+    get_llm_keys_by_detail_id_service
 )
 from llm.help_llm import clear_llm_keys_cache
 
-async def create_llm_key_controller(llm_id: int, data: dict, db: AsyncSession):
-    """Tạo key mới cho LLM"""
-    llm_key = await create_llm_key_service(llm_id, data, db)
+async def create_llm_key_controller(llm_detail_id: int, data: dict, db: AsyncSession):
+    """Tạo key mới cho LLMDetail"""
+    llm_key = await create_llm_key_service(llm_detail_id, data, db)
     
     # Xóa cache để force reload danh sách keys mới
-    await clear_llm_keys_cache(llm_id)
+    await clear_llm_keys_cache(llm_detail_id)
     
     return {
         "message": "LLM key created",
@@ -20,7 +20,8 @@ async def create_llm_key_controller(llm_id: int, data: dict, db: AsyncSession):
             "id": llm_key.id,
             "name": llm_key.name,
             "key": llm_key.key,
-            "llm_id": llm_key.llm_id,
+            "type": llm_key.type,
+            "llm_detail_id": llm_key.llm_detail_id,
             "created_at": llm_key.created_at,
             "updated_at": llm_key.updated_at
         }
@@ -34,7 +35,7 @@ async def update_llm_key_controller(key_id: int, data: dict, db: AsyncSession):
         return {"message": "LLM key not found"}
     
     # Xóa cache để force reload danh sách keys mới
-    await clear_llm_keys_cache(llm_key.llm_id)
+    await clear_llm_keys_cache(llm_key.llm_detail_id)
     
     return {
         "message": "LLM key updated",
@@ -42,7 +43,8 @@ async def update_llm_key_controller(key_id: int, data: dict, db: AsyncSession):
             "id": llm_key.id,
             "name": llm_key.name,
             "key": llm_key.key,
-            "llm_id": llm_key.llm_id,
+            "type": llm_key.type,
+            "llm_detail_id": llm_key.llm_detail_id,
             "created_at": llm_key.created_at,
             "updated_at": llm_key.updated_at
         }
@@ -56,20 +58,21 @@ async def delete_llm_key_controller(key_id: int, db: AsyncSession):
         return {"message": "LLM key not found"}
     
     # Xóa cache để force reload danh sách keys mới
-    await clear_llm_keys_cache(llm_key.llm_id)
+    await clear_llm_keys_cache(llm_key.llm_detail_id)
     
     return {"message": "LLM key deleted", "key_id": llm_key.id}
 
 
-async def get_llm_keys_controller(llm_id: int, db: AsyncSession):
-    """Lấy tất cả keys của một LLM"""
-    llm_keys = await get_llm_keys_by_llm_id_service(llm_id, db)
+async def get_llm_keys_controller(llm_detail_id: int, db: AsyncSession):
+    """Lấy tất cả keys của một LLMDetail"""
+    llm_keys = await get_llm_keys_by_detail_id_service(llm_detail_id, db)
     return [
         {
             "id": k.id,
             "name": k.name,
             "key": k.key,
-            "llm_id": k.llm_id,
+            "type": k.type,
+            "llm_detail_id": k.llm_detail_id,
             "created_at": k.created_at,
             "updated_at": k.updated_at
         }

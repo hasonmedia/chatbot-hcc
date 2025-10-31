@@ -1,6 +1,5 @@
 async def prompt_builder(knowledge, history, query) -> str:
     
-    print("Knownledge in prompt_builder:", knowledge)   
     
     prompt = f"""
         🎯 NHIỆM VỤ CỦA BẠN:
@@ -40,25 +39,42 @@ async def prompt_builder(knowledge, history, query) -> str:
 
         ---
 
-        💬 **ĐỊNH DẠNG TRẢ LỜI MẪU:**
+        � **ĐỊNH DẠNG TRẢ LỜI BẮT BUỘC - JSON:**
+        Bạn PHẢI trả về kết quả ở định dạng JSON với cấu trúc sau (KHÔNG thêm markdown, KHÔNG thêm ```json):
 
-        **Ví dụ 1 – Hỏi về thủ tục:**
-        > Thủ tục cấp lại căn cước công dân bị mất gồm các bước sau:  
-        > 1. Chuẩn bị hồ sơ: Tờ khai Căn cước công dân (theo mẫu CC01).  
-        > 2. Nộp hồ sơ tại: Cơ quan công an cấp huyện nơi thường trú.  
-        > 3. Thời hạn giải quyết: Tối đa 7 ngày làm việc.  
-        > 4. Lệ phí: 70.000 đồng/lần cấp.  
-        > Bạn có thể nộp hồ sơ trực tuyến tại [https://dichvucong.gov.vn](https://dichvucong.gov.vn).
+        {{
+            "message": "Nội dung trả lời chi tiết cho người dùng",
+            "links": ["https://link1.com", "https://link2.com"]
+        }}
 
-        **Ví dụ 2 – Hỏi ngoài phạm vi dữ liệu:**
-        > Tôi rất tiếc, hiện tôi chưa có thông tin chính thức về quy trình này.  
-        > Bạn có thể xem chi tiết tại [https://dichvucong.gov.vn](https://dichvucong.gov.vn) hoặc liên hệ tổng đài 18001096 để được hỗ trợ.
+        **QUY TẮC:**
+        - Trường "message": Chứa toàn bộ nội dung trả lời (có thể xuống dòng với \\n)
+        - Trường "links": Mảng chứa các URL string (chỉ URL, không có title). Nếu không có link thì để mảng rỗng []
+        - KHÔNG sử dụng markdown [text](url) trong message, chỉ text thuần
+        - CHỈ trả về JSON thuần túy, không có text nào khác
+
+        ---
+
+        💬 **VÍ DỤ TRẢ LỜI:**
+
+        **Ví dụ 1 – Có link:**
+        {{
+            "message": "Thủ tục cấp lại căn cước công dân bị mất gồm các bước sau:\\n\\n1. Chuẩn bị hồ sơ: Tờ khai Căn cước công dân (theo mẫu CC01)\\n2. Nộp hồ sơ tại: Cơ quan công an cấp huyện nơi thường trú\\n3. Thời hạn giải quyết: Tối đa 7 ngày làm việc\\n4. Lệ phí: 70.000 đồng/lần cấp\\n\\nBạn có thể nộp hồ sơ trực tuyến hoặc tra cứu thêm thông tin qua các liên kết bên dưới.",
+            "links": ["https://dichvucong.gov.vn", "https://dichvucong.gov.vn/huong-dan"]
+        }}
+
+        **Ví dụ 2 – Không có link:**
+        {{
+            "message": "Thủ tục đăng ký kết hôn yêu cầu 2 bên phải có mặt tại UBND phường/xã nơi thường trú của một trong hai bên. Hồ sơ bao gồm:\\n\\n- Giấy tờ tùy thân (CCCD/CMND)\\n- Giấy xác nhận tình trạng hôn nhân\\n- Đơn đăng ký kết hôn\\n\\nThời hạn giải quyết: Trong ngày nếu hồ sơ hợp lệ.",
+            "links": []
+        }}
 
         ---
 
         🎯 **MỤC TIÊU:**  
         Trả lời đúng quy định, thân thiện, hướng dẫn được hành động tiếp theo cho người dân.
-
+        
+        **LƯU Ý QUAN TRỌNG:** CHỈ trả về JSON thuần túy, KHÔNG thêm bất kỳ text nào khác trước hoặc sau JSON!
 
         ------------------------------------------------------------
     """

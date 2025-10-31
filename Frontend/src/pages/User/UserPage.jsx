@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CgSpinner } from "react-icons/cg";
 import { FaSearch, FaPlus } from "react-icons/fa";
 import UserTable from "../../components/user/UserTable";
@@ -32,24 +32,28 @@ const UserPage = () => {
     // Filter users based on search and backend's 'can_view' permission
     // This function now returns an array of USER objects, not the wrapper object,
     // so UserTable doesn't need to be changed.
-    const getFilteredUsers = () => {
-        if (!user) return [];
+    // const getFilteredUsers = () => {
+    //     if (!user) return [];
 
-        return data
-            .filter((item) => {
-                // 1. Filter based on backend permission
-                if (!item.permission.can_view) {
-                    return false;
-                }
-                // 2. Filter based on search term
-                const matchesSearch = item.user.full_name
-                    .toLowerCase()
-                    .includes(searchTerm.toLowerCase());
+    //     return data
+    //         .filter((item) => {
+    //             // 1. Filter based on backend permission
+    //             if (!item?.permission.can_view) {
+    //                 return false;
+    //             }
+    //             // 2. Filter based on search term
+    //             const matchesSearch = item.user.full_name
+    //                 .toLowerCase()
+    //                 .includes(searchTerm.toLowerCase());
 
-                return matchesSearch;
-            })
-            .map(item => item.user); // Return only the user object for the table
-    };
+    //             return matchesSearch;
+    //         })
+    //         .map(item => item.user); // Return only the user object for the table
+    // };
+    const getFilteredUsers = useMemo(() => {
+        if (!data) return [];
+        return data.filter((item) => item.permission.can_view);
+    }, [data]);
 
     const handleAddUser = async (formData) => {
         // We assume postUsers returns the new item in the same format: { user: {...}, permission: {...} }
@@ -72,11 +76,6 @@ const UserPage = () => {
     };
 
     const handleEditClick = (targetUser) => {
-        const item = data.find(i => i.user.id === targetUser.id);
-        if (!item || !item.permission.can_edit) {
-            alert("Bạn không có quyền chỉnh sửa người dùng này!");
-            return;
-        }
         setEditingUser(targetUser);
         setShowForm(true);
     };
@@ -144,7 +143,7 @@ const UserPage = () => {
                             </div>
                         ) : (
                             <UserTable
-                                data={getFilteredUsers()}
+                                data={getFilteredUsers}
                                 onEdit={handleEditClick} // Pass the handler
                                 onView={(targetUser) => setViewingUser(targetUser)}
                                 permissionsMap={Object.fromEntries(
@@ -164,7 +163,7 @@ const UserPage = () => {
                         initialData={editingUser}
                         onSubmit={(formData) =>
                             editingUser
-                                ? handleEditUser(editingUser.id, formData)
+                                ? handleEditUser(editingUser.user.id, formData)
                                 : handleAddUser(formData)
                         }
                         onCancel={() => {

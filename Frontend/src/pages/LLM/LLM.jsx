@@ -1,55 +1,62 @@
 import { useEffect, useState } from "react";
 import { Settings, Save, CheckCircle, AlertCircle, Bot, Key, MessageCircle, Building } from "lucide-react";
-import ConfigAI from './ConfigAI';
+import ConfigAINew from './ConfigAINew';
+import ModelSelector from './ModelSelector';
 import ChatChanel from './ChatChanel';
 import CompanyInfo from './CompanyInfo';
 import { update_llm, get_llm_by_id, get_all_llms } from '../../services/llmService';
 
-const LLM = () => {
-    const [selectedAI, setSelectedAI] = useState("gemini");
-    const [apiKey, setApiKey] = useState("");
+const LLMNew = () => {
     const [systemPrompt, setSystemPrompt] = useState("");
     const [greetingMessage, setGreetingMessage] = useState("Xin chào");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState();
     const [botName, setBotName] = useState('');
-    const [activeTab, setActiveTab] = useState('config'); // Tab state
-    const [apiKeys, setApiKeys] = useState([]); // Danh sách API keys
-
+    const [activeTab, setActiveTab] = useState('model'); // Tab state
+    const [llmDetails, setLlmDetails] = useState([]);
+    const [botModelId, setBotModelId] = useState(null);
+    const [embeddingModelId, setEmbeddingModelId] = useState(null);
 
     useEffect(() => {
-        const fetchGreeting = async () => {
+        const fetchLLMData = async () => {
             try {
                 const res = await get_llm_by_id(1);
-                const mess = await get_all_llms();
-                setBotName(mess[0].botName);
-                console.log(res)
+                console.log("LLM Data:", res);
+                
+                setBotName(res.botName);
                 setGreetingMessage(res.system_greeting);
+                setSystemPrompt(res.prompt);
+                setBotModelId(res.bot_model_detail_id);
+                setEmbeddingModelId(res.embedding_model_detail_id);
+                
+                // Load llm_details
+                if (res.llm_details && res.llm_details.length > 0) {
+                    setLlmDetails(res.llm_details);
+                }
             } catch (err) {
-                console.error("Failed to fetch greeting:", err);
+                console.error("Failed to fetch LLM:", err);
             }
         };
 
-        fetchGreeting();
+        fetchLLMData();
     }, []);
+
     const handleSave = async () => {
         setLoading(true);
         setMessage("");
-        console.log("Saving configuration:", {
-            selectedAI,
-            apiKey,
-            systemPrompt,
-            greetingMessage,
-            botName
-        });
+        
+        const dataToSave = {
+            prompt: systemPrompt,
+            system_greeting: greetingMessage,
+            botName: botName,
+            bot_model_detail_id: botModelId,
+            embedding_model_detail_id: embeddingModelId
+        };
+
+        console.log("Saving configuration:", dataToSave);
+        
         try {
-            await update_llm(1, {
-                name: selectedAI,
-                key: apiKey,
-                prompt: systemPrompt,
-                system_greeting: greetingMessage,
-                botName: botName
-            });
+            await update_llm(1, dataToSave);
             setMessage("Cập nhật cấu hình thành công ✅");
         } catch (err) {
             console.error(err);
@@ -61,10 +68,16 @@ const LLM = () => {
 
     const tabs = [
         {
-            id: 'config',
-            name: 'Cấu hình AI & API',
+            id: 'model',
+            name: 'Chọn Model',
             icon: Bot,
-            description: 'Chọn nhà cung cấp AI và thiết lập API key'
+            description: 'Chọn model AI cho Bot và Embedding'
+        },
+        {
+            id: 'keys',
+            name: 'Quản lý API Keys',
+            icon: Key,
+            description: 'Quản lý API keys cho từng model'
         },
         {
             id: 'prompt',
@@ -88,19 +101,20 @@ const LLM = () => {
 
     const renderTabContent = () => {
         switch (activeTab) {
-            case 'config':
+            case 'model':
                 return (
-                    <ConfigAI
-                        llmId={1}
-                        selectedAI={selectedAI}
-                        setSelectedAI={setSelectedAI}
-                        apiKey={apiKey}
-                        setApiKey={setApiKey}
-                        systemPrompt={systemPrompt}
-                        setSystemPrompt={setSystemPrompt}
-                        showPrompt={false}
-                        apiKeys={apiKeys}
-                        setApiKeys={setApiKeys}
+                    <ModelSelector
+                        llmDetails={llmDetails}
+                        botModelId={botModelId}
+                        embeddingModelId={embeddingModelId}
+                        onBotModelChange={setBotModelId}
+                        onEmbeddingModelChange={setEmbeddingModelId}
+                    />
+                );
+            case 'keys':
+                return (
+                    <ConfigAINew
+                        llmDetails={llmDetails}
                     />
                 );
             case 'prompt':
@@ -169,8 +183,9 @@ const LLM = () => {
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className={`flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${activeTab === 'company' ? 'hidden' : ''
-                                }`}
+                            className={`flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                                activeTab === 'company' || activeTab === 'keys' ? 'hidden' : ''
+                            }`}
                         >
                             {loading ? (
                                 <>
@@ -191,10 +206,11 @@ const LLM = () => {
             <div className="max-w-7xl mx-auto px-6 pb-8 space-y-6">
                 {/* Hiển thị thông báo */}
                 {message && (
-                    <div className={`flex items-center gap-3 p-4 rounded-lg border ${message.includes("thành công")
-                        ? "bg-green-50 text-green-800 border-green-200"
-                        : "bg-red-50 text-red-800 border-red-200"
-                        }`}>
+                    <div className={`flex items-center gap-3 p-4 rounded-lg border ${
+                        message.includes("thành công")
+                            ? "bg-green-50 text-green-800 border-green-200"
+                            : "bg-red-50 text-red-800 border-red-200"
+                    }`}>
                         {message.includes("thành công") ? (
                             <CheckCircle className="w-5 h-5 text-green-600" />
                         ) : (
@@ -216,10 +232,11 @@ const LLM = () => {
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
-                                        className={`flex-shrink-0 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isActive
-                                            ? 'border-blue-500 text-blue-600 bg-blue-50'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                            }`}
+                                        className={`flex-shrink-0 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                                            isActive
+                                                ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
                                     >
                                         <IconComponent className="w-4 h-4" />
                                         <span className="hidden sm:inline">{tab.name}</span>
@@ -249,4 +266,4 @@ const LLM = () => {
     );
 };
 
-export default LLM;
+export default LLMNew;

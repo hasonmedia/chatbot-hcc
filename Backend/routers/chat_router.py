@@ -2,7 +2,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, Response, HTTPException, BackgroundTasks
 import json
 from models.field_config import FieldConfig
-from models.chat import CustomerInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db
 import asyncio
@@ -21,7 +20,6 @@ from controllers.chat_controller import (
     delete_chat_session_controller,
     delete_message_controller,
     check_session_controller,
-    update_tag_chat_session_controller,
     get_all_customer_controller,
     get_dashboard_summary_controller,
 )
@@ -96,26 +94,11 @@ async def get_customer_chat(
     data = {"channel": channel, "tag_id": tag_id}
     return await get_all_customer_controller(data, db)
 
-    
-
-@router.patch("/tag/{id}")
-async def update_config(id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    data = await request.json()
-    return await update_tag_chat_session_controller(id, data, db)
-
-
-
 @router.patch("/{id}")
 async def update_config(id: int, request: Request, db: AsyncSession = Depends(get_db)):
     user = await get_current_user(request)
     data = await request.json()
     return await update_chat_session_controller(id, data, user, db)
-
-@router.patch("/tag/{id}")
-async def update_tag(id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    data = await request.json()
-    return await update_tag_chat_session_controller(id, data, db)
-
 
 @router.delete("/chat_sessions")
 async def delete_chat_sessions(request: Request, db: AsyncSession = Depends(get_db)):

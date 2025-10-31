@@ -33,7 +33,7 @@ async def search_kb(query: str = Query(...), db: AsyncSession = Depends(get_db))
 async def create_kb_files(
     kb_id: int = Form(...),
     title: str = Form(...),
-    customer_id: str = Form("manual"),
+    customer_id: int = Form("manual"),
     files: List[UploadFile] = File(...),
     user_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db)
@@ -55,7 +55,7 @@ async def create_kb_files(
 async def update_kb_files(
     kb_id: int,
     title: Optional[str] = Form(None),
-    customer_id: Optional[str] = Form(None),
+    customer_id: Optional[int] = Form(None),
     user_id: Optional[int] = Form(None),
     files: List[UploadFile] = File(None), # Thêm file là optional
     db: AsyncSession = Depends(get_db)

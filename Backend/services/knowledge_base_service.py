@@ -49,7 +49,7 @@ async def update_kb_service(kb_id: int, data: dict, db: AsyncSession):
 async def update_kb_with_files_service(
     kb_id: int,
     title: Optional[str],
-    customer_id: Optional[str],
+    customer_id: Optional[int],
     user_id: int,
     files: List[UploadFile],
     db: AsyncSession
@@ -266,7 +266,7 @@ async def create_kb_with_files_service(
 
 async def update_kb_with_rich_text_service(
     detail_id: int, 
-    customer_id: Optional[str], 
+    customer_id: Optional[int], 
     user_id: Optional[int],
     raw_content: str, 
     db: AsyncSession

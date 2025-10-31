@@ -77,9 +77,38 @@ export const delete_llm_key = async (llm_id, key_id) => {
     }
 }
 
-export const get_llm_keys = async (llm_id) => {
+// ===== LLM Key Services (for llm_detail) =====
+
+export const create_llm_key_for_detail = async (llm_detail_id, data) => {
     try {
-        const response = await axiosClient.get(`/llms/${llm_id}/keys`);
+        const response = await axiosClient.post(`/llms/details/${llm_detail_id}/keys`, data);
+        return response.llm_key;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const update_llm_key_for_detail = async (llm_detail_id, key_id, data) => {
+    try {
+        const response = await axiosClient.put(`/llms/details/${llm_detail_id}/keys/${key_id}`, data);
+        return response.llm_key;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const delete_llm_key_for_detail = async (llm_detail_id, key_id) => {
+    try {
+        const response = await axiosClient.delete(`/llms/details/${llm_detail_id}/keys/${key_id}`);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const get_llm_keys_for_detail = async (llm_detail_id) => {
+    try {
+        const response = await axiosClient.get(`/llms/details/${llm_detail_id}/keys`);
         return response;
     } catch (error) {
         throw error;

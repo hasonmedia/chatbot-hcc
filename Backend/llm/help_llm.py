@@ -3,81 +3,108 @@ import re
 import time
 from typing import List, Dict, Tuple, Optional, Any
 from sqlalchemy import text, select, desc
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.get_embedding import get_embedding_chatgpt, get_embedding_gemini
-from models.chat import Message, CustomerInfo
+from models.chat import Message
 from models.field_config import FieldConfig
 from models.llm import LLM
 from config.redis_cache import cache_get, cache_set, cache_delete
 
 
-async def get_llm_keys_cached(llm_id: int, db_session: AsyncSession) -> list:
-   
+async def get_llm_keys_cached(llm_detail_id: int, db_session: AsyncSession, key_type: str = None) -> list:
+    """
+    Lấy danh sách API keys từ cache hoặc database theo llm_detail_id
+    
+    Args:
+        llm_detail_id: ID của LLMDetail (1=gemini, 2=gpt)
+        db_session: AsyncSession - Database session
+        key_type: Loại key cần lấy ("bot" hoặc "embedding"). Nếu None, lấy tất cả
+    
+    Returns:
+        list - Danh sách các keys
+    """
     from models.llm import LLMKey
     from config.redis_cache import async_cache_get, async_cache_set
     
-    # Cache key cho danh sách keys
-    cache_key = f"llm_keys:llm_id_{llm_id}"
+    # Cache key cho danh sách keys (bao gồm cả type trong cache key)
+    cache_key = f"llm_keys:llm_detail_id_{llm_detail_id}:type_{key_type or 'all'}"
     
     # 1. Thử lấy từ cache trước
     cached_keys = await async_cache_get(cache_key)
     if cached_keys is not None:
-        print(f"✅ Cache hit: Lấy {len(cached_keys)} keys từ cache cho LLM id={llm_id}")
+        print(f"✅ Cache hit: Lấy {len(cached_keys)} {key_type or 'all'} keys từ cache cho LLMDetail id={llm_detail_id}")
         return cached_keys
     
     # 2. Nếu không có trong cache, query từ database
-    result = await db_session.execute(
-        select(LLMKey)
-        .filter(LLMKey.llm_id == llm_id)
-        .order_by(LLMKey.id)  # Đảm bảo thứ tự cố định
-    )
+    query = select(LLMKey).filter(LLMKey.llm_detail_id == llm_detail_id)
+    
+    # Thêm filter theo type nếu có
+    if key_type:
+        query = query.filter(LLMKey.type == key_type)
+    
+    query = query.order_by(LLMKey.id)  # Đảm bảo thứ tự cố định
+    
+    result = await db_session.execute(query)
     llm_keys = result.scalars().all()
     
     if not llm_keys:
-        raise ValueError(f"Không tìm thấy API key nào cho LLM id={llm_id}")
+        raise ValueError(f"Không tìm thấy API key {key_type or ''} nào cho LLMDetail id={llm_detail_id}")
     
     # 3. Chuyển đổi thành list dict để cache (vì không thể cache SQLAlchemy objects)
     keys_data = [
-        {"id": key.id, "name": key.name, "key": key.key}
+        {"id": key.id, "name": key.name, "key": key.key, "type": key.type}
         for key in llm_keys
     ]
     
     # 4. Cache với TTL 1 giờ (3600 giây) - keys ít thay đổi
     await async_cache_set(cache_key, keys_data, ttl=3600)
-    print(f"💾 Cache miss: Lưu {len(keys_data)} keys vào cache cho LLM id={llm_id}")
+    print(f"💾 Cache miss: Lưu {len(keys_data)} {key_type or 'all'} keys vào cache cho LLMDetail id={llm_detail_id}")
     
     return keys_data
 
 
 async def get_round_robin_api_key(
-    llm_id: int,
+    llm_detail_id: int,
     chat_session_id: int,
-    db_session: AsyncSession
+    db_session: AsyncSession,
+    key_type: str = "bot"
 ) -> tuple[str, str]:
+    """
+    Lấy API key theo thuật toán Round-Robin cho mỗi chat session
     
+    Args:
+        llm_detail_id: ID của LLMDetail (1=gemini, 2=gpt)
+        chat_session_id: ID của chat session
+        db_session: AsyncSession - Database session
+        key_type: Loại key cần lấy ("bot" hoặc "embedding"), mặc định "bot"
+    
+    Returns:
+        tuple[str, str] - (api_key, key_name)
+    """
     from config.redis_cache import async_cache_get, async_cache_set
     
     try:
-        # 1. Lấy danh sách tất cả các keys của LLM này (có cache)
-        llm_keys = await get_llm_keys_cached(llm_id, db_session)
+        # 1. Lấy danh sách tất cả các keys của LLMDetail này theo type (có cache)
+        llm_keys = await get_llm_keys_cached(llm_detail_id, db_session, key_type=key_type)
         
         # Nếu chỉ có 1 key, trả về luôn
         if len(llm_keys) == 1:
             return llm_keys[0]["key"], llm_keys[0]["name"]
         
-        # 2. Kiểm tra xem chat_session_id này đã được gán key chưa
-        session_key = f"llm_key_session:llm_{llm_id}:session_{chat_session_id}"
+        # 2. Kiểm tra xem chat_session_id này đã được gán key chưa (theo type)
+        session_key = f"llm_key_session:llm_detail_{llm_detail_id}:session_{chat_session_id}:type_{key_type}"
         assigned_index = await async_cache_get(session_key)
         
         if assigned_index is not None:
             # Session đã có key được gán, dùng lại key đó
             selected_index = int(assigned_index)
             selected_key = llm_keys[selected_index]
-            print(f"✅ Chat session {chat_session_id} tiếp tục dùng key: {selected_key['name']}")
+            print(f"✅ Chat session {chat_session_id} tiếp tục dùng {key_type} key: {selected_key['name']}")
             return selected_key["key"], selected_key["name"]
         
-        # 3. Session mới chưa có key, lấy counter toàn cục để gán key mới
-        counter_key = f"llm_key_global_counter:llm_{llm_id}"
+        # 3. Session mới chưa có key, lấy counter toàn cục để gán key mới (theo type)
+        counter_key = f"llm_key_global_counter:llm_detail_{llm_detail_id}:type_{key_type}"
         current_counter = await async_cache_get(counter_key)
         
         if current_counter is None:
@@ -98,18 +125,19 @@ async def get_round_robin_api_key(
         
         # 7. Trả về API key tương ứng
         selected_key = llm_keys[selected_index]
-        print(f"🔄 Chat session {chat_session_id} được gán key mới: {selected_key['name']}")
+        print(f"🔄 Chat session {chat_session_id} được gán {key_type} key mới: {selected_key['name']}")
         
         return selected_key["key"], selected_key["name"]
         
     except Exception as e:
-        print(f"❌ Lỗi khi lấy Round-Robin API key: {e}")
+        print(f"❌ Lỗi khi lấy Round-Robin API key ({key_type}): {e}")
         raise
 
 
 async def get_llm_model_info_cached(db_session: AsyncSession) -> dict:
     
     from config.redis_cache import async_cache_get, async_cache_set
+    from models.llm import LLMDetail
     
     # Cache key cho thông tin model
     cache_key = "llm_model_info:id_1"
@@ -118,64 +146,142 @@ async def get_llm_model_info_cached(db_session: AsyncSession) -> dict:
     cached_model = await async_cache_get(cache_key)
     if cached_model is not None:
         print(f"✅ Cache hit: Lấy thông tin model từ cache")
-        return cached_model
+        # Validate cache data có đầy đủ llm_details không
+        if "llm_details" not in cached_model or not cached_model["llm_details"]:
+            print(f"⚠️ Cache thiếu llm_details, xóa cache và query lại")
+            from config.redis_cache import async_cache_delete
+            await async_cache_delete(cache_key)
+        else:
+            return cached_model
     
     # 2. Nếu không có trong cache, query từ database
-    result = await db_session.execute(select(LLM).where(LLM.id == 1))
+    result = await db_session.execute(
+        select(LLM)
+        .where(LLM.id == 1)
+        .options(selectinload(LLM.llm_details))
+    )
     model = result.scalars().first()
 
     if not model:
         raise ValueError("❌ Không tìm thấy model có id = 1 trong bảng LLM")
     
-    # 3. Tạo model data
+    # 3. Tạo model data với thông tin llm_details
     model_data = {
         "id": model.id,
-        "name": model.name,
-        "key": model.key
+        "bot_model_detail_id": model.bot_model_detail_id,
+        "embedding_model_detail_id": model.embedding_model_detail_id,
+        "llm_details": {}
     }
+    
+    # Thêm thông tin về từng llm_detail
+    for detail in model.llm_details:
+        model_data["llm_details"][detail.id] = {
+            "id": detail.id,
+            "name": detail.name,
+            "key_free": detail.key_free
+        }
+    
+    # Validate: Phải có ít nhất 1 llm_detail
+    if not model_data["llm_details"]:
+        raise ValueError("❌ Không tìm thấy llm_detail nào trong bảng LLMDetail cho LLM id=1")
     
     # 4. Cache với TTL 1 giờ (3600 giây) - model config ít thay đổi
     await async_cache_set(cache_key, model_data, ttl=3600)
-    print(f"💾 Cache miss: Lưu thông tin model vào cache")
+    print(f"💾 Cache miss: Lưu thông tin model vào cache (llm_details: {list(model_data['llm_details'].keys())})")
     
     return model_data
 
 
-async def get_current_model(db_session: AsyncSession, chat_session_id: int = None) -> dict:
-   
+async def get_current_model(db_session: AsyncSession, chat_session_id: int = None, key_type: str = "bot") -> dict:
+    """
+    Lấy thông tin model hiện tại và API key phù hợp
+    
+    Args:
+        db_session: AsyncSession - Database session
+        chat_session_id: int - ID của chat session (optional)
+        key_type: str - Loại key cần lấy ("bot" hoặc "embedding"), mặc định "bot"
+    
+    Returns:
+        dict - Thông tin model bao gồm name, key, key_name, llm_detail_id
+    """
     try:
         # Lấy thông tin LLM model từ cache (giảm thiểu query DB)
         model_info = await get_llm_model_info_cached(db_session)
-
-        # Nếu có chat_session_id, sử dụng Round-Robin để chọn key từ llm_key
+        
+        # Xác định llm_detail_id dựa vào key_type
+        if key_type == "bot":
+            llm_detail_id = model_info.get("bot_model_detail_id")
+        elif key_type == "embedding":
+            llm_detail_id = model_info.get("embedding_model_detail_id")
+        else:
+            raise ValueError(f"Invalid key_type: {key_type}")
+        
+        # Nếu chưa cấu hình model cho key_type này, sử dụng model đầu tiên
+        if not llm_detail_id:
+            print(f"⚠️ Chưa cấu hình {key_type} model, dùng model mặc định")
+            # Lấy llm_detail đầu tiên
+            if model_info.get("llm_details"):
+                llm_detail_id = list(model_info["llm_details"].keys())[0]
+            else:
+                raise ValueError("Không tìm thấy llm_detail nào trong hệ thống")
+        
+        # Kiểm tra llm_detail_id có tồn tại trong llm_details không
+        # Chuyển đổi keys về int để so sánh (vì cache có thể lưu dạng string)
+        available_detail_ids = [int(k) if isinstance(k, str) else k for k in model_info["llm_details"].keys()]
+        if llm_detail_id not in available_detail_ids:
+            print(f"⚠️ llm_detail_id={llm_detail_id} không tồn tại trong cache. Available IDs: {available_detail_ids}")
+            print(f"⚠️ Fallback về llm_detail đầu tiên: {available_detail_ids[0]}")
+            llm_detail_id = available_detail_ids[0]
+        
+        # Lấy thông tin llm_detail (convert key sang string nếu cần)
+        detail_info = model_info["llm_details"].get(llm_detail_id) or model_info["llm_details"].get(str(llm_detail_id))
+        if not detail_info:
+            raise ValueError(f"Không tìm thấy llm_detail id={llm_detail_id} trong llm_details: {list(model_info['llm_details'].keys())}")
+        
+        model_name = detail_info["name"]  # "gemini" hoặc "gpt"
+        
+        # Nếu có chat_session_id, sử dụng Round-Robin để chọn key
         if chat_session_id is not None:
             try:
-                api_key, key_name = await get_round_robin_api_key(model_info["id"], chat_session_id, db_session)
+                api_key, key_name = await get_round_robin_api_key(
+                    llm_detail_id, 
+                    chat_session_id, 
+                    db_session,
+                    key_type=key_type
+                )
                 model_data = {
-                    "name": model_info["name"], 
+                    "name": model_name, 
                     "key": api_key,
-                    "key_name": key_name
+                    "key_name": key_name,
+                    "key_type": key_type,
+                    "llm_detail_id": llm_detail_id
                 }
                 return model_data
             except ValueError as e:
-                # Nếu không có key trong llm_key, fallback về key mặc định từ bảng llm
-                print(f"⚠️ Fallback to default key: {e}")
+                # Nếu không có key trong llm_key, fallback về key_free
+                print(f"⚠️ Fallback to key_free for {key_type}: {e}")
                 model_data = {
-                    "name": model_info["name"], 
-                    "key": model_info["key"],
-                    "key_name": "default"
+                    "name": model_name, 
+                    "key": detail_info["key_free"],
+                    "key_name": "free",
+                    "key_type": key_type,
+                    "llm_detail_id": llm_detail_id
                 }
                 return model_data
         else:
-            # Không có chat_session_id, trả về key mặc định từ bảng llm
+            # Không có chat_session_id, trả về key_free
             model_data = {
-                "name": model_info["name"], 
-                "key": model_info["key"]
+                "name": model_name, 
+                "key": detail_info["key_free"],
+                "key_type": key_type,
+                "llm_detail_id": llm_detail_id
             }
             return model_data
             
     except Exception as e:
         print(f"❌ Error getting current model: {e}")
+        import traceback
+        traceback.print_exc()
         raise
 
 async def get_latest_messages(
@@ -361,130 +467,6 @@ async def get_field_configs(db_session: AsyncSession) -> Tuple[Dict[str, str], D
         return {}, {}
 
 
-async def get_customer_infor(db_session: AsyncSession, chat_session_id: int) -> dict:
-    """
-    Lấy thông tin khách hàng từ database
-    
-    Args:
-        db_session: AsyncSession - Database session
-        chat_session_id: int - ID của chat session
-    
-    Returns:
-        dict - Thông tin khách hàng dưới dạng dictionary
-               Trả về {} nếu không có thông tin hoặc có lỗi
-    """
-    try:
-        # Lấy thông tin khách hàng từ bảng customer_info
-        result = await db_session.execute(
-            select(CustomerInfo).filter(CustomerInfo.chat_session_id == chat_session_id)
-        )
-        customer_info = result.scalar_one_or_none()
-        
-        if customer_info and customer_info.customer_data:
-            # Nếu customer_data là string JSON, parse nó
-            if isinstance(customer_info.customer_data, str):
-                return json.loads(customer_info.customer_data)
-            # Nếu đã là dict thì return trực tiếp
-            return customer_info.customer_data
-        return {}
-    except Exception as e:
-        print(f"Lỗi khi lấy thông tin khách hàng: {str(e)}")
-        return {}
-
-
-async def extract_customer_info_realtime(
-    model,
-    db_session: AsyncSession,
-    chat_session_id: int, 
-    limit_messages: int
-) -> Optional[str]:
-    """
-    Trích xuất thông tin khách hàng real-time từ lịch sử hội thoại
-    Sử dụng LLM để phân tích và trích xuất thông tin theo cấu hình fields
-    
-    Args:
-        model: LLM model (Gemini hoặc GPT) - model đã được khởi tạo
-        db_session: AsyncSession - Database session
-        chat_session_id: int - ID của chat session
-        limit_messages: int - Số lượng tin nhắn gần đây cần phân tích
-    
-    Returns:
-        str - JSON string chứa thông tin khách hàng đã trích xuất
-              Trả về None nếu có lỗi
-    """
-    try:
-        history = await get_latest_messages(db_session, chat_session_id, limit_messages)
-        
-        # Lấy cấu hình fields động
-        required_fields, optional_fields = await get_field_configs(db_session)
-        all_fields = {**required_fields, **optional_fields}
-        
-        # Nếu không có field configs, trả về JSON rỗng
-        if not all_fields:
-            return json.dumps({})
-        
-        # Nếu không có lịch sử hội thoại, trả về JSON rỗng với các fields từ config
-        if not history or history.strip() == "":
-            empty_json = {field_name: None for field_name in all_fields.values()}
-            return json.dumps(empty_json)
-        
-        # Tạo danh sách fields cho prompt - chỉ các fields từ field_config
-        fields_description = "\n".join([
-            f"- {field_name}: trích xuất {field_name.lower()} từ hội thoại"
-            for field_name in all_fields.values()
-        ])
-        
-        # Tạo ví dụ JSON template - chỉ các fields từ field_config
-        example_json = {field_name: f"<{field_name}>" for field_name in all_fields.values()}
-        example_json_str = json.dumps(example_json, ensure_ascii=False, indent=4)
-        
-        prompt = f"""
-            Bạn là một công cụ phân tích hội thoại để trích xuất thông tin khách hàng.
-
-            Dưới đây là đoạn hội thoại gần đây:
-            {history}
-
-            Hãy trích xuất TOÀN BỘ thông tin khách hàng có trong hội thoại và trả về JSON với CÁC TRƯỜNG SAU (chỉ các trường này):
-            {fields_description}
-
-            QUY TẮC QUAN TRỌNG:
-            - CHỈ trích xuất các trường được liệt kê ở trên
-            - KHÔNG thêm bất kỳ trường nào khác (như registration, status, etc.)
-            - Nếu không có thông tin cho trường nào thì để null
-            - CHỈ trả về JSON thuần túy, không có text khác
-            - Không sử dụng markdown formatting
-            - JSON phải hợp lệ để dùng với json.loads()
-
-            Ví dụ format trả về (chỉ chứa các trường từ cấu hình):
-            {example_json_str}
-            """
-        
-        # Gọi model tùy theo loại (Gemini hoặc GPT)
-        if hasattr(model, 'generate_content'):
-            # Cả GPT và Gemini đều có generate_content, nhưng GPT là async
-            if hasattr(model, 'client'):
-                # GPTModel - async function
-                response_text = await model.generate_content(prompt)
-                cleaned = re.sub(r"```json|```", "", response_text).strip()
-            else:
-                # GeminiModel - sync function
-                response = model.generate_content(prompt)
-                cleaned = re.sub(r"```json|```", "", response.text).strip()
-        else:
-            # Fallback cho các model khác
-            response = await model.chat.completions.create(
-                model=model.model_name if hasattr(model, 'model_name') else "gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
-            )
-            cleaned = re.sub(r"```json|```", "", response.choices[0].message.content).strip()
-        
-        return cleaned
-        
-    except Exception as e:
-        print(f"Lỗi khi trích xuất thông tin khách hàng: {str(e)}")
-        return None
-
 
 def clear_field_configs_cache() -> bool:
     """
@@ -498,12 +480,13 @@ def clear_field_configs_cache() -> bool:
     return success
 
 
-async def clear_llm_keys_cache(llm_id: int = None) -> bool:
+async def clear_llm_keys_cache(llm_detail_id: int = None, key_type: str = None) -> bool:
     """
     Xóa cache danh sách API keys khi có thay đổi (thêm, sửa, xóa key)
     
     Args:
-        llm_id: ID của LLM model. Nếu None, xóa cache cho tất cả LLMs
+        llm_detail_id: ID của LLMDetail. Nếu None, xóa cache cho tất cả LLMDetails
+        key_type: Loại key ("bot" hoặc "embedding"). Nếu None, xóa cache cho tất cả types
     
     Returns:
         bool - True nếu xóa cache thành công, False nếu thất bại
@@ -511,18 +494,28 @@ async def clear_llm_keys_cache(llm_id: int = None) -> bool:
     from config.redis_cache import async_cache_delete
     
     try:
-        if llm_id is not None:
-            # Xóa cache cho một LLM cụ thể
-            cache_key = f"llm_keys:llm_id_{llm_id}"
-            success = await async_cache_delete(cache_key)
+        if llm_detail_id is not None:
+            if key_type is not None:
+                # Xóa cache cho một LLMDetail và type cụ thể
+                cache_key = f"llm_keys:llm_detail_id_{llm_detail_id}:type_{key_type}"
+                success = await async_cache_delete(cache_key)
+                print(f"🗑️ Đã xóa cache {key_type} keys cho LLMDetail id={llm_detail_id}")
+            else:
+                # Xóa cache cho tất cả types của một LLMDetail
+                for ktype in ["bot", "embedding", "all"]:
+                    cache_key = f"llm_keys:llm_detail_id_{llm_detail_id}:type_{ktype}"
+                    await async_cache_delete(cache_key)
+                print(f"🗑️ Đã xóa cache tất cả keys cho LLMDetail id={llm_detail_id}")
+                success = True
             return success
         else:
-            # Xóa cache cho tất cả (có thể dùng Redis pattern matching nếu cần)
-            # Hiện tại chỉ xóa cho LLM id=1 (model chính)
-            cache_key = "llm_keys:llm_id_1"
-            success = await async_cache_delete(cache_key)
-            print(f"🗑️ Đã xóa cache keys cho tất cả LLMs")
-            return success
+            # Xóa cache cho tất cả LLMDetails (gemini và gpt)
+            for detail_id in [1, 2]:  # Giả sử có 2 llm_detail: 1=gemini, 2=gpt
+                for ktype in ["bot", "embedding", "all"]:
+                    cache_key = f"llm_keys:llm_detail_id_{detail_id}:type_{ktype}"
+                    await async_cache_delete(cache_key)
+            print(f"🗑️ Đã xóa cache keys cho tất cả LLMDetails")
+            return True
     except Exception as e:
         print(f"❌ Lỗi khi xóa cache keys: {e}")
         return False
@@ -551,10 +544,21 @@ async def generate_response_prompt(
     db_session: AsyncSession,
     query: str,
     chat_session_id: int,
-    api_key_for_embedding: str = None,
     model_name: str = None
 ) -> str:
-   
+    """
+    Tạo prompt cho bot response
+    
+    Args:
+        model: LLM model đã được khởi tạo
+        db_session: AsyncSession - Database session
+        query: str - Câu hỏi của user
+        chat_session_id: int - ID của chat session
+        model_name: str - Tên model (gemini/gpt)
+    
+    Returns:
+        str - Prompt đã được tạo
+    """
     try:
         # Lấy lịch sử và thông tin khách hàng
         history = await get_latest_messages(db_session, chat_session_id, limit=10)
@@ -564,23 +568,25 @@ async def generate_response_prompt(
         if not query or query.strip() == "":
             return "Nội dung câu hỏi trống, vui lòng nhập lại."
         
-        # Tạo search key
-        # search_key = await build_search_key(
-        #     model=model,
-        #     db_session=db_session,
-        #     chat_session_id=chat_session_id,
-        #     question=query,
-        #     customer_info=customer_info
-        # )
-        # print(f"🔍 Search key: {search_key}")
+        # Lấy embedding model info riêng cho việc tạo embedding
+        embedding_model_info = await get_current_model(
+            db_session,
+            chat_session_id=chat_session_id,
+            key_type="embedding"
+        )
         
-        # Tìm kiếm tài liệu liên quan (truyền model_name để tránh query DB thêm lần nữa)
+        embedding_key = embedding_model_info["key"]
+        embedding_model_name = embedding_model_info["name"]
+        
+        print(f"🔑 Sử dụng {embedding_model_name} embedding key: {embedding_model_info.get('key_name', 'free')}")
+        
+        # Tìm kiếm tài liệu liên quan (sử dụng embedding key)
         knowledge = await search_similar_documents(
             db_session, 
             query, 
             top_k=10,
-            api_key=api_key_for_embedding,
-            model_name=model_name  # Truyền model_name để tránh gọi get_current_model()
+            api_key=embedding_key,
+            model_name=embedding_model_name
         )
         
         

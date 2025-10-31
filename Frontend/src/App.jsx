@@ -8,19 +8,15 @@ import KnowledgePage from './pages/Knowledge/Knowledge';
 import FacebookPage from './pages/ConnectPlaform/FacebookPage'
 import { RoleBasedRedirect } from './components/context/RoleBasedRedirect'
 import LLM from './pages/LLM/LLM';
-import ExportData from './pages/ExportData/ExportData';
 import AdminLayout from './components/layout/MainLayout';
 import UserLayout from './components/layout/ViewerLayout';
 import Profile from './pages/User/Profile';
-import TagManagement from './pages/Tag/Tag';
-import SendMessage from './pages/SendMessage/SendMessage.jsx';
 import Unauthorized from './pages/Error/Unauthorized.jsx';
 import Chart from './pages/DashBoard/Chart.jsx';
 import Guide from './pages/Guide/Guide.jsx';
 
 // Viewer components
 import ViewerDashboard from './pages/viewer/ViewerDashboard.jsx';
-import ViewerTagManagement from './pages/viewer/ViewerTagManagement.jsx';
 import ChatPage from "./pages/Messenger/ChatPage";
 const App = () => {
     return (
@@ -35,21 +31,15 @@ const App = () => {
                     <Route path="/dashboard" element={<DashBoard />} />
                     <Route path="/dashboard/cau-hinh-he-thong" element={<LLM />} />
                     <Route path="/admin/admin-analytics" element={<Chart />} />
-                    <Route path="/dashboard/send-messages" element={<SendMessage />} />
                     <Route path="/admin/chat" element={<Messager_admin />} />
                     <Route path="/admin/users" element={<UserPage />} />
                     <Route path="/dashboard/cau-hinh-kien-thuc" element={<KnowledgePage />} />
                     <Route path="/admin/facebook_page" element={<FacebookPage />} />
-                    <Route path="/dashboard/export" element={<ExportData />} />
                     <Route path="/profile" element={<Profile />} />
-                    <Route path="/admin/tag" element={<TagManagement />} />
                     <Route path="/admin/dashboard-guide" element={<Guide />} />
                 </Route>
                 <Route element={<UserLayout />}>
                     <Route path="/viewer" element={<ViewerDashboard />} />
-                    <Route path="/viewer/send-messages" element={<SendMessage />} />
-                    <Route path="/viewer/export-data" element={<ExportData />} />
-                    <Route path="/viewer/tags" element={<ViewerTagManagement />} />
                     <Route path="/viewer/chat" element={<ChatPage />} />
                     <Route path="/viewer/profile" element={<Profile />} />
                 </Route>

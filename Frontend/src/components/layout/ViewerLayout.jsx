@@ -25,32 +25,11 @@ const viewerMenuItems = [
         bgColor: "bg-blue-100"
     },
     {
-        label: "Gửi tin nhắn",
-        icon: MessageSquare,
-        href: "/viewer/send-messages",
-        color: "text-blue-600",
-        bgColor: "bg-blue-100"
-    },
-    {
         label: "Chat",
         icon: MessageCircle,
         href: "/viewer/chat",
         color: "text-green-600",
         bgColor: "bg-green-100"
-    },
-    {
-        label: "Dữ liệu khách hàng",
-        icon: Database,
-        href: "/viewer/export-data",
-        color: "text-orange-600",
-        bgColor: "bg-orange-100"
-    },
-    {
-        label: "Quản lý Tag",
-        icon: Tag,
-        href: "/viewer/tags",
-        color: "text-indigo-600",
-        bgColor: "bg-indigo-100"
     }
 ];
 

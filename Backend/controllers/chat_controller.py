@@ -6,7 +6,6 @@ from services.chat_service import (
     delete_chat_session,
     delete_message,
     check_session_service,
-    update_tag_chat_session,
     get_all_customer_service,
     get_dashboard_summary
 )
@@ -52,14 +51,6 @@ async def update_chat_session_controller(id: int, data: dict, user, db: AsyncSes
     await manager.broadcast_to_admins(chatSession)
     
     return chatSession
-
-async def update_tag_chat_session_controller(id: int, data: dict, db: AsyncSession):
-    chatSession = await update_tag_chat_session(id, data, db)
-    if not chatSession:
-        return {"message": "Not Found"}
-
-    return chatSession
-
 
 async def delete_chat_session_controller(ids: list[int], db: AsyncSession):
     deleted_count = await delete_chat_session(ids, db)   # gọi xuống service

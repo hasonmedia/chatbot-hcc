@@ -1,7 +1,7 @@
 import { FaEdit, FaEye } from "react-icons/fa";
 
 const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
-
+    console.log("UserTable data:", data);
     const getRoleInfo = (role) => {
         switch (role?.toLowerCase()) {
             case 'root':
@@ -56,31 +56,31 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                         {data.map((user) => {
-                            const roleInfo = getRoleInfo(user.role);
+                            const roleInfo = getRoleInfo(user.user.role);
                             // Get permissions for this specific user from the map
-                            const userPermissions = permissionsMap[user.id] || { can_edit: false, can_delete: false };
-
+                            const userPermissions = permissionsMap[user.user.id] || { can_edit: false, can_delete: false };
+                            console.log("User Permissions for", user.user.id, ":", userPermissions);
                             return (
-                                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                                <tr key={user.user.id} className="hover:bg-gray-50 transition-colors">
                                     {/* User Info */}
                                     <td className="py-4 px-4">
                                         <div className="flex items-center gap-3">
                                             <div className="relative">
                                                 <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
                                                     <span className="text-white font-medium text-sm">
-                                                        {user.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                                        {user.user.full_name?.charAt(0)?.toUpperCase() || "U"}
                                                     </span>
                                                 </div>
-                                                {user.is_active && (
+                                                {user.user.is_active && (
                                                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border border-white rounded-full"></div>
                                                 )}
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <h3 className="font-medium text-gray-900 mb-1">
-                                                    {user.full_name}
+                                                    {user.user.full_name}
                                                 </h3>
                                                 <p className="text-sm text-gray-500 font-mono">
-                                                    @{user.username}
+                                                    @{user.user.username}
                                                 </p>
                                             </div>
                                         </div>
@@ -89,7 +89,7 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
                                     {/* Contact */}
                                     <td className="py-4 px-4">
                                         <span className="text-sm text-gray-700 break-all">
-                                            {user.email}
+                                            {user.user.email}
                                         </span>
                                     </td>
 
@@ -102,7 +102,7 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
 
                                     {/* Status */}
                                     <td className="py-4 px-4 text-center">
-                                        {user.is_active ? (
+                                        {user.user.is_active ? (
                                             <span className="bg-green-100 text-green-700 py-1 px-3 rounded-lg text-sm font-medium border border-green-200">
                                                 Hoạt động
                                             </span>
@@ -116,13 +116,13 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
                                     {/* Last Login */}
                                     <td className="py-4 px-4 text-center">
                                         <div className="text-sm text-gray-700">
-                                            {user.last_login ? (
+                                            {user.user.last_login ? (
                                                 <div>
                                                     <div>
-                                                        {new Date(user.last_login).toLocaleDateString('vi-VN')}
+                                                        {new Date(user.user.last_login).toLocaleDateString('vi-VN')}
                                                     </div>
                                                     <div className="text-xs text-gray-500">
-                                                        {new Date(user.last_login).toLocaleTimeString('vi-VN', {
+                                                        {new Date(user.user.last_login).toLocaleTimeString('vi-VN', {
                                                             hour: '2-digit',
                                                             minute: '2-digit'
                                                         })}
@@ -176,26 +176,26 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
                         const userPermissions = permissionsMap[user.id] || { can_edit: false, can_delete: false };
 
                         return (
-                            <div key={user.id} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div key={user.user.id} className="p-4 hover:bg-gray-50 transition-colors">
                                 {/* User Header */}
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className="relative flex-shrink-0">
                                             <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
                                                 <span className="text-white font-medium">
-                                                    {user.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                                    {user.user.full_name?.charAt(0)?.toUpperCase() || "U"}
                                                 </span>
                                             </div>
-                                            {user.is_active && (
+                                            {user.user.is_active && (
                                                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border border-white rounded-full"></div>
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <h3 className="font-semibold text-gray-900 text-base mb-1 truncate">
-                                                {user.full_name}
+                                                {user.user.full_name}
                                             </h3>
                                             <p className="text-sm text-gray-500 font-mono truncate">
-                                                @{user.username}
+                                                @{user.user.username}
                                             </p>
                                         </div>
                                     </div>
@@ -227,7 +227,7 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
                                 <div className="space-y-2">
                                     <div className="text-sm text-gray-700 break-all">
                                         <span className="font-medium text-gray-900">Email: </span>
-                                        {user.email}
+                                        {user.user.email}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
@@ -235,7 +235,7 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
                                             {roleInfo.label}
                                         </span>
 
-                                        {user.is_active ? (
+                                        {user.user.is_active ? (
                                             <span className="bg-green-100 text-green-700 py-1 px-2 rounded text-xs font-medium border border-green-200">
                                                 Hoạt động
                                             </span>
@@ -246,10 +246,10 @@ const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
                                         )}
                                     </div>
 
-                                    {user.last_login ? (
+                                    {user.user.last_login ? (
                                         <div className="text-sm text-gray-600">
                                             <span className="font-medium text-gray-900">Đăng nhập cuối: </span>
-                                            {new Date(user.last_login).toLocaleDateString('vi-VN')} - {new Date(user.last_login).toLocaleTimeString('vi-VN', {
+                                            {new Date(user.user.last_login).toLocaleDateString('vi-VN')} - {new Date(user.user.last_login).toLocaleTimeString('vi-VN', {
                                                 hour: '2-digit',
                                                 minute: '2-digit'
                                             })}

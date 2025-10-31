@@ -41,25 +41,26 @@ async def get_all_llms(db: AsyncSession = Depends(get_db)):
 
 
 # ===== LLM Key Routes =====
+# Keys thuộc về llm_detail, không phải llm
 
-@router.post("/{llm_id}/keys")
-async def create_llm_key(llm_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    """Tạo key mới cho LLM"""
+@router.post("/details/{llm_detail_id}/keys")
+async def create_llm_key(llm_detail_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    """Tạo key mới cho LLMDetail"""
     data = await request.json()
-    return await create_llm_key_controller(llm_id, data, db)
+    return await create_llm_key_controller(llm_detail_id, data, db)
 
-@router.put("/{llm_id}/keys/{key_id}")
-async def update_llm_key(llm_id: int, key_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+@router.put("/details/{llm_detail_id}/keys/{key_id}")
+async def update_llm_key(llm_detail_id: int, key_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Cập nhật key"""
     data = await request.json()
     return await update_llm_key_controller(key_id, data, db)
 
-@router.delete("/{llm_id}/keys/{key_id}")
-async def delete_llm_key(llm_id: int, key_id: int, db: AsyncSession = Depends(get_db)):
+@router.delete("/details/{llm_detail_id}/keys/{key_id}")
+async def delete_llm_key(llm_detail_id: int, key_id: int, db: AsyncSession = Depends(get_db)):
     """Xóa key"""
     return await delete_llm_key_controller(key_id, db)
 
-@router.get("/{llm_id}/keys")
-async def get_llm_keys(llm_id: int, db: AsyncSession = Depends(get_db)):
-    """Lấy tất cả keys của LLM"""
-    return await get_llm_keys_controller(llm_id, db)
+@router.get("/details/{llm_detail_id}/keys")
+async def get_llm_keys(llm_detail_id: int, db: AsyncSession = Depends(get_db)):
+    """Lấy tất cả keys của LLMDetail"""
+    return await get_llm_keys_controller(llm_detail_id, db)

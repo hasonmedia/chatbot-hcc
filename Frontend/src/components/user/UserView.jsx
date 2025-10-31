@@ -32,14 +32,14 @@ export const UserView = ({ user, onClose }) => {
                     {/* ID */}
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">ID:</span>
-                        <span className="text-gray-900 text-sm sm:text-base font-mono">#{user.id}</span>
+                        <span className="text-gray-900 text-sm sm:text-base font-mono">#{user.user.id}</span>
                     </div>
 
                     {/* Full Name */}
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Full Name:</span>
                         <span className="text-gray-900 text-sm sm:text-base font-medium sm:text-right break-words">
-                            {user.full_name}
+                            {user.user.full_name}
                         </span>
                     </div>
 
@@ -47,7 +47,7 @@ export const UserView = ({ user, onClose }) => {
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Username:</span>
                         <span className="text-gray-900 text-sm sm:text-base font-mono break-all">
-                            {user.username}
+                            {user.user.username}
                         </span>
                     </div>
 
@@ -55,7 +55,7 @@ export const UserView = ({ user, onClose }) => {
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Email:</span>
                         <span className="text-gray-900 text-sm sm:text-base break-all">
-                            {user.email}
+                            {user.user.email}
                         </span>
                     </div>
 
@@ -63,24 +63,24 @@ export const UserView = ({ user, onClose }) => {
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Role:</span>
                         <span className="capitalize px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm w-fit">
-                            {user.role}
+                            {user.user.role}
                         </span>
                     </div>
 
                     {/* Company ID */}
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Company ID:</span>
-                        <span className="text-gray-900 text-sm sm:text-base font-mono">#{user.company_id}</span>
+                        <span className="text-gray-900 text-sm sm:text-base font-mono">#{user.user.company_id}</span>
                     </div>
 
                     {/* Status */}
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Status:</span>
-                        <span className={`px-2 py-1 rounded-full text-xs sm:text-sm w-fit ${user.is_active
+                        <span className={`px-2 py-1 rounded-full text-xs sm:text-sm w-fit ${user.user.is_active
                             ? "bg-green-100 text-green-800"
                             : "bg-red-100 text-red-800"
                             }`}>
-                            {user.is_active ? "Active" : "Inactive"}
+                            {user.user.is_active ? "Active" : "Inactive"}
                         </span>
                     </div>
 
@@ -91,7 +91,7 @@ export const UserView = ({ user, onClose }) => {
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Created:</span>
                         <span className="text-gray-600 text-xs sm:text-sm font-mono break-words sm:text-right">
-                            {formatDate(user.created_at)}
+                            {formatDate(user.user.created_at)}
                         </span>
                     </div>
 
@@ -99,7 +99,7 @@ export const UserView = ({ user, onClose }) => {
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
                         <span className="font-semibold text-gray-700 text-sm sm:text-base">Last Login:</span>
                         <span className="text-gray-600 text-xs sm:text-sm font-mono break-words sm:text-right">
-                            {formatDate(user.last_login)}
+                            {formatDate(user.user.last_login)}
                         </span>
                     </div>
                 </div>
