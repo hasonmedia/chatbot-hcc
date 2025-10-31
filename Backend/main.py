@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from models import user, company, llm, chat, facebook_page, field_config, telegram_page, tag
+from models import user, company, llm, chat, facebook_page, field_config, telegram_page
 
 
 from routers import user_router
@@ -16,11 +16,11 @@ from routers import facebook_router
 from routers import llm_router
 from routers import field_config_router
 from routers import telegram_router
-from routers import tag_router
 from routers import zalotest
 from routers import zalo_router
 from routers import robots
 from routers import social_router
+from routers import rating_router
 
 from dotenv import load_dotenv
 import os
@@ -43,11 +43,11 @@ app.include_router(facebook_router.router)
 app.include_router(llm_router.router)
 app.include_router(field_config_router.router)
 app.include_router(telegram_router.router)
-app.include_router(tag_router.router)
 app.include_router(zalotest.router)
 app.include_router(zalo_router.router)
 app.include_router(robots.router)
 app.include_router(social_router.router)
+app.include_router(rating_router.router)
 
 # CORS Configuration - Không được dùng wildcard (*) khi allow_credentials=True
 origins = [

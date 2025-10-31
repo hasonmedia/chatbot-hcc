@@ -7,6 +7,10 @@ import {
     getChatHistory
 } from "../../services/messengerService";
 import { get_all_llms } from "../../services/llmService"
+import { createRating, checkIfRated } from "../../services/ratingService";
+import { useRatingTimer } from "../../hooks/useRatingTimer";
+import RatingPrompt from "../../components/chat/RatingPrompt";
+import RatingModal from "../../components/chat/RatingModal";
 import { Send, XIcon } from 'lucide-react';
 
 export default function ChatPage() {
@@ -28,6 +32,13 @@ export default function ChatPage() {
     const [zoomImage, setZoomImage] = useState(null);
     // Ref for textarea
     const textareaRef = useRef(null);
+    // Rating states
+    const [hasRated, setHasRated] = useState(false);
+    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+    const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+    
+    // Hook để hiển thị rating prompt sau 5 phút (300 giây)
+    const showRatingPrompt = useRatingTimer(messages, hasRated, 300);
 
     useEffect(() => {
         const initChat = async () => {
@@ -35,6 +46,16 @@ export default function ChatPage() {
                 setIsLoading(true);
                 const session = await checkSession();
                 setChatSessionId(session);
+
+                // Kiểm tra xem session này đã được đánh giá chưa
+                try {
+                    const ratingStatus = await checkIfRated(session);
+                    setHasRated(ratingStatus.has_rated || false);
+                    console.log("📊 Rating status:", ratingStatus);
+                } catch (error) {
+                    console.log("⚠️ Chưa có rating cho session này");
+                    setHasRated(false);
+                }
 
                 // Load chỉ 10 tin nhắn gần nhất
                 const history = await getChatHistory(session, 1, 10);
@@ -186,6 +207,31 @@ export default function ChatPage() {
             handleSend();
         }
         // Shift+Enter để xuống dòng - không cần xử lý gì thêm, để textarea tự xử lý
+    };
+
+    // Rating handlers
+    const handleOpenRatingModal = () => {
+        setIsRatingModalOpen(true);
+    };
+
+    const handleCloseRatingModal = () => {
+        setIsRatingModalOpen(false);
+    };
+
+    const handleSubmitRating = async (rating, comment) => {
+        try {
+            setIsSubmittingRating(true);
+            await createRating(chatSessionId, rating, comment);
+            setHasRated(true);
+            setIsRatingModalOpen(false);
+            alert("✅ Cảm ơn bạn đã đánh giá!");
+            console.log("✅ Đã gửi rating thành công:", { rating, comment });
+        } catch (error) {
+            console.error("❌ Lỗi khi gửi rating:", error);
+            alert("Có lỗi xảy ra. Vui lòng thử lại!");
+        } finally {
+            setIsSubmittingRating(false);
+        }
     };
 
     return (
@@ -371,8 +417,13 @@ export default function ChatPage() {
                                                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                                                 </div>
                                             </div>
-                                        </div>
                                     </div>
+                                </div>
+                            )}
+
+                                {/* Rating Prompt - hiển thị sau 3 giây không hoạt động */}
+                                {showRatingPrompt && !hasRated && (
+                                    <RatingPrompt onOpenRatingModal={handleOpenRatingModal} />
                                 )}
                             </div>
                         )}
@@ -462,6 +513,14 @@ export default function ChatPage() {
                     </div>
                 </div>
             )}
+
+            {/* Rating Modal */}
+            <RatingModal
+                isOpen={isRatingModalOpen}
+                onClose={handleCloseRatingModal}
+                onSubmit={handleSubmitRating}
+                isSubmitting={isSubmittingRating}
+            />
         </div>
     );
 }

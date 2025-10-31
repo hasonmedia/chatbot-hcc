@@ -7,7 +7,7 @@ from httplib2 import Credentials
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from models.knowledge_base import KnowledgeBase
-from models.chat import ChatSession, Message, CustomerInfo
+from models.chat import ChatSession, Message
 from config.redis_cache import cache_set
 from config.database import AsyncSessionLocal
 import gspread
@@ -96,6 +96,52 @@ async def send_to_platform_background(channel: str, page_id: str, recipient_id: 
         traceback.print_exc()
 
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def notify_missing_information(chat_session_id: int, user_question: str, bot_response: str):
+    """
+    Hàm thông báo khi bot không có thông tin trong cơ sở dữ liệu
+    Gửi thông báo đến Telegram admin
+    
+    Args:
+        chat_session_id: ID của chat session
+        user_question: Câu hỏi của người dùng
+        bot_response: Câu trả lời của bot
+    """
+    try:
+
+        # Import hàm send_telegram từ helper
+        from helper.help_send_social import send_telegram
+        
+        # Bạn có thể lưu chat ID admin trong database hoặc biến môi trường
+        ADMIN_CHAT_ID = "7913265581"
+        
+        # Tạo nội dung thông báo
+        notification_message = f"""🚨 THÔNG BÁO: CÂU HỎI KHÔNG CÓ DỮ LIỆU TRẢ LỜI
+
+            📌 Session ID: {chat_session_id}
+
+            ❓ Câu hỏi của khách hàng:
+            {user_question}
+
+            ⚠️ Không có thông tin dữ liệu để trả lời
+            """
+        
+        # Tạo message dict để gửi qua hàm send_telegram
+        message_data = {
+            "content": notification_message
+        }
+        
+        # Gửi thông báo đến Telegram admin sử dụng hàm có sẵn
+        await send_telegram(ADMIN_CHAT_ID, message_data)
+        print("✅ Đã gửi thông báo đến Telegram admin thành công")
+            
+    except Exception as e:
+        print(f"❌ Exception trong notify_missing_information: {e}")
+        traceback.print_exc()
+
+
 async def _generate_bot_response_common(
     user_content: str,
     chat_session_id: int,
@@ -105,23 +151,32 @@ async def _generate_bot_response_common(
     """
     Hàm chung để generate bot response
     Sử dụng bot key cho việc generate response
+    Tương thích với cấu trúc bảng mới: llm, llm_detail, llm_key
     """
     from llm.help_llm import get_current_model
     from llm.gpt import generate_gpt_response
     from llm.gemini import generate_gemini_response
     
     # Lấy thông tin model hiện tại với Round-Robin BOT API key
+    # get_current_model sẽ trả về:
+    # - name: "gemini" hoặc "gpt" 
+    # - key: API key được chọn theo Round-Robin
+    # - key_name: Tên của key (từ LLMKey.name)
+    # - key_type: "bot" hoặc "embedding"
+    # - llm_detail_id: ID của LLMDetail (1=gemini, 2=gpt)
     model_info = await get_current_model(
         new_db, 
         chat_session_id=chat_session_id,
         key_type="bot"  # Chỉ định rõ dùng bot key
     )
-    model_type = model_info["name"].lower()
-    api_key = model_info["key"]
-    key_name = model_info.get("key_name", "default")
-    key_type = model_info.get("key_type", "bot")
     
-    print(f"🤖 Session {chat_session_id} - Model: {model_type}, Bot Key: {key_name} (type: {key_type})")
+    model_type = model_info["name"].lower()  # "gemini" hoặc "gpt"
+    api_key = model_info["key"]  # API key đã được chọn theo Round-Robin
+    key_name = model_info.get("key_name", "free")  # Tên key hoặc "free"
+    key_type = model_info.get("key_type", "bot")  # "bot"
+    llm_detail_id = model_info.get("llm_detail_id")  # ID của LLMDetail
+    
+    print(f"🤖 Session {chat_session_id} - Model: {model_type} (LLMDetail ID: {llm_detail_id}), Bot Key: {key_name} (type: {key_type})")
     
     # Gọi hàm generate tương ứng (function-based)
     # Response là JSON string: {"message": "...", "links": [...]}
@@ -153,6 +208,25 @@ async def _generate_bot_response_common(
     new_db.add(message_bot)
     await new_db.commit()
     await new_db.refresh(message_bot)
+    
+    # ✅ Kiểm tra xem bot có trả lời "chưa có thông tin" không
+    try:
+        response_data = json.loads(response_json)
+        message_content = response_data.get("message", "")
+        
+        if "chưa có thông tin chính thức" in message_content.lower():
+            print("⚠️ Phát hiện bot không có thông tin - Gọi hàm thông báo...")
+            # Gọi hàm thông báo trong background để không block response
+            asyncio.create_task(
+                notify_missing_information(chat_session_id, user_content, message_content)
+            )
+    except json.JSONDecodeError:
+        # Nếu không parse được JSON, fallback về check toàn bộ string
+        if "chưa có thông tin chính thức" in response_json.lower():
+            print("⚠️ Phát hiện bot không có thông tin - Gọi hàm thông báo...")
+            asyncio.create_task(
+                notify_missing_information(chat_session_id, user_content, response_json)
+            )
     
     return {
         "id": message_bot.id,

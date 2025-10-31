@@ -61,23 +61,34 @@ async def get_llm_by_id_controller(llm_id: int, db: AsyncSession):
     llm_instance = await get_llm_by_id_service(llm_id, db)
     if not llm_instance:
         return {"message": "LLM not found"}
+    
+    # Tạo response với thông tin đầy đủ về llm_details và keys
     return {
         "id": llm_instance.id,
-        "name": llm_instance.name,
-        "key": llm_instance.key,
         "prompt": llm_instance.prompt,
         "created_at": llm_instance.created_at,
         "system_greeting": llm_instance.system_greeting,
-        "llm_keys": [
+        "botName": llm_instance.botName,
+        "bot_model_detail_id": llm_instance.bot_model_detail_id,
+        "embedding_model_detail_id": llm_instance.embedding_model_detail_id,
+        "llm_details": [
             {
-                "id": key.id,
-                "name": key.name,
-                "key": key.key,
-                "type": key.type,
-                "created_at": key.created_at,
-                "updated_at": key.updated_at
+                "id": detail.id,
+                "name": detail.name,
+                "key_free": detail.key_free,
+                "llm_keys": [
+                    {
+                        "id": key.id,
+                        "name": key.name,
+                        "key": key.key,
+                        "type": key.type,
+                        "created_at": key.created_at,
+                        "updated_at": key.updated_at
+                    }
+                    for key in detail.llm_keys
+                ]
             }
-            for key in llm_instance.llm_keys
+            for detail in llm_instance.llm_details
         ]
     }
 
@@ -86,22 +97,30 @@ async def get_all_llms_controller(db: AsyncSession):
     return [
         {
             "id": l.id,
-            "name": l.name,
-            "key": l.key,
             "prompt": l.prompt,
             "created_at": l.created_at,
             "system_greeting": l.system_greeting,
             "botName": l.botName,
-            "llm_keys": [
+            "bot_model_detail_id": l.bot_model_detail_id,
+            "embedding_model_detail_id": l.embedding_model_detail_id,
+            "llm_details": [
                 {
-                    "id": key.id,
-                    "name": key.name,
-                    "key": key.key,
-                    "type": key.type,
-                    "created_at": key.created_at,
-                    "updated_at": key.updated_at
+                    "id": detail.id,
+                    "name": detail.name,
+                    "key_free": detail.key_free,
+                    "llm_keys": [
+                        {
+                            "id": key.id,
+                            "name": key.name,
+                            "key": key.key,
+                            "type": key.type,
+                            "created_at": key.created_at,
+                            "updated_at": key.updated_at
+                        }
+                        for key in detail.llm_keys
+                    ]
                 }
-                for key in l.llm_keys
+                for detail in l.llm_details
             ]
         }
         for l in llms

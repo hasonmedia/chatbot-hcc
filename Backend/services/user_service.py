@@ -1,4 +1,3 @@
-from models.chat import CustomerInfo
 from models.user import User
 from datetime import datetime
 import bcrypt
@@ -56,7 +55,3 @@ async def update_user_service(db: AsyncSession, user_id: int, data: dict):
     await db.commit()
     await db.refresh(user)
     return user
-
-async def get_all_customer_info_service(db: AsyncSession):
-    result = await db.execute(select(CustomerInfo).order_by(CustomerInfo.created_at.desc()))
-    return result.scalars().all()

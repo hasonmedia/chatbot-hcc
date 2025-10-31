@@ -66,6 +66,3 @@ async def update_user_controller(user_id: int, data: dict, db: AsyncSession):
             "role": user.role
         }
     }
-
-async def get_all_customer_info_controller(db: AsyncSession):
-    return await user_service.get_all_customer_info_service(db)

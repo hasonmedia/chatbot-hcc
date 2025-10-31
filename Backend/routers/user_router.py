@@ -54,10 +54,5 @@ async def update_user(user_id: int, request: Request, db: AsyncSession = Depends
     data = await request.json()
     return await user_controller.update_user_controller(user_id, data, db)
 
-@router.get("/customers")
-async def get_customers(db: AsyncSession = Depends(get_db)):
-    return await user_controller.get_all_customer_info_controller(db)
-
-
 
 

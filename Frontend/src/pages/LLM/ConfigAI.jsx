@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Bot, Key, FileText, Plus, Trash2, Save, X, Edit2, Check } from 'lucide-react';
 import PasswordInput from '../../components/llm/PasswordInput';
-import { get_llm_by_id, create_llm_key, update_llm_key, delete_llm_key } from '../../services/llmService';
+import { get_llm_by_id } from '../../services/llmService';
+import { create_llm_key_for_detail, update_llm_key_for_detail, delete_llm_key_for_detail } from '../../services/llmService';
 
-const ConfigAI = ({ llmId, selectedAI, setSelectedAI, apiKey, setApiKey, systemPrompt, setSystemPrompt, showPrompt = true, apiKeys, setApiKeys }) => {
+const ConfigAI = ({ llmId, selectedDetailId, setSelectedDetailId, llmDetails, showPrompt = false }) => {
     const [editingKeyId, setEditingKeyId] = useState(null);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });

@@ -4,7 +4,6 @@ from services.social_service import (
 )
 from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
-from models.chat import CustomerInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 import requests
 from config.websocket_manager import ConnectionManager

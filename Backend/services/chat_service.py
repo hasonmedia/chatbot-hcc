@@ -4,7 +4,7 @@ import base64
 import io
 from typing import Any, Dict
 from sqlalchemy.orm import Session
-from models.chat import ChatSession, Message, CustomerInfo
+from models.chat import ChatSession, Message
 from sqlalchemy import text, select
 from models.llm import LLM  # Import LLM model để check name
 from datetime import datetime, timedelta
@@ -26,23 +26,6 @@ async def create_session_service(url_channel: str, db):
     await db.refresh(session)
     return session.id
 
-async def update_tag_chat_session(id: int, data: dict, db):
-    result = await db.execute(select(ChatSession).filter(ChatSession.id == id))
-    chatSession = result.scalar_one_or_none()
-    if not chatSession:
-        return None
-    from models.tag import Tag
-    result = await db.execute(select(Tag).filter(Tag.id.in_(data["tags"])))
-    tags = result.scalars().all()
-    chatSession.tags = tags
-    await db.commit()
-    await db.refresh(chatSession)
-    
-    # Clear cache sau khi update
-    clear_session_cache(id)
-    
-    return chatSession
-        
 async def check_session_service(sessionId, url_channel, db):
     result = await db.execute(select(ChatSession).filter(ChatSession.id == sessionId))
     session = result.scalar_one_or_none()
@@ -121,7 +104,6 @@ async def get_all_history_chat_service(db):
                     cs.channel,
                     cs.url_channel,
                     cs.alert,
-                    ci.customer_data::text AS customer_data, 
                     cs.name,
                     cs.time,
                     cs.current_receiver,
@@ -129,11 +111,8 @@ async def get_all_history_chat_service(db):
                     m.sender_type,
                     m.content,
                     m.sender_name, 
-                    m.created_at AS created_at,
-                    COALESCE(JSON_AGG(t.name) FILTER (WHERE t.name IS NOT NULL), '[]') AS tag_names,
-                    COALESCE(JSON_AGG(t.id) FILTER (WHERE t.id IS NOT NULL), '[]') AS tag_ids
+                    m.created_at AS created_at
                 FROM chat_sessions cs
-                LEFT JOIN customer_info ci ON cs.id = ci.chat_session_id
                 JOIN messages m ON cs.id = m.chat_session_id
                 JOIN (
                     SELECT
@@ -142,10 +121,8 @@ async def get_all_history_chat_service(db):
                     FROM messages
                     GROUP BY chat_session_id
                 ) AS latest ON cs.id = latest.chat_session_id AND m.created_at = latest.latest_time
-                LEFT JOIN chat_session_tag cst ON cs.id = cst.chat_session_id
-                LEFT JOIN tag t ON t.id = cst.tag_id
                 GROUP BY 
-                    cs.id, cs.status, cs.channel, ci.customer_data::text,
+                    cs.id, cs.status, cs.channel,
                     cs.name, cs.time, cs.alert, cs.current_receiver, cs.previous_receiver,
                     m.sender_type, m.content, m.sender_name, m.created_at
                 ORDER BY m.created_at DESC;
@@ -182,11 +159,6 @@ async def get_all_customer_service(data: dict, db):
 
     conditions = []
     params = {}
-
-    if tag_id:
-        query += " INNER JOIN chat_session_tag cst ON cs.id = cst.chat_session_id"
-        conditions.append("cst.tag_id = :tag_id")
-        params["tag_id"] = tag_id
 
     if channel:
         conditions.append("cs.channel = :channel")
@@ -234,11 +206,6 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
             chatSession.status = new_status
             chatSession.time = datetime.strptime(new_time, '%m/%d/%Y, %I:%M:%S %p')
         
-        if "tags" in data and isinstance(data["tags"], list):
-            from models.tag import Tag
-            result = await db.execute(select(Tag).filter(Tag.id.in_(data["tags"])))
-            tags = result.scalars().all()
-            chatSession.tags = tags
         await db.commit()
         await db.refresh(chatSession)
         
@@ -257,25 +224,6 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
         print(e)
         await db.rollback()
         return None
-        
-async def update_tag_chat_session_service(id: int, data: dict, db):
-    try:
-        result = await db.execute(select(ChatSession).filter(ChatSession.id == id))
-        chatSession = result.scalar_one_or_none()
-        if not chatSession:
-            return None
-        if "tags" in data and isinstance(data["tags"], list):
-            from models.tag import Tag
-            result = await db.execute(select(Tag).filter(Tag.id.in_(data["tags"])))
-            tags = result.scalars().all()
-            chatSession.tags = tags
-        
-        await db.commit()
-        await db.refresh(chatSession)
-        return chatSession
-        
-    except Exception as e:
-        print(e)
 
 async def delete_chat_session(ids: list[int], db):
     result = await db.execute(select(ChatSession).filter(ChatSession.id.in_(ids)))
@@ -408,25 +356,4 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
             "tableData": [],
         }
 
-async def update_chat_session_tag(id: int, data: dict, db: Session):
-    try:
-        result = await db.execute(select(ChatSession).filter(ChatSession.id == id))
-        chatSession = result.scalar_one_or_none()
-        if not chatSession:
-            return None
-        from models.tag import Tag
-        result = await db.execute(select(Tag).filter(Tag.id.in_(data["tags"])))
-        tags = result.scalars().all()
-        chatSession.tags = tags
-        await db.commit()
-        await db.refresh(chatSession)
-        
-        # Clear cache sau khi update
-        clear_session_cache(id)
-        
-        return chatSession
-        
-    except Exception as e:
-        print(e)
-        await db.rollback()
-        return None
+
