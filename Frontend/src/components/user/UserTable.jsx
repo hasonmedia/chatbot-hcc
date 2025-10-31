@@ -1,6 +1,7 @@
-import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
+import { FaEdit, FaEye } from "react-icons/fa";
 
-const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => {
+const UserTable = ({ data, onEdit, onView, permissionsMap }) => {
+    console.log("UserTable data:", data);
     const getRoleInfo = (role) => {
         switch (role?.toLowerCase()) {
             case 'root':
@@ -9,12 +10,8 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                 return { label: 'Quản trị cấp cao', color: 'bg-red-100 text-red-700 border-red-200' };
             case 'admin':
                 return { label: 'Quản trị viên', color: 'bg-blue-100 text-blue-700 border-blue-200' };
-            case 'viewer':
+            case 'user':
                 return { label: 'Nhân viên', color: 'bg-gray-100 text-gray-700 border-gray-200' };
-            case 'manager':
-                return { label: 'Quản lý', color: 'bg-green-100 text-green-700 border-green-200' };
-            case 'agent':
-                return { label: 'Nhân viên', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
             default:
                 return { label: role || 'Không xác định', color: 'bg-gray-100 text-gray-700 border-gray-200' };
         }
@@ -58,30 +55,32 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {data.map((user, index) => {
-                            const roleInfo = getRoleInfo(user.role);
-
+                        {data.map((user) => {
+                            const roleInfo = getRoleInfo(user.user.role);
+                            // Get permissions for this specific user from the map
+                            const userPermissions = permissionsMap[user.user.id] || { can_edit: false, can_delete: false };
+                            console.log("User Permissions for", user.user.id, ":", userPermissions);
                             return (
-                                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                                <tr key={user.user.id} className="hover:bg-gray-50 transition-colors">
                                     {/* User Info */}
                                     <td className="py-4 px-4">
                                         <div className="flex items-center gap-3">
                                             <div className="relative">
                                                 <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
                                                     <span className="text-white font-medium text-sm">
-                                                        {user.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                                        {user.user.full_name?.charAt(0)?.toUpperCase() || "U"}
                                                     </span>
                                                 </div>
-                                                {user.is_active && (
+                                                {user.user.is_active && (
                                                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border border-white rounded-full"></div>
                                                 )}
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <h3 className="font-medium text-gray-900 mb-1">
-                                                    {user.full_name}
+                                                    {user.user.full_name}
                                                 </h3>
                                                 <p className="text-sm text-gray-500 font-mono">
-                                                    @{user.username}
+                                                    @{user.user.username}
                                                 </p>
                                             </div>
                                         </div>
@@ -90,7 +89,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                     {/* Contact */}
                                     <td className="py-4 px-4">
                                         <span className="text-sm text-gray-700 break-all">
-                                            {user.email}
+                                            {user.user.email}
                                         </span>
                                     </td>
 
@@ -103,7 +102,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
 
                                     {/* Status */}
                                     <td className="py-4 px-4 text-center">
-                                        {user.is_active ? (
+                                        {user.user.is_active ? (
                                             <span className="bg-green-100 text-green-700 py-1 px-3 rounded-lg text-sm font-medium border border-green-200">
                                                 Hoạt động
                                             </span>
@@ -117,13 +116,13 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                     {/* Last Login */}
                                     <td className="py-4 px-4 text-center">
                                         <div className="text-sm text-gray-700">
-                                            {user.last_login ? (
+                                            {user.user.last_login ? (
                                                 <div>
                                                     <div>
-                                                        {new Date(user.last_login).toLocaleDateString('vi-VN')}
+                                                        {new Date(user.user.last_login).toLocaleDateString('vi-VN')}
                                                     </div>
                                                     <div className="text-xs text-gray-500">
-                                                        {new Date(user.last_login).toLocaleTimeString('vi-VN', {
+                                                        {new Date(user.user.last_login).toLocaleTimeString('vi-VN', {
                                                             hour: '2-digit',
                                                             minute: '2-digit'
                                                         })}
@@ -147,7 +146,9 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                             >
                                                 <FaEye className="w-4 h-4" />
                                             </button>
-                                            {canModifyUser && canModifyUser(currentUserRole, user.role) && (
+
+                                            {/* === LOGIC CHANGED HERE === */}
+                                            {userPermissions.can_edit && (
                                                 <button
                                                     onClick={() => onEdit(user)}
                                                     className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 rounded-lg transition-colors"
@@ -156,6 +157,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                                     <FaEdit className="w-4 h-4" />
                                                 </button>
                                             )}
+                                            {/* Note: You can add a delete button here checking userPermissions.can_delete */}
                                         </div>
                                     </td>
                                 </tr>
@@ -168,30 +170,32 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
             {/* Mobile Card View */}
             <div className="lg:hidden">
                 <div className="divide-y divide-gray-200">
-                    {data.map((user, index) => {
+                    {data.map((user) => {
                         const roleInfo = getRoleInfo(user.role);
+                        // Get permissions for this specific user from the map
+                        const userPermissions = permissionsMap[user.id] || { can_edit: false, can_delete: false };
 
                         return (
-                            <div key={user.id} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div key={user.user.id} className="p-4 hover:bg-gray-50 transition-colors">
                                 {/* User Header */}
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className="relative flex-shrink-0">
                                             <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
                                                 <span className="text-white font-medium">
-                                                    {user.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                                    {user.user.full_name?.charAt(0)?.toUpperCase() || "U"}
                                                 </span>
                                             </div>
-                                            {user.is_active && (
+                                            {user.user.is_active && (
                                                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border border-white rounded-full"></div>
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <h3 className="font-semibold text-gray-900 text-base mb-1 truncate">
-                                                {user.full_name}
+                                                {user.user.full_name}
                                             </h3>
                                             <p className="text-sm text-gray-500 font-mono truncate">
-                                                @{user.username}
+                                                @{user.user.username}
                                             </p>
                                         </div>
                                     </div>
@@ -205,7 +209,9 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                         >
                                             <FaEye className="w-4 h-4" />
                                         </button>
-                                        {canModifyUser && canModifyUser(currentUserRole, user.role) && (
+
+                                        {/* === LOGIC CHANGED HERE === */}
+                                        {userPermissions.can_edit && (
                                             <button
                                                 onClick={() => onEdit(user)}
                                                 className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors"
@@ -221,7 +227,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                 <div className="space-y-2">
                                     <div className="text-sm text-gray-700 break-all">
                                         <span className="font-medium text-gray-900">Email: </span>
-                                        {user.email}
+                                        {user.user.email}
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
@@ -229,7 +235,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                             {roleInfo.label}
                                         </span>
 
-                                        {user.is_active ? (
+                                        {user.user.is_active ? (
                                             <span className="bg-green-100 text-green-700 py-1 px-2 rounded text-xs font-medium border border-green-200">
                                                 Hoạt động
                                             </span>
@@ -240,10 +246,10 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                                         )}
                                     </div>
 
-                                    {user.last_login ? (
+                                    {user.user.last_login ? (
                                         <div className="text-sm text-gray-600">
                                             <span className="font-medium text-gray-900">Đăng nhập cuối: </span>
-                                            {new Date(user.last_login).toLocaleDateString('vi-VN')} - {new Date(user.last_login).toLocaleTimeString('vi-VN', {
+                                            {new Date(user.user.last_login).toLocaleDateString('vi-VN')} - {new Date(user.user.last_login).toLocaleTimeString('vi-VN', {
                                                 hour: '2-digit',
                                                 minute: '2-digit'
                                             })}
@@ -268,10 +274,7 @@ const UserTable = ({ data, onEdit, onView, currentUserRole, canModifyUser }) => 
                         <span className="text-xl sm:text-2xl text-gray-500">👥</span>
                     </div>
                     <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-2">Chưa có người dùng nào</h3>
-                    <p className="text-gray-500 text-sm sm:text-base mb-4">Thêm thành viên đầu tiên để bắt đầu quản lý hệ thống</p>
-                    <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
-                        <span className="text-sm sm:text-base">Nhấn nút "Tạo người dùng mới" để bắt đầu</span>
-                    </div>
+                    <p className="text-gray-500 text-sm sm:text-base mb-4">Danh sách lọc của bạn không trả về kết quả nào.</p>
                 </div>
             )}
         </div>

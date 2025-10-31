@@ -1,59 +1,95 @@
-import { getKnowledgeById, postKnowledge, updateKnowledge, updateKnowledgeWithFile, uploadKnowledgeFile, deleteKnowledgeDetail } from "../../services/knowledgeService";
+import {
+    getAllKnowledgeBases,
+    createKnowledgeRichText,
+    createKnowledgeWithFiles,
+    updateKnowledgeRichText,
+    updateKnowledgeWithFiles,
+    deleteKnowledgeDetail,
+    addKnowledgeRichText
+} from "../../services/knowledgeService";
 import { useState, useEffect } from "react";
-import { Edit, BookOpen, Search } from "lucide-react";
+import { Edit, BookOpen, Search, FileText } from "lucide-react";
 import { KnowledgeForm } from "../../components/knowledge/KnowledgeForm";
 import { KnowledgeView } from "../../components/knowledge/KnowledgeView";
 import SearchComponent from "../../components/SearchComponent";
-
+import { useAuth } from "../../components/context/AuthContext";
 const KnowledgePage = () => {
-    const [knowledge, setKnowledge] = useState(null);
+    const [knowledge, setKnowledge] = useState(null); // Sẽ lưu 1 KB object (đầu tiên)
     const [formData, setFormData] = useState({
         title: "",
-        customer_id: ""
+        customer_id: "",
+        raw_content: "", // Thêm state cho rich text
+        detail_id: null  // Thêm state để biết đang sửa detail nào
     });
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [isEdit, setIsEdit] = useState(false);
     const [currentView, setCurrentView] = useState('detail');
     const [activeTab, setActiveTab] = useState('knowledge'); // Tab state
 
+    // Hàm tải lại dữ liệu
+    const refreshKnowledge = async () => {
+        try {
+            const data = await getAllKnowledgeBases();
+            setKnowledge(data);
+            if (data[0]) {
+                setCurrentView('detail');
+            }
+        } catch (err) {
+            console.error("Lỗi tải dữ liệu:", err);
+            setKnowledge(null); // Set null nếu lỗi
+        }
+    };
+
     // Lấy dữ liệu khi mount
     useEffect(() => {
         const fetchData = async () => {
-            try {
-                setInitialLoading(true);
-                const data = await getKnowledgeById(); // không truyền id
-                setKnowledge(data);
-                if (data) {
-                    setCurrentView('detail');
-                }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setInitialLoading(false);
-            }
+            setInitialLoading(true);
+            await refreshKnowledge();
+            setInitialLoading(false);
         };
         fetchData();
     }, []);
+    // Xóa form data
+    const resetForm = () => {
+        setFormData({
+            title: "",
+            customer_id: "",
+            raw_content: "",
+            detail_id: null
+        });
+    };
 
-    // Khi bấm nút sửa
+    // Khi bấm nút sửa KB (nút to ở trên)
     const handleEdit = () => {
-        console.log("Editing knowledge:", knowledge);
         if (!knowledge) return;
         setFormData({
             title: knowledge.title || "",
-            customer_id: knowledge.customer_id || ""
+            customer_id: knowledge.customer_id || "",
+            raw_content: "", // Xóa content cũ
+            detail_id: null  // Xóa detail_id
         });
         setIsEdit(true);
         setCurrentView('form');
     };
 
-    // Khi bấm nút thêm
-    const handleAdd = () => {
+    // (MỚI) Khi bấm nút sửa 1 detail (trong KnowledgeView)
+    const handleEditDetail = (detail) => {
+        if (!knowledge) return;
         setFormData({
-            title: "",
-            customer_id: ""
+            title: knowledge.title, // Lấy title từ KB cha
+            customer_id: knowledge.customer_id, // Lấy ID từ KB cha
+            raw_content: detail.raw_content, // <-- Content của detail
+            detail_id: detail.id // <-- ID của detail
         });
+        setIsEdit(true);
+        setCurrentView('form');
+    };
+
+    // Khi bấm nút thêm (tạo KB mới)
+    const handleAdd = () => {
+        resetForm();
         setIsEdit(false);
         setCurrentView('form');
     };
@@ -65,52 +101,77 @@ const KnowledgePage = () => {
 
     const handleCancel = () => {
         setCurrentView('detail');
-        setFormData({
-            title: "",
-            customer_id: ""
-        });
+        resetForm();
     };
 
     const handleSubmit = async (e, selectedFiles, uploadMode) => {
         e.preventDefault();
         setLoading(true);
-        try {
-            if (uploadMode === 'file' && selectedFiles && selectedFiles.length > 0) {
-                // Upload files mode
-                const formDataToSend = new FormData();
-                
-                // Thêm tất cả files vào FormData
-                selectedFiles.forEach((file) => {
-                    formDataToSend.append('files', file);
-                });
-                
-                formDataToSend.append('title', formData.title);
-                formDataToSend.append('customer_id', formData.customer_id || 'manual');
 
-                if (isEdit) {
-                    // Update với files
-                    const updated = await updateKnowledgeWithFile(formData.id || knowledge.id, formDataToSend);
-                    setKnowledge(updated.knowledge_base);
-                    alert(`Cập nhật thành công! Đã xử lý ${updated.files_processed} file(s)`);
+        try {
+            if (isEdit) {
+                // --- CHẾ ĐỘ SỬA (Thêm vào KB đã có) ---
+                if (formData.detail_id) {
+                    // Case 1: Sửa 1 Rich Text Detail CỤ THỂ
+                    const jsonData = {
+                        title: formData.title,
+                        customer_id: formData.customer_id,
+                        raw_content: formData.raw_content,
+                        user_id: user.id
+                    };
+                    await updateKnowledgeRichText(formData.detail_id, jsonData); // <--- Sửa ở đây
+
+                } else if (uploadMode === 'file') {
+                    // Case 2: Thêm File mới (hoặc chỉ sửa Title)
+                    const formDataToSend = new FormData();
+                    selectedFiles.forEach((file) => {
+                        formDataToSend.append('files', file);
+                    });
+                    formDataToSend.append('title', formData.title);
+                    formDataToSend.append('customer_id', formData.customer_id || 'manual');
+                    formDataToSend.append('user_id', user.id);
+                    await updateKnowledgeWithFiles(knowledge.id, formDataToSend);
+
                 } else {
-                    // Tạo mới với files
-                    const created = await uploadKnowledgeFile(formDataToSend);
-                    setKnowledge(created.knowledge_base);
-                    alert(`Thêm mới thành công! Đã xử lý ${created.files_processed} file(s)`);
+                    // Case 3 (MỚI): Thêm Rich Text mới vào KB đã có
+                    const jsonData = {
+                        title: formData.title,
+                        customer_id: formData.customer_id,
+                        raw_content: formData.raw_content
+                    }; // <--- Sửa ở đây
+                    // Gọi API mới
+                    await addKnowledgeRichText(knowledge.id, jsonData);
                 }
+
             } else {
-                // Manual mode (JSON)
-                if (isEdit) {
-                    const updated = await updateKnowledge(formData.id || knowledge.id, formData);
-                    setKnowledge(updated.knowledge_base);
-                    alert("Cập nhật thành công!");
+                // --- CHẾ ĐỘ TẠO MỚI (Tạo KB mới) ---
+                if (uploadMode === 'file') {
+                    const formDataToSend = new FormData();
+                    // ... (logic tạo mới bằng file của bạn)
+                    // Ví dụ:
+                    selectedFiles.forEach((file) => {
+                        formDataToSend.append('files', file);
+                    });
+                    formDataToSend.append('title', formData.title);
+                    formDataToSend.append('customer_id', formData.customer_id || 'manual');
+                    formDataToSend.append('user_id', user.id);
+                    await createKnowledgeWithFiles(formDataToSend);
                 } else {
-                    const created = await postKnowledge(formData);
-                    setKnowledge(created.knowledge_base);
-                    alert("Thêm mới thành công!");
+                    const jsonData = {
+                        title: formData.title,
+                        customer_id: formData.customer_id,
+                        raw_content: formData.raw_content,
+                        user_id: user.id
+                    }; // <--- Sửa ở đây
+                    await createKnowledgeRichText(jsonData);
                 }
             }
+
+            // Tải lại dữ liệu và chuyển view
+            await refreshKnowledge();
             setCurrentView('detail');
+            alert("Thao tác thành công!");
+
         } catch (err) {
             console.error(err);
             alert("Có lỗi xảy ra: " + (err.response?.data?.detail || err.message));
@@ -120,16 +181,19 @@ const KnowledgePage = () => {
     };
 
     const handleDeleteFile = async (detailId) => {
+        // Tạm thời dùng window.confirm, bạn nên thay bằng Modal
+        if (!window.confirm("Bạn có chắc muốn xóa mục này? Toàn bộ chunks sẽ bị xóa vĩnh viễn.")) {
+            return;
+        }
+
         try {
             setLoading(true);
             await deleteKnowledgeDetail(detailId);
-            // Refresh knowledge data
-            const data = await getKnowledgeById();
-            setKnowledge(data);
-            alert("Xóa file thành công!");
+            await refreshKnowledge(); // Tải lại dữ liệu
+            alert("Xóa thành công!");
         } catch (err) {
             console.error(err);
-            alert("Có lỗi khi xóa file: " + (err.response?.data?.detail || err.message));
+            alert("Có lỗi khi xóa: " + (err.response?.data?.detail || err.message));
         } finally {
             setLoading(false);
         }
@@ -165,10 +229,14 @@ const KnowledgePage = () => {
                                         className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                                     >
                                         <Edit className="w-4 h-4" />
-                                        Chỉnh sửa
+                                        Thêm File
                                     </button>
                                 </div>
-                                <KnowledgeView knowledge={knowledge} onDeleteFile={handleDeleteFile} />
+                                <KnowledgeView
+                                    knowledge={knowledge}
+                                    onDeleteFile={handleDeleteFile}
+                                    onEditDetail={handleEditDetail}
+                                />
                             </div>
                         )}
 

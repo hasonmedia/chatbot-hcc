@@ -7,7 +7,6 @@ import {
     disconnectAdmin,
     updateTag,
 } from "../../services/messengerService";
-import { getTag, getTagsByChatSession } from "../../services/tagService";
 import Sidebar from "../../components/chat/Sidebar";
 import MainChat from "../../components/chat/MainChat";
 import { RightPanel } from "../../components/chat/RightPanel";
@@ -335,7 +334,7 @@ const ChatPage = () => {
                         console.log(`⚠️ Bỏ qua message cho conversation ${msg.chat_session_id}, đang xem ${selectedConversationRef.current?.session_id}`);
                         return prev;
                     }
-                    
+
                     // ✅ Kiểm tra duplicate với các tin nhắn gần đây (2-3 tin nhắn cuối)
                     const recentMessages = prev.slice(-3);
                     const isDuplicate = recentMessages.some(existingMsg => {
@@ -343,12 +342,12 @@ const ChatPage = () => {
                         if (existingMsg.content !== msg.content || existingMsg.sender_type !== msg.sender_type) {
                             return false;
                         }
-                        
+
                         // So sánh thời gian (cho phép chênh lệch < 2 giây)
                         const existingTime = new Date(existingMsg.created_at).getTime();
                         const msgTime = new Date(msg.created_at).getTime();
                         const timeDiff = Math.abs(existingTime - msgTime);
-                        
+
                         return timeDiff < 2000; // 2 giây
                     });
 
@@ -356,7 +355,7 @@ const ChatPage = () => {
                         console.log("⚠️ Bỏ qua tin nhắn duplicate:", msg.content?.substring(0, 30));
                         return prev;
                     }
-                    
+
                     // ✅ Push message và scroll xuống
                     console.log(`✅ Thêm message vào conversation ${msg.chat_session_id}`);
                     setShouldScrollToBottom(true);
@@ -447,10 +446,10 @@ const ChatPage = () => {
 
             // ✅ Reset messages ngay lập tức để tránh hiển thị tin nhắn cũ
             setMessages([]);
-            
+
             // ✅ Reset imagePreview để tránh hiển thị ảnh của conversation cũ
             setImagePreview([]);
-            
+
             // ✅ Reset input nếu đang soạn tin nhắn
             setInput("");
 

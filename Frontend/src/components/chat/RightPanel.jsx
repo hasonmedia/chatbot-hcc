@@ -1,4 +1,3 @@
-import { useAuth } from "../context/AuthContext"
 import React, { useState, useEffect, useRef } from "react";
 import CountdownTimer from "../CountdownTimer"
 export const RightPanel = ({ selectedConversation }) => {

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db
 import asyncio
 router = APIRouter()
-from middleware.jwt import authentication_cookie, authentication
+from middleware.jwt import get_current_user
 import requests
 from fastapi import APIRouter, Request
 
@@ -96,7 +96,7 @@ async def get_customer_chat(
 
 @router.patch("/{id}")
 async def update_config(id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = await authentication(request)
+    user = await get_current_user(request)
     data = await request.json()
     return await update_chat_session_controller(id, data, user, db)
 

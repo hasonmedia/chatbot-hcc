@@ -8,9 +8,8 @@ export const RoleBasedRedirect = () => {
 
     if (!user) return <Navigate to="/login" />;
     console.log("User role:", user.role);
-    // Chuyển hướng dựa trên role
     switch (user.role) {
-        case "viewer":
+        case "user":
             return <Navigate to="/viewer" />;
         case "admin":
         case "root":

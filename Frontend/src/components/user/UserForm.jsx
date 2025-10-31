@@ -1,51 +1,44 @@
 import { useState, useEffect } from "react";
 
-const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileMode = false }) => {
+const UserForm = ({ initialData, onSubmit, onCancel, availableRoles = [], isProfileMode = false }) => {
+    const allRoleInfo = {
+        root: "Siêu quản trị (Root)",
+        superadmin: "Quản trị cấp cao",
+        admin: "Quản trị viên",
+        user: "Nhân viên", // 'user' là key từ API abilities của bạn
+        viewer: "Nhân viên (Xem)", // Giữ lại 'viewer' phòng trường hợp cũ
+    };
+
+    // 2. Tạo các lựa chọn dropdown (options) CHỈ TỪ PROP availableRoles
+    // Nếu availableRoles = ["user"], thì roleOptions = [{ value: "user", label: "Nhân viên" }]
+    const roleOptions = availableRoles.map(roleKey => ({
+        value: roleKey,
+        label: allRoleInfo[roleKey] || roleKey // Lấy label từ map, hoặc dùng chính key nếu không có
+    }));
+
+    const isEditing = Boolean(initialData);
+    // 3. Khởi tạo state
     const [formData, setFormData] = useState({
-        full_name: "",
-        username: "",
-        email: "",
-        role: "",
+        full_name: initialData?.user.full_name || "",
+        username: initialData?.user.username || "",
+        email: initialData?.user.email || "",
+        role: initialData?.user.role || (roleOptions.length > 0 ? roleOptions[0].value : ""),
         password: "",
-        is_active: true,
+        is_active: initialData?.user.is_active ?? true,
     });
+
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-
-    const roleHierarchy = ['viewer', 'admin', 'superadmin', 'root'];
-
-    const getRoleLevel = (role) => {
-        return roleHierarchy.indexOf(role?.toLowerCase());
-    };
-
-    const getAllRoleOptions = () => [
-        { value: "root", label: "Siêu quản trị (Root)", color: "text-purple-600" },
-        { value: "superadmin", label: "Quản trị cấp cao", color: "text-red-600" },
-        { value: "admin", label: "Quản trị viên", color: "text-blue-600" },
-        { value: "viewer", label: "Nhân viên", color: "text-gray-600" }
-    ];
-
-    // Filter role options based on current user's permission
-    const getAvailableRoleOptions = () => {
-        const allOptions = getAllRoleOptions();
-        if (!currentUserRole) return allOptions;
-
-        const currentLevel = getRoleLevel(currentUserRole);
-        return allOptions.filter(option => {
-            const optionLevel = getRoleLevel(option.value);
-            return optionLevel <= currentLevel;
-        });
-    };
 
     useEffect(() => {
         if (initialData) {
             setFormData({
-                full_name: initialData.full_name,
-                username: initialData.username,
-                email: initialData.email,
-                role: initialData.role,
+                full_name: initialData?.user.full_name,
+                username: initialData?.user.username,
+                email: initialData?.user.email,
+                role: initialData?.user.role,
                 password: "",
-                is_active: initialData.is_active || true,
+                is_active: initialData?.user.is_active ?? true, // Dùng ?? true để đảm bảo
             });
         }
     }, [initialData]);
@@ -60,6 +53,8 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError(""); // Reset lỗi
+
         // Validation - role không bắt buộc trong profile mode
         const requiredFields = ['full_name', 'username', 'email'];
         if (!isProfileMode) {
@@ -68,21 +63,14 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
 
         const missingFields = requiredFields.filter(field => !formData[field]);
         if (missingFields.length > 0) {
-            setError("Tất cả các trường bắt buộc phải được điền");
+            setError(`Vui lòng điền các trường bắt buộc: ${missingFields.join(', ')}`);
             return;
         }
 
-        // Check permission for role assignment (skip in profile mode)
-        if (!isProfileMode && currentUserRole) {
-            const currentLevel = getRoleLevel(currentUserRole);
-            const targetLevel = getRoleLevel(formData.role);
-            if (targetLevel > currentLevel) {
-                setError("Bạn không có quyền gán vai trò này!");
-                return;
-            }
-        }
+        // 6. XÓA BỎ: Logic validation getRoleLevel
+        // (Không còn cần thiết vì dropdown đã lọc sẵn các role hợp lệ)
 
-        // Nếu thêm mới, password bắt buộc, nếu edit thì password có thể để trống
+        // Nếu thêm mới, password bắt buộc
         if (!initialData && !formData.password) {
             setError("Mật khẩu là bắt buộc cho người dùng mới");
             return;
@@ -90,13 +78,11 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
 
         setIsLoading(true);
         try {
-            // Tạo bản sao formData và loại bỏ role nếu ở chế độ profile
             const dataToSubmit = { ...formData };
             if (isProfileMode) {
                 delete dataToSubmit.role; // Không gửi role trong profile mode
             }
 
-            console.log(dataToSubmit);
             await onSubmit(dataToSubmit);
         } catch (err) {
             setError(err.message || "Có lỗi xảy ra");
@@ -105,8 +91,7 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
         }
     };
 
-    const roleOptions = getAvailableRoleOptions();
-
+    // 7. Render component (giữ nguyên HTML, chỉ thay đổi logic)
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full flex justify-center items-start sm:items-center z-50 p-2 sm:p-4">
             <div className="bg-white rounded-lg sm:rounded-xl border border-gray-200 w-full max-w-xs sm:max-w-lg lg:max-w-2xl mt-4 sm:mt-0 max-h-[95vh] sm:max-h-[90vh] overflow-hidden shadow-xl">
@@ -142,13 +127,10 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-                        {/* Basic Info Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Full Name */}
                             <div className="space-y-1 sm:space-y-2">
-                                <label className="block text-gray-700 font-medium text-sm">
-                                    Họ và tên *
-                                </label>
+                                <label className="block text-gray-700 font-medium text-sm">Họ và tên *</label>
                                 <input
                                     type="text"
                                     name="full_name"
@@ -162,9 +144,7 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
 
                             {/* Username */}
                             <div className="space-y-1 sm:space-y-2">
-                                <label className="block text-gray-700 font-medium text-sm">
-                                    Tên đăng nhập *
-                                </label>
+                                <label className="block text-gray-700 font-medium text-sm">Tên đăng nhập *</label>
                                 <input
                                     type="text"
                                     name="username"
@@ -173,14 +153,13 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
                                     className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent font-mono"
                                     placeholder="Nhập tên đăng nhập..."
                                     required
+                                    disabled={isEditing} // Không cho đổi username khi edit
                                 />
                             </div>
 
                             {/* Email */}
                             <div className="space-y-1 sm:space-y-2">
-                                <label className="block text-gray-700 font-medium text-sm">
-                                    Email *
-                                </label>
+                                <label className="block text-gray-700 font-medium text-sm">Email *</label>
                                 <input
                                     type="email"
                                     name="email"
@@ -195,31 +174,38 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
                             {/* Role - Hidden in profile mode */}
                             {!isProfileMode && (
                                 <div className="space-y-1 sm:space-y-2">
-                                    <label className="block text-gray-700 font-medium text-sm">
-                                        Vai trò *
-                                    </label>
+                                    <label className="block text-gray-700 font-medium text-sm">Vai trò *</label>
                                     <select
                                         name="role"
                                         value={formData.role}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                                         required
+                                        // Vô hiệu hóa nếu không có role nào để chọn (cả khi edit lẫn create)
+                                        disabled={roleOptions.length === 0 && !initialData?.user.role}
                                     >
                                         <option value="">Chọn vai trò...</option>
+
+                                        {/* 8. LOGIC RENDER DROPDOWN MỚI */}
+                                        {/* Render các role được phép từ API */}
                                         {roleOptions.map(option => (
                                             <option key={option.value} value={option.value}>
                                                 {option.label}
                                             </option>
                                         ))}
+
+                                        {isEditing && !roleOptions.some(opt => opt.value === initialData.role) && (
+                                            <option key={initialData.role} value={initialData.role}>
+                                                {allRoleInfo[initialData.role] || initialData.role} (Vai trò hiện tại)
+                                            </option>
+                                        )}
+
                                     </select>
-                                    {currentUserRole && roleOptions.length === 0 && (
+
+                                    {/* Thông báo khi không có quyền */}
+                                    {roleOptions.length === 0 && !isEditing && (
                                         <p className="text-xs text-amber-600 mt-1">
-                                            ⚠️ Bạn không có quyền tạo người dùng với bất kỳ vai trò nào.
-                                        </p>
-                                    )}
-                                    {currentUserRole && roleOptions.length > 0 && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Bạn chỉ có thể gán vai trò thấp hơn quyền của mình ({currentUserRole}).
+                                            ⚠️ Bạn không có quyền gán bất kỳ vai trò nào.
                                         </p>
                                     )}
                                 </div>
@@ -232,12 +218,12 @@ const UserForm = ({ initialData, onSubmit, onCancel, currentUserRole, isProfileM
                                         Vai trò hiện tại
                                     </label>
                                     <div className="w-full px-3 py-2 text-sm sm:text-base border border-gray-200 rounded-lg bg-gray-50">
-                                        <span className={`font-medium ${formData.role === 'root' ? 'text-purple-600' :
+                                        <span className={`font-medium ${allRoleInfo[formData.role] ? (formData.role === 'root' ? 'text-purple-600' :
                                             formData.role === 'superadmin' ? 'text-red-600' :
                                                 formData.role === 'admin' ? 'text-blue-600' :
-                                                    'text-gray-600'
+                                                    'text-gray-600') : 'text-gray-600'
                                             }`}>
-                                            {getAllRoleOptions().find(option => option.value === formData.role)?.label || formData.role}
+                                            {allRoleInfo[formData.role] || formData.role}
                                         </span>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">

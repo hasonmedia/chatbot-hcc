@@ -1,56 +1,95 @@
+# Trong file: config/get_embedding.py
 import os
-import numpy as np
-import google.generativeai as genai
-from dotenv import load_dotenv
-from openai import AsyncOpenAI
 import asyncio
+import logging # Thêm logging
+import google.generativeai as genai
+import numpy as np
+from typing import List, Union
 from concurrent.futures import ThreadPoolExecutor
 
-load_dotenv()
+logger = logging.getLogger(__name__) # Thêm logger
 
-async def get_embedding_gemini(text: str, api_key: str = None) -> np.ndarray | None:
+# Lấy API key (chỉ cần lấy 1 lần)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    logger.warning("⚠️ Google API key is missing in environment variables!")
+else:
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        logger.info("✅ GenAI configured successfully.")
+    except Exception as e:
+        logger.exception(f"❌ Error configuring GenAI: {e}")
+        # Bạn có thể muốn raise lỗi ở đây để dừng ứng dụng nếu không có key
+
+# Executor để chạy code sync (chỉ cần tạo 1 lần)
+executor = ThreadPoolExecutor()
+
+async def get_embedding_gemini(
+    text_input: Union[str, List[str]], 
+    api_key: str = None # Vẫn giữ để tương thích, nhưng ưu tiên env
+) -> Union[List[float], List[List[float]], None]:
     """
-    Async version của get_embedding_gemini
-    Sử dụng ThreadPoolExecutor để chạy sync code trong async context
+    Async version của get_embedding_gemini, HỖ TRỢ BATCH INPUT.
+    Sử dụng ThreadPoolExecutor để chạy sync code trong async context.
     
     Args:
-        text: str - Text cần tạo embedding
-        api_key: str - Google API key (optional, nếu không có sẽ lấy từ env)
+        text_input: str | List[str] - Text hoặc List text cần tạo embedding
+        api_key: str - Google API key (optional, ít dùng hơn env)
     
     Returns:
-        np.ndarray - Embedding vector hoặc None nếu có lỗi
+        List[float] (cho 1 str) | List[List[float]] (cho List[str]) | None nếu lỗi
     """
-    if not text or not text.strip():
+    if not text_input:
+        logger.warning("Input rỗng được truyền vào get_embedding_gemini")
+        return [] if isinstance(text_input, list) else None
+        
+    # Xác định API key (ưu tiên env)
+    key_to_use = GOOGLE_API_KEY
+    if api_key: # Chỉ dùng key từ tham số nếu env không có
+        logger.warning("Sử dụng API key từ tham số thay vì environment variable.")
+        key_to_use = api_key
+        
+    if not key_to_use:
+        logger.error("❌ Google API key is missing!")
         return None
-    
+        
+    # Cấu hình lại nếu key từ tham số khác env (ít xảy ra)
+    # Lưu ý: configure là global, có thể ảnh hưởng nếu dùng key khác nhau
+    if api_key and api_key != GOOGLE_API_KEY:
+         genai.configure(api_key=api_key)
+
     try:
-        # Ưu tiên dùng api_key từ tham số, nếu không có thì lấy từ env
-        key = api_key or os.getenv("GOOGLE_API_KEY")
-        if not key:
-            print("⚠️ Google API key is missing!")
-            return None
-        
-        # Configure genai với API key
-        genai.configure(api_key=key)
-        
-        # Chạy sync code trong executor để không block event loop
         loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as executor:
-            response = await loop.run_in_executor(
-                executor,
-                lambda: genai.embed_content(
-                    model="models/gemini-embedding-001",
-                    content=text
-                )
-            )
         
-        embed = response["embedding"]
-        return np.array(embed, dtype=np.float32)
+        # --- SỬA LOGIC XỬ LÝ INPUT ---
+        is_batch = isinstance(text_input, list)
+        
+        # Gọi hàm sync embed_content trong executor
+        response = await loop.run_in_executor(
+            executor,
+            lambda: genai.embed_content(
+                model="models/gemini-embedding-001",
+                content=text_input, 
+                # Có thể thêm task_type nếu cần, vd: "RETRIEVAL_DOCUMENT"
+                # task_type="RETRIEVAL_DOCUMENT" 
+            )
+        )
+        # --- KẾT THÚC SỬA LOGIC ---
+
+        # Trích xuất embedding(s)
+        # API trả về list embeddings ngay cả khi input là 1 str
+        embeddings = response["embedding"] 
+        
+        if not embeddings:
+             logger.error("API không trả về embedding nào.")
+             return None
+
+        # Trả về đúng định dạng: 1 list nếu input là str, list of lists nếu input là list
+        return embeddings if is_batch else embeddings[0]
+
     except Exception as e:
-        print(f"❌ Error getting Gemini embedding: {e}")
-        return None
-
-
+        logger.exception(f"❌ Error getting Gemini embedding: {e}") # Dùng exception để có traceback
+        return None # Hoặc raise lỗi
 
 
 
