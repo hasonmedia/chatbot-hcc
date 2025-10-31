@@ -37,8 +37,8 @@ async def get_sheet(sheet_id: str, id: int):
     # Không cần ghi file MD ở đây nếu chỉ dùng để insert DB
     for doc in docs:
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1500,
-            chunk_overlap=200
+            chunk_size=3000,
+            chunk_overlap=500
         )
         row_chunks = splitter.split_text(doc.page_content)
         all_chunks.extend(row_chunks)
