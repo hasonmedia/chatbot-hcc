@@ -39,7 +39,7 @@ async def customer_ws(websocket: WebSocket):
     async for db in get_db():
         try:
             # Bạn cần đảm bảo hàm 'customer_chat' chấp nhận 'db'
-            await customer_chat(websocket, session_id, db)
+            await customer_chat(websocket, session_id)
         except WebSocketDisconnect:
             print(f"Customer WS disconnected: {session_id}")
             return

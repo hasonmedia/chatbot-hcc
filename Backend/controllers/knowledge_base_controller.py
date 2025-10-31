@@ -29,16 +29,15 @@ async def add_kb_rich_text_controller(
     """
     Controller thêm Rich Text mới vào KB đã có
     """
-    title = data.get("title")
     raw_content = data.get("raw_content")
     
-    if not title or not raw_content:
-        raise HTTPException(status_code=400, detail="Thiếu 'title' hoặc 'raw_content'")
+    if not raw_content:
+        raise HTTPException(status_code=400, detail="Thiếu 'raw_content'")
 
     kb = await knowledge_base_service.add_kb_rich_text_service(
         kb_id=kb_id,
-        title=title,
         customer_id=data.get("customer_id"),
+        user_id=data.get("user_id"),
         raw_content=raw_content,
         db=db
     )
@@ -50,8 +49,9 @@ async def add_kb_rich_text_controller(
         "knowledge_base": kb
     }
 async def create_kb_with_files_controller(
+    kb_id: int,
     title: str,
-    customer_id: str,
+    customer_id: int,
     user_id: Optional[int],
     files: List[UploadFile],
     db: AsyncSession
@@ -66,6 +66,7 @@ async def create_kb_with_files_controller(
         raise HTTPException(status_code=400, detail="Vui lòng chọn ít nhất một file")
     
     kb = await knowledge_base_service.create_kb_with_files_service(
+        kb_id=kb_id,
         title=title,
         customer_id=customer_id,
         files=valid_files,
@@ -78,36 +79,10 @@ async def create_kb_with_files_controller(
         "files_processed": len(valid_files)
     }
 
-async def create_kb_with_rich_text_controller(
-    data: dict, # Giả sử đây là Pydantic schema body
-    db: AsyncSession
-):
-    """
-    Controller tạo knowledge base mới từ Rich Text
-    (Dùng cho uploadMode = 'manual')
-    """
-    title = data.get("title")
-    raw_content = data.get("raw_content")
-    
-    if not title or not raw_content:
-        raise HTTPException(status_code=400, detail="Thiếu 'title' hoặc 'raw_content'")
-
-    kb = await knowledge_base_service.create_kb_with_rich_text_service(
-        title=title,
-        customer_id=data.get("customer_id"),
-        raw_content=raw_content,
-        user_id=data.get("user_id"),
-        db=db
-    )
-    return {
-        "message": "Knowledge Base created from rich text",
-        "knowledge_base": kb
-    }
-
 async def update_kb_with_files_controller(
     kb_id: int,
     title: Optional[str],
-    customer_id: Optional[str],
+    customer_id: Optional[int],
     user_id: Optional[int],
     files: List[UploadFile],
     db: AsyncSession
@@ -144,15 +119,13 @@ async def update_kb_with_rich_text_controller(
     Controller cập nhật một KB Detail dạng Rich Text
     (Dùng khi ở trang Edit, chọn uploadMode = 'manual')
     """
-    title = data.get("title")
     raw_content = data.get("raw_content")
     
-    if not title or not raw_content:
+    if  not raw_content:
         raise HTTPException(status_code=400, detail="Thiếu 'title' hoặc 'raw_content'")
 
     kb = await knowledge_base_service.update_kb_with_rich_text_service(
         detail_id=detail_id,
-        title=title,
         customer_id=data.get("customer_id"),
         raw_content=raw_content,
         user_id=data.get("user_id"),

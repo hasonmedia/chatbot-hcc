@@ -29,19 +29,9 @@ async def search_kb(query: str = Query(...), db: AsyncSession = Depends(get_db))
 # CREATE (Tạo mới)
 # ----------------------------------------------------------------
 
-@router.post("/rich-text")
-async def create_kb_rich_text(
-    data: dict = Body(...), 
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Tạo knowledge base mới từ Rich Text (Nhập thủ công)
-    Body: {"title": "...", "customer_id": "...", "raw_content": "..."}
-    """
-    return await knowledge_base_controller.create_kb_with_rich_text_controller(data, db)
-
 @router.post("/upload-files")
 async def create_kb_files(
+    kb_id: int = Form(...),
     title: str = Form(...),
     customer_id: str = Form("manual"),
     files: List[UploadFile] = File(...),
@@ -52,6 +42,7 @@ async def create_kb_files(
     Tạo knowledge base mới từ nhiều files upload
     """
     return await knowledge_base_controller.create_kb_with_files_controller(
+        kb_id=kb_id,
         title=title,
         customer_id=customer_id,
         files=files,

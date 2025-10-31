@@ -126,18 +126,18 @@ async def update_kb_with_files_service(
     await db.refresh(kb, ['details'])
     return kb
 
+# knowledge_base_service.py
+
 async def add_kb_rich_text_service(
     kb_id: int,
-    title: str,
-    customer_id: str,
-    user_id: int,
+    customer_id: int,
+    user_id: int,     # Bỏ customer_id
     raw_content: str,
     db: AsyncSession
 ):
     """
     Thêm một detail (Rich Text) mới vào KB đã có
     """
-    detail = None
     try:
         result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
         kb = result.scalar_one_or_none()
@@ -146,33 +146,33 @@ async def add_kb_rich_text_service(
             logger.error(f"Không tìm thấy KB {kb_id} để thêm rich text")
             return None
 
-        kb.title = title
-        kb.customer_id = customer_id
+        # Bỏ 2 dòng cập nhật kb.title và kb.customer_id
 
         detail = KnowledgeBaseDetail(
             knowledge_base_id=kb.id,
-            file_name=title, 
             source_type="RICH_TEXT",
             raw_content=raw_content,
             is_active=True,
             user_id= user_id
         )
         db.add(detail)
-        await db.flush() 
+        await db.flush() # Vẫn cần flush để lấy detail.id
         await db.commit()
-
         text_result = await process_rich_text(
             raw_content,
             knowledge_base_detail_id=detail.id
         )
         
         if not text_result['success']:
-            logger.error(f"Lỗi xử lý rich text (add_kb_rich_text_service): {text_result.get('error')}")
-            await db.delete(detail)
+            logger.error(f"Lỗi xử lý rich text: {text_result.get('error')}")
+            # Nếu lỗi, rollback toàn bộ transaction
+            await db.rollback()
             await db.commit()
-        else:
-            logger.info(f"Đã thêm rich text detail mới vào KB {kb_id}")
-
+            return None # Hoặc raise Exception
+        
+        
+        
+        logger.info(f"Đã thêm rich text detail mới vào KB {kb_id}")
         await db.refresh(kb, ['details'])
         return _convert_kb_to_dict(kb)
 
@@ -181,8 +181,9 @@ async def add_kb_rich_text_service(
         await db.rollback() 
         raise
 async def create_kb_with_files_service(
+        kb_id: int,
     title: str,
-    customer_id: str,
+    customer_id: int,
     user_id: int,
     files: List[UploadFile],
     db: AsyncSession
@@ -192,12 +193,12 @@ async def create_kb_with_files_service(
     """
     kb = None 
     try:
-        kb = KnowledgeBase(
-            title=title,
-            customer_id=customer_id
-        )
-        db.add(kb)
-        await db.flush() 
+        result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
+        kb = result.scalar_one_or_none()
+        
+        if not kb:
+            logger.error(f"Không tìm thấy KB {kb_id} để thêm rich text")
+            return None
         
         for file in files:
             detail = None
@@ -263,66 +264,10 @@ async def create_kb_with_files_service(
         await db.rollback()
         raise
 
-
-async def create_kb_with_rich_text_service(
-    title: str,
-    customer_id: str,
-    user_id: int,
-    raw_content: str,
-    db: AsyncSession
-):
-    """
-    Tạo knowledge base mới với input là rich text (manual)
-    """
-    kb = None
-    detail = None
-    try:
-        kb = KnowledgeBase(
-            title=title,
-            customer_id=customer_id
-        )
-        db.add(kb)
-        await db.flush() 
-
-        detail = KnowledgeBaseDetail(
-            knowledge_base_id=kb.id,
-            file_name=title, 
-            source_type="RICH_TEXT", 
-            raw_content=raw_content, 
-            file_type=None,
-            file_path=None,
-            is_active=True,
-            user_id= user_id
-        )
-        db.add(detail)
-        await db.flush() 
-        await db.commit()
-
-        text_result = await process_rich_text(
-            raw_content,
-            knowledge_base_detail_id=detail.id
-        )
-        
-        if text_result['success']:
-            logger.info(f"Đã xử lý rich text: {title} với {text_result.get('chunks_created', 0)} chunks")
-        else:
-            logger.error(f"Lỗi xử lý rich text {title}: {text_result.get('error')}")
-            await delete_chunks_by_detail_id(detail.id)
-            await db.delete(detail)
-            await db.commit()
-
-        await db.refresh(kb, ['details'])
-        return _convert_kb_to_dict(kb)
-
-    except Exception as e:
-        logger.error(f"Lỗi khi tạo knowledge base (rich text): {str(e)}")
-        await db.rollback() 
-        raise
-
 async def update_kb_with_rich_text_service(
     detail_id: int, 
-    title: str, 
     customer_id: Optional[str], 
+    user_id: Optional[int],
     raw_content: str, 
     db: AsyncSession
 ):
@@ -351,11 +296,9 @@ async def update_kb_with_rich_text_service(
              logger.error(f"Không tìm thấy KnowledgeBase cha cho detail_id={detail_id}.")
              return None
 
-        kb.title = title
         kb.customer_id = customer_id
-        detail.file_name = title 
         detail.raw_content = raw_content
-        detail.user_id = 3
+        detail.user_id = user_id
         await db.commit() 
         logger.info(f"Đã cập nhật text cho detail_id={detail_id}.")
 

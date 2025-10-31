@@ -12,7 +12,7 @@ class KnowledgeBase(Base):
     title = Column(String(500), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    customer_id = Column(String(100), default="manual")
+    customer_id = Column(Integer, default="manual")
     
     # Relationship
     details = relationship("KnowledgeBaseDetail", back_populates="knowledge_base", cascade="all, delete-orphan")
