@@ -33,7 +33,7 @@ async def search_kb(query: str = Query(...), db: AsyncSession = Depends(get_db))
 async def create_kb_files(
     kb_id: int = Form(...),
     title: str = Form(...),
-    customer_id: int = Form("manual"),
+    customer_id: Optional[int] = Form(None),
     files: List[UploadFile] = File(...),
     user_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db)

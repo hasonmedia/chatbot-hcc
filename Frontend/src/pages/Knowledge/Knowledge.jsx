@@ -127,8 +127,12 @@ const KnowledgePage = () => {
                     selectedFiles.forEach((file) => {
                         formDataToSend.append('files', file);
                     });
+                    formDataToSend.append('kb_id', '1'); // kb_id luôn = 1
                     formDataToSend.append('title', formData.title);
-                    formDataToSend.append('customer_id', formData.customer_id || 'manual');
+                    // Chỉ gửi customer_id nếu là số
+                    if (formData.customer_id && !isNaN(formData.customer_id)) {
+                        formDataToSend.append('customer_id', formData.customer_id);
+                    }
                     formDataToSend.append('user_id', user.id);
                     await updateKnowledgeWithFiles(knowledge.id, formDataToSend);
 
@@ -147,13 +151,15 @@ const KnowledgePage = () => {
                 // --- CHẾ ĐỘ TẠO MỚI (Tạo KB mới) ---
                 if (uploadMode === 'file') {
                     const formDataToSend = new FormData();
-                    // ... (logic tạo mới bằng file của bạn)
-                    // Ví dụ:
                     selectedFiles.forEach((file) => {
                         formDataToSend.append('files', file);
                     });
+                    formDataToSend.append('kb_id', '1'); // kb_id luôn = 1
                     formDataToSend.append('title', formData.title);
-                    formDataToSend.append('customer_id', formData.customer_id || 'manual');
+                    // Chỉ gửi customer_id nếu là số
+                    if (formData.customer_id && !isNaN(formData.customer_id)) {
+                        formDataToSend.append('customer_id', formData.customer_id);
+                    }
                     formDataToSend.append('user_id', user.id);
                     await createKnowledgeWithFiles(formDataToSend);
                 } else {

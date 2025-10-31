@@ -70,18 +70,7 @@ async def get_round_robin_api_key(
     db_session: AsyncSession,
     key_type: str = "bot"
 ) -> tuple[str, str]:
-    """
-    Lấy API key theo thuật toán Round-Robin cho mỗi chat session
     
-    Args:
-        llm_detail_id: ID của LLMDetail (1=gemini, 2=gpt)
-        chat_session_id: ID của chat session
-        db_session: AsyncSession - Database session
-        key_type: Loại key cần lấy ("bot" hoặc "embedding"), mặc định "bot"
-    
-    Returns:
-        tuple[str, str] - (api_key, key_name)
-    """
     from config.redis_cache import async_cache_get, async_cache_set
     
     try:
@@ -401,8 +390,20 @@ async def search_similar_documents(
             print("⚠️ Failed to create embedding for query")
             return []
 
-        query_embedding = query_embedding.tolist()
-        query_embedding = "[" + ",".join([str(x) for x in query_embedding]) + "]"
+        # Xử lý embedding tùy theo loại
+        if hasattr(query_embedding, 'tolist'):
+            # Nếu là numpy array (từ ChatGPT), convert sang list
+            query_embedding_list = query_embedding.tolist()
+        elif isinstance(query_embedding, list):
+            # Nếu đã là list (từ Gemini), giữ nguyên
+            query_embedding_list = query_embedding
+        else:
+            # Trường hợp không mong đợi
+            print(f"⚠️ Unexpected embedding type: {type(query_embedding)}")
+            return []
+        
+        # Chuyển list thành string format cho vector query
+        query_embedding = "[" + ",".join([str(x) for x in query_embedding_list]) + "]"
 
         sql = text("""
             SELECT id, chunk_text, search_vector <-> (:query_embedding)::vector AS similarity
@@ -590,12 +591,7 @@ async def generate_response_prompt(
         )
         
         
-        # Lấy cấu hình fields
-        # required_fields, optional_fields = await get_field_configs(db_session)
-        
-        # Tạo danh sách thông tin cần thu thập
-        # required_info_list = "\n".join([f"- {field_name} (bắt buộc)" for field_name in required_fields.values()])
-        # optional_info_list = "\n".join([f"- {field_name} (tùy chọn)" for field_name in optional_fields.values()])
+       
         
         # Import prompt_builder từ prompt.py
         from llm.prompt import prompt_builder

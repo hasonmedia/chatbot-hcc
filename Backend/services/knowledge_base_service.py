@@ -26,7 +26,7 @@ async def get_all_kbs_service(db: AsyncSession):
     """
     result = await db.execute(
         select(KnowledgeBase).options(
-            selectinload(KnowledgeBase.details)
+            selectinload(KnowledgeBase.details).selectinload(KnowledgeBaseDetail.user)
         )
     )
     kb = result.scalars().first() 
@@ -130,8 +130,8 @@ async def update_kb_with_files_service(
 
 async def add_kb_rich_text_service(
     kb_id: int,
-    customer_id: int,
-    user_id: int,     # Bỏ customer_id
+    customer_id: Optional[int],
+    user_id: int,
     raw_content: str,
     db: AsyncSession
 ):
@@ -181,9 +181,9 @@ async def add_kb_rich_text_service(
         await db.rollback() 
         raise
 async def create_kb_with_files_service(
-        kb_id: int,
+    kb_id: int,
     title: str,
-    customer_id: int,
+    customer_id: Optional[int],
     user_id: int,
     files: List[UploadFile],
     db: AsyncSession
@@ -197,7 +197,7 @@ async def create_kb_with_files_service(
         kb = result.scalar_one_or_none()
         
         if not kb:
-            logger.error(f"Không tìm thấy KB {kb_id} để thêm rich text")
+            logger.error(f"Không tìm thấy KB {kb_id} để thêm file")
             return None
         
         for file in files:
@@ -296,7 +296,9 @@ async def update_kb_with_rich_text_service(
              logger.error(f"Không tìm thấy KnowledgeBase cha cho detail_id={detail_id}.")
              return None
 
-        kb.customer_id = customer_id
+        if customer_id is not None:
+            kb.customer_id = customer_id
+        
         detail.raw_content = raw_content
         detail.user_id = user_id
         await db.commit() 
@@ -382,7 +384,13 @@ def _convert_kb_to_dict(kb: KnowledgeBase):
                 "raw_content": detail.raw_content,
                 "created_at": detail.created_at,
                 "is_active": detail.is_active,
-                "user_id": detail.user_id
+                "user_id": detail.user_id,
+                "user": {
+                    "id": detail.user.id,
+                    "username": detail.user.username,
+                    "full_name": detail.user.full_name,
+                    "email": detail.user.email
+                } if detail.user else None
             }
             for detail in kb.details
         ] if kb.details else []

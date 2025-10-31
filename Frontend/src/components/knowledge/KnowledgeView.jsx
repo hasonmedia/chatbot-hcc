@@ -1,4 +1,4 @@
-import { FileText, Trash2, Calendar, Tag, Edit } from "lucide-react";
+import { FileText, Trash2, Calendar, Tag, Edit, User, Clock } from "lucide-react";
 
 // (THÊM PROP MỚI) onEditDetail
 export const KnowledgeView = ({ knowledge, onDeleteFile, onEditDetail }) => {
@@ -10,6 +10,20 @@ export const KnowledgeView = ({ knowledge, onDeleteFile, onEditDetail }) => {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    };
+
+    const formatDateTime = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleString('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
     };
 
     const getFileIcon = (fileType) => {
@@ -67,9 +81,18 @@ export const KnowledgeView = ({ knowledge, onDeleteFile, onEditDetail }) => {
                                                     <span className="ml-2 text-xs font-normal text-blue-600">(Nội dung thủ công)</span>
                                                 )}
                                             </p>
-                                            <div className="flex gap-4 text-xs text-gray-500 mt-1">
+                                            <div className="flex flex-col gap-1 text-xs text-gray-500 mt-1">
                                                 {detail.created_at && (
-                                                    <span>{new Date(detail.created_at).toLocaleDateString('vi-VN')}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <Clock className="w-3 h-3" />
+                                                        <span>{formatDateTime(detail.created_at)}</span>
+                                                    </div>
+                                                )}
+                                                {detail.user && (
+                                                    <div className="flex items-center gap-1">
+                                                        <User className="w-3 h-3" />
+                                                        <span>{detail.user.full_name || detail.user.username}</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

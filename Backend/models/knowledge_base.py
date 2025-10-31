@@ -12,7 +12,7 @@ class KnowledgeBase(Base):
     title = Column(String(500), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    customer_id = Column(Integer, default="manual")
+    customer_id = Column(Integer)
     
     # Relationship
     details = relationship("KnowledgeBaseDetail", back_populates="knowledge_base", cascade="all, delete-orphan")
@@ -39,10 +39,12 @@ class KnowledgeBaseDetail(Base):
     
     source_type = Column(String(100), nullable=True)  # manual, web_crawl, api_import
     raw_content = Column(Text, nullable=True)  # Lưu trữ nội dung thô nếu cần
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
     # Relationships
     knowledge_base = relationship("KnowledgeBase", back_populates="details")
     chunks = relationship("DocumentChunk", back_populates="detail", cascade="all, delete-orphan")
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user = relationship("User", foreign_keys=[user_id])
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"

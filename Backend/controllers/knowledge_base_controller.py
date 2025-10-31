@@ -51,7 +51,7 @@ async def add_kb_rich_text_controller(
 async def create_kb_with_files_controller(
     kb_id: int,
     title: str,
-    customer_id: int,
+    customer_id: Optional[int],
     user_id: Optional[int],
     files: List[UploadFile],
     db: AsyncSession

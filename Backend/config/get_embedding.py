@@ -6,6 +6,7 @@ import google.generativeai as genai
 import numpy as np
 from typing import List, Union
 from concurrent.futures import ThreadPoolExecutor
+from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__) # Thêm logger
 
@@ -77,15 +78,18 @@ async def get_embedding_gemini(
         # --- KẾT THÚC SỬA LOGIC ---
 
         # Trích xuất embedding(s)
-        # API trả về list embeddings ngay cả khi input là 1 str
+        # API trả về dict với key "embedding" chứa list embedding vector(s)
         embeddings = response["embedding"] 
         
         if not embeddings:
              logger.error("API không trả về embedding nào.")
              return None
 
-        # Trả về đúng định dạng: 1 list nếu input là str, list of lists nếu input là list
-        return embeddings if is_batch else embeddings[0]
+        # Trả về đúng định dạng: 
+        # - Nếu input là list (batch): trả về list of lists (embeddings as-is)
+        # - Nếu input là str (single): trả về embeddings (vẫn là list vector)
+        # Không dùng embeddings[0] vì embeddings đã là vector cho single input
+        return embeddings
 
     except Exception as e:
         logger.exception(f"❌ Error getting Gemini embedding: {e}") # Dùng exception để có traceback

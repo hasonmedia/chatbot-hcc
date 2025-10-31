@@ -3,12 +3,14 @@ name: Build and Deploy FE
 on:
   push:
     branches:
-      - deploy_test   # chỉ chạy khi push lên nhánh main
+      - main   # chạy khi push lên nhánh main
+  workflow_dispatch:  # cho phép chạy manual từ GitHub UI
+  
 permissions:
   contents: write
   
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -27,22 +29,54 @@ jobs:
         run: npm run build
         working-directory: ./Frontend
 
-      - name: Deploy to branch
+      - name: Prepare deployment files
         run: |
-          rm -rf .git
-          mkdir deploy
-          # copy nguyên dist folder
+          # Tạo thư mục deploy
+          mkdir -p deploy
+          
+          # Copy dist folder (đã build)
           cp -r Frontend/dist deploy/
-          # copy Dockerfile và nginx.conf
+          
+          # Copy Dockerfile và nginx.conf
           cp Frontend/Dockerfile deploy/
           cp Frontend/nginx.conf deploy/
+          
+          # Tạo file README cho nhánh deploy
+          cat > deploy/README.md << 'EOF'
+          # Chatbot HCC - Frontend Deploy Branch
+          
+          This branch contains built frontend files ready for deployment.
+          
+          ## Files:
+          - `dist/` - Built frontend files
+          - `Dockerfile` - Docker configuration
+          - `nginx.conf` - Nginx configuration
+          
+          ## Deploy:
+          ```bash
+          docker build -t chatbot-frontend .
+          docker run -d -p 80:80 --name chatbot-frontend chatbot-frontend
+          ```
+          
+          **Auto-generated from main branch**
+          EOF
 
+      - name: Deploy to branch
+        run: |
           cd deploy
           git init
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "Deploy FE"
-          git branch -M deploy
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy FE from commit ${{ github.sha }}"
+          git branch -M deploy-frontend
           git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git push -f origin deploy
+          git push -f origin deploy-frontend
+          
+      - name: Summary
+        run: |
+          echo "✅ Frontend deployed successfully to branch: deploy-frontend"
+          echo "📦 Build from commit: ${{ github.sha }}"
+          echo "🌐 Frontend URL: https://chatbot1022.hasontech.com"
+          echo "🔗 Backend URL: https://chatbot1022be.hasontech.com"
+
