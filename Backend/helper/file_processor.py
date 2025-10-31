@@ -222,28 +222,71 @@ class FileProcessor:
         Đọc nội dung từ file Excel sử dụng UnstructuredExcelLoader
         """
         try:
-            loader = UnstructuredExcelLoader(file_path, mode="elements")
-            documents = loader.load()
+            import pandas as pd
             
-            # Kết hợp nội dung
-            full_text = "\n\n".join([doc.page_content for doc in documents])
+            # Đọc tất cả các sheet
+            excel_file = pd.ExcelFile(file_path)
+            sheet_contents = []
+            total_rows = 0
+            
+            for sheet_name in excel_file.sheet_names:
+                try:
+                    # Đọc sheet
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    
+                    if df.empty:
+                        continue
+                    
+                    # Chuyển DataFrame thành text có cấu trúc
+                    # Format: Sheet name, header, và từng dòng dữ liệu
+                    sheet_text = f"=== SHEET: {sheet_name} ===\n\n"
+                    
+                    # Thêm header
+                    headers = df.columns.tolist()
+                    sheet_text += "HEADER: " + " | ".join([str(h) for h in headers]) + "\n\n"
+                    
+                    # Thêm từng dòng dữ liệu với header
+                    for idx, row in df.iterrows():
+                        row_text = []
+                        for col in df.columns:
+                            value = row[col]
+                            # Bỏ qua giá trị NaN
+                            if pd.notna(value):
+                                row_text.append(f"{col}: {value}")
+                        
+                        if row_text:
+                            sheet_text += " | ".join(row_text) + "\n"
+                    
+                    sheet_contents.append(sheet_text)
+                    total_rows += len(df)
+                    
+                except Exception as e:
+                    logger.warning(f"Lỗi đọc sheet '{sheet_name}': {str(e)}")
+                    continue
+            
+            if not sheet_contents:
+                return {
+                    'success': False,
+                    'content': '',
+                    'error': 'Không thể đọc nội dung từ file Excel'
+                }
+            
+            # Kết hợp tất cả các sheet
+            full_text = "\n\n".join(sheet_contents)
             
             # Metadata
             metadata = {
-                'num_elements': len(documents),
-                'file_type': 'Excel'
+                'num_sheets': len(excel_file.sheet_names),
+                'total_rows': total_rows,
+                'file_type': 'Excel',
+                'source': file_path
             }
-            
-            if documents and documents[0].metadata:
-                metadata.update({
-                    'source': documents[0].metadata.get('source', ''),
-                })
             
             return {
                 'success': True,
                 'content': full_text,
                 'metadata': metadata,
-                'documents': documents  # Để chunk sau
+                'sheet_contents': sheet_contents  # Để chunk theo sheet nếu cần
             }
             
         except Exception as e:
