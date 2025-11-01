@@ -7,14 +7,6 @@ const ViewerDashboard = () => {
 
     const features = [
         {
-            title: 'Gửi tin nhắn',
-            description: 'Gửi tin nhắn hàng loạt cho khách hàng',
-            icon: MessageSquare,
-            color: 'bg-blue-500',
-            path: '/viewer/send-messages',
-            stats: 'Quản lý tin nhắn'
-        },
-        {
             title: 'Dữ liệu khách hàng',
             description: 'Xem và xuất dữ liệu khách hàng',
             icon: Users,

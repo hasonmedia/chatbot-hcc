@@ -2,7 +2,6 @@ from typing import Optional
 # Sửa: 'Request' đến từ 'fastapi', không phải 'urllib'
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, Response, HTTPException, Request 
 import json
-from models.field_config import FieldConfig
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db, AsyncSessionLocal # Sửa: Import AsyncSessionLocal
 import asyncio

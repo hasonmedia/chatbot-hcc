@@ -28,7 +28,6 @@ const ConversationAvatar = ({ conv, isSelected, hasCustomerNotification }) => (
     </div>
 );
 
-
 const SelectModeCheckbox = ({ isSelectedForDeletion, onToggle }) => (
     <div className="flex-shrink-0 flex items-center justify-center w-12 h-12">
         <div
@@ -56,7 +55,6 @@ const ConversationContent = ({
     isSelectedForDeletion,
     isSelected,
     timeFormatter,
-    tags,
     displayConversations,
     hasCustomerNotification
 }) => {
@@ -80,12 +78,6 @@ const ConversationContent = ({
         }
         return isSelected ? "text-blue-600" : "text-gray-500"
     }
-
-    // Lấy thông tin tag theo tên
-    const getTagInfoByName = (tagName) => {
-        return tags?.find((tag) => tag.name === tagName) || null
-    }
-
     return (
         <div className="flex-1 min-w-0 relative">
             {/* Header - Name with customer info indicator */}
@@ -117,29 +109,6 @@ const ConversationContent = ({
                 </p>
             </div>
 
-            {/* Tags - Zalo style chấm màu + tooltip */}
-            {!isSelectMode && conv.tag_names && conv.tag_names.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                    {conv.tag_names.map((tagName, index) => {
-                        const tagInfo = getTagInfoByName(tagName)
-                        if (!tagInfo) return null
-
-                        return (
-                            <div key={index} className="relative group/tag">
-                                <div
-                                    className="w-4 h-4 rounded-full border-2 border-white shadow-md cursor-pointer transition-all duration-200 hover:scale-110 hover:shadow-lg relative z-10"
-                                    style={{ backgroundColor: tagInfo.color }}
-                                />
-                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/tag:opacity-100 transition-all duration-300 whitespace-nowrap z-[200] pointer-events-none shadow-lg">
-                                    {tagInfo.name}
-                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-gray-900"></div>
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
-
             {/* Selected status in select mode */}
             {isSelectMode && isSelectedForDeletion && (
                 <div className="mb-2">
@@ -159,134 +128,6 @@ const ConversationContent = ({
     )
 }
 
-const TagButton = ({ isMenuOpen, onOpenMenu }) => (
-    <div className="flex-shrink-0 flex items-center justify-center">
-        <button
-            onClick={onOpenMenu}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 ${isMenuOpen
-                ? "bg-blue-500 text-white shadow-md"
-                : "bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 hover:shadow-sm"
-                }`}
-        >
-            <Plus className={`w-4 h-4 transition-transform ${isMenuOpen ? "rotate-45" : ""}`} />
-        </button>
-    </div>
-)
-
-const TagSection = ({ isSelectMode, isMenuOpen, onOpenMenu }) => {
-    if (isSelectMode) return null
-
-    return <TagButton isMenuOpen={isMenuOpen} onOpenMenu={onOpenMenu} />
-}
-
-const TagDropdown = ({ isMenuOpen, tags, conv, onTagSelect, onCloseMenu }) => {
-    if (!isMenuOpen) return null
-
-    return (
-        <div className="absolute top-full left-0 right-0 z-[9999] mt-2 pointer-events-auto">
-            <div className="mx-4 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-                {/* Header */}
-                <div className="px-3 py-2 bg-gray-50 border-b border-gray-100">
-                    <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                            <Tag className="w-4 h-4 text-blue-500" />
-                            Gắn thẻ
-                        </h4>
-                        <button
-                            onClick={onCloseMenu}
-                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
-                        >
-                            <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Tags List */}
-                <div className="max-h-60 overflow-y-auto">
-                    {tags && tags.length > 0 ? (
-                        <div className="p-2">
-                            {tags.map((tag, index) => {
-                                const isTagApplied =
-                                    conv.tag_names && conv.tag_names.includes(tag.name)
-                                const tagColor = tag.color
-
-                                return (
-                                    <div
-                                        key={tag.id}
-                                        className={`px-3 py-2.5 cursor-pointer text-sm transition-all duration-200 flex items-center gap-3 rounded-lg mb-1 last:mb-0 ${isTagApplied
-                                            ? "bg-blue-50 text-blue-800 border border-blue-200 shadow-sm"
-                                            : "hover:bg-gray-50 text-gray-700 border border-transparent hover:border-gray-200"
-                                            }`}
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onTagSelect?.(conv, tag)
-                                        }}
-                                    >
-                                        <div className="flex items-center gap-3 flex-1">
-                                            <div
-                                                className="w-4 h-4 rounded-full border border-white shadow-sm"
-                                                style={{ backgroundColor: tagColor }}
-                                            />
-                                            <span className="font-medium text-sm">{tag.name}</span>
-                                        </div>
-
-                                        <div className="flex items-center">
-                                            {isTagApplied && (
-                                                <div className="w-4 h-4 rounded bg-blue-500 flex items-center justify-center">
-                                                    <svg
-                                                        className="w-2.5 h-2.5 text-white"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={3}
-                                                            d="M5 13l4 4L19 7"
-                                                        />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    ) : (
-                        <div className="px-3 py-6 text-center text-gray-500">
-                            <div className="text-2xl mb-2">🏷️</div>
-                            <p className="text-sm">Chưa có thẻ nào</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
-                    <button
-                        onClick={onCloseMenu}
-                        className="w-full py-1.5 px-3 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded transition-colors"
-                    >
-                        Đóng
-                    </button>
-                </div>
-            </div>
-        </div>
-    )
-}
-
 // Main Component
 const ConversationItem = ({
     conv,
@@ -296,10 +137,8 @@ const ConversationItem = ({
     isSelectMode,
     isSelectedForDeletion,
     isMenuOpen,
-    tags,
     timeFormatter,
     onSelectConversation,
-    onTagSelect,
     handleToggleConversationSelection,
     handleOpenMenu,
     handleCloseMenu,
@@ -354,31 +193,11 @@ const ConversationItem = ({
                         isSelectedForDeletion={isSelectedForDeletion}
                         isSelected={isSelected}
                         timeFormatter={timeFormatter}
-                        tags={tags}
                         displayConversations={displayConversations}
                         hasCustomerNotification={hasCustomerNotification}
                     />
-
-                    {/* Tag Button */}
-                    <TagSection
-                        conv={conv}
-                        isSelectMode={isSelectMode}
-                        isMenuOpen={isMenuOpen}
-                        onOpenMenu={handleOpenMenuClick}
-                    />
                 </div>
             </div>
-
-            {/* Tag Dropdown - Only show when not in select mode */}
-            {!isSelectMode && (
-                <TagDropdown
-                    isMenuOpen={isMenuOpen}
-                    tags={tags}
-                    conv={conv}
-                    onTagSelect={onTagSelect}
-                    onCloseMenu={handleCloseMenu}
-                />
-            )}
         </div>
     )
 }

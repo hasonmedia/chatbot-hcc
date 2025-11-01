@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from models import user, company, llm, chat, facebook_page, field_config, telegram_page
+from models import user, company, llm, chat, facebook_page, telegram_page
 
 
 from routers import user_router
@@ -14,7 +14,6 @@ from routers import chat_router
 from routers import knowledge_base_router
 from routers import facebook_router
 from routers import llm_router
-from routers import field_config_router
 from routers import telegram_router
 from routers import zalotest
 from routers import zalo_router
@@ -41,7 +40,6 @@ app.include_router(chat_router.router)
 app.include_router(knowledge_base_router.router)
 app.include_router(facebook_router.router)
 app.include_router(llm_router.router)
-app.include_router(field_config_router.router)
 app.include_router(telegram_router.router)
 app.include_router(zalotest.router)
 app.include_router(zalo_router.router)
@@ -51,9 +49,10 @@ app.include_router(rating_router.router)
 
 # CORS Configuration - Không được dùng wildcard (*) khi allow_credentials=True
 origins = [
-    "https://chatbot1022.hasontech.com",  # Frontend production URL
     "http://localhost:5173",       # Frontend local development
     "http://localhost:3000",       # Alternative local port
+        "https://chatbot1022.hasontech.com",  # Frontend production URL
+
 ]
 
 app.add_middleware(

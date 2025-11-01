@@ -7,7 +7,6 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.get_embedding import get_embedding_chatgpt, get_embedding_gemini
 from models.chat import Message
-from models.field_config import FieldConfig
 from models.llm import LLM
 from config.redis_cache import cache_get, cache_set, cache_delete
 
@@ -427,59 +426,6 @@ async def search_similar_documents(
 
     except Exception as e:
         raise Exception(f"Lỗi khi tìm kiếm: {str(e)}")
-
-
-async def get_field_configs(db_session: AsyncSession) -> Tuple[Dict[str, str], Dict[str, str]]:
-   
-    cache_key = "field_configs:required_optional"
-    
-    # Thử lấy từ cache trước
-    cached_result = cache_get(cache_key)
-    if cached_result is not None:
-        return cached_result.get('required_fields', {}), cached_result.get('optional_fields', {})
-    
-    try:
-        result = await db_session.execute(
-            select(FieldConfig).order_by(FieldConfig.excel_column_letter)
-        )
-        field_configs = result.scalars().all()
-        
-        required_fields = {}
-        optional_fields = {}
-        
-        for config in field_configs:
-            field_name = config.excel_column_name
-            if config.is_required:
-                required_fields[field_name] = field_name
-            else:
-                optional_fields[field_name] = field_name
-        
-        # Cache kết quả với TTL 24 giờ (86400 giây)
-        cache_data = {
-            'required_fields': required_fields,
-            'optional_fields': optional_fields
-        }
-        cache_set(cache_key, cache_data, ttl=86400)
-                
-        return required_fields, optional_fields
-    except Exception as e:
-        print(f"Lỗi khi lấy field configs: {str(e)}")
-        # Trả về dict rỗng nếu có lỗi
-        return {}, {}
-
-
-
-def clear_field_configs_cache() -> bool:
-    """
-    Xóa cache field configs khi có thay đổi cấu hình
-    
-    Returns:
-        bool - True nếu xóa cache thành công, False nếu thất bại
-    """
-    cache_key = "field_configs:required_optional"
-    success = cache_delete(cache_key)
-    return success
-
 
 async def clear_llm_keys_cache(llm_detail_id: int = None, key_type: str = None) -> bool:
     """

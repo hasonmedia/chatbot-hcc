@@ -6,7 +6,6 @@ from services.chat_service import (
     delete_chat_session,
     delete_message,
     check_session_service,
-    get_all_customer_service,
     get_dashboard_summary
 )
 from fastapi import WebSocket, WebSocketDisconnect

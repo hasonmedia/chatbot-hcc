@@ -12,8 +12,6 @@ const Sidebar = ({
     getStatusColor,
     getStatusText,
     isLoading,
-    tags,
-    onTagSelect,
     onDeleteConversations,
     // Thêm props cho responsive
     isMobile,
@@ -88,13 +86,6 @@ const Sidebar = ({
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [isMobile, isOpen, onClose])
 
-    const filteredConversations = conversations.filter((conv) => {
-        if (selectedCategory === "all") return true;
-        return Array.isArray(conv.tag_names) && conv.tag_names.includes(selectedCategory);
-    })
-
-    const displayConversations = conversations.length > 0 ? filteredConversations : []
-
     const defaultFormatTime = (date) => {
         if (!date) return "Vừa xong"
         const now = new Date()
@@ -120,7 +111,6 @@ const Sidebar = ({
         }
         bg-white border-r border-gray-200 overflow-hidden flex flex-col h-full
     `
-    console.log("conversations:", conversations, tags)
     return (
         <>
             <style jsx>{`
@@ -164,10 +154,9 @@ const Sidebar = ({
                 {/* Header với padding để tránh đè lên nút close */}
                 <div className={isMobile ? "pr-16" : ""}>
                     <Header
-                        displayConversations={displayConversations}
+                        conversations={conversations}
                         searchTerm={searchTerm}
                         selectedCategory={selectedCategory}
-                        tags={tags}
                         setSearchTerm={setSearchTerm}
                         setSelectedCategory={setSelectedCategory}
                         onDeleteConversations={onDeleteConversations}
@@ -202,13 +191,13 @@ const Sidebar = ({
                                 </div>
                             ))}
                         </div>
-                    ) : displayConversations.length === 0 ? (
+                    ) : conversations.length === 0 ? (
                         <div className="text-center py-12 px-4 text-gray-500">
                             <div className="text-4xl mb-3">💬</div>
                             <p className="text-sm">Chưa có cuộc hội thoại nào</p>
                         </div>
                     ) : (
-                        displayConversations.map((conv, index) => {
+                        conversations.map((conv, index) => {
                             const convId = conv.session_id || conv.id || index
                             const isSelected = selectedConversation?.session_id === conv.session_id
                             const isMenuOpen = openMenu === convId
@@ -239,14 +228,12 @@ const Sidebar = ({
                                         timeFormatter={timeFormatter}
                                         isSelectedForDeletion={isSelectedForDeletion}
                                         isMenuOpen={isMenuOpen}
-                                        tags={tags}
                                         onSelectConversation={onSelectConversation}
-                                        onTagSelect={onTagSelect}
                                         handleToggleConversationSelection={handleToggleConversationSelection}
                                         handleOpenMenu={handleOpenMenu}
                                         handleCloseMenu={handleCloseMenu}
                                         isMobile={isMobile}
-                                        displayConversations={displayConversations}
+                                        conversations={conversations}
                                         hasCustomerNotification={hasCustomerNotification}
                                     />
                                 </div>

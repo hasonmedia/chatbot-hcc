@@ -13,8 +13,6 @@ import json
 import traceback
 from config.redis_cache import cache_delete
 
-
-
 async def create_session_service(url_channel: str, db):
     session = ChatSession(
         name=f"W-{random.randint(10**7, 10**8 - 1)}",
@@ -45,9 +43,6 @@ async def check_session_service(sessionId, url_channel, db):
     await db.commit()
     return session_id
     
-
-
-
 
 async def get_history_chat_service(chat_session_id: int, page: int = 1, limit: int = 10, db=None):
     # ✅ Validate chat_session_id
@@ -143,40 +138,6 @@ async def get_all_history_chat_service(db):
     except Exception as e:
         print(e)
         traceback.print_exc()
-
-async def get_all_customer_service(data: dict, db):
-    channel = data.get("channel")
-    tag_id = data.get("tag_id")
-
-    query = """
-        SELECT DISTINCT
-            cs.id AS session_id,
-            cs.channel,
-            cs.name,
-            cs.page_id
-        FROM chat_sessions cs
-    """
-
-    conditions = []
-    params = {}
-
-    if channel:
-        conditions.append("cs.channel = :channel")
-        params["channel"] = channel
-
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
-
-    query += " ORDER BY cs.id DESC;"
-
-    stmt = text(query)
-    result = await db.execute(stmt, params)
-    rows = result.mappings().all()
-
-    # result lúc này là list[RowMapping] → có thể convert sang list[dict]
-    return [dict(row) for row in rows]
-
-
 
 
 def clear_session_cache(session_id: int):

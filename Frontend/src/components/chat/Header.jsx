@@ -7,7 +7,6 @@ const Header = forwardRef(
         {
             searchTerm,
             selectedCategory,
-            tags,
             setSearchTerm,
             setSelectedCategory,
             onDeleteConversations,
@@ -101,16 +100,6 @@ const Header = forwardRef(
                     >
                         Tất cả
                     </button>
-                    {tags.map((tag) => (
-                        <button
-                            key={tag.id}
-                            onClick={() => setSelectedCategory(tag.name)}
-                            className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${selectedCategory === tag.name ? "bg-white text-blue-600" : "bg-blue-700 text-white hover:bg-blue-800"
-                                }`}
-                        >
-                            {tag.name}
-                        </button>
-                    ))}
                 </div>
 
                 {/* Delete Confirmation Modal */}

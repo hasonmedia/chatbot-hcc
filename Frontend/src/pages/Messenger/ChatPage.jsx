@@ -5,7 +5,6 @@ import {
     getAllChatHistory,
     connectAdminSocket,
     disconnectAdmin,
-    updateTag,
 } from "../../services/messengerService";
 import Sidebar from "../../components/chat/Sidebar";
 import MainChat from "../../components/chat/MainChat";
@@ -37,12 +36,6 @@ const ChatPage = () => {
     const [rightPanelOpen, setRightPanelOpen] = useState(false);
 
     const selectedConversationRef = useRef(null);
-    const [tag, setTag] = useState([]);
-    // Debug useEffect để kiểm tra tags
-    useEffect(() => {
-        console.log("🏷️ Tags state updated:", tag);
-    }, [tag]);
-
     const formatTime = (date) => {
         if (!date) return "";
         const now = new Date();
@@ -113,10 +106,6 @@ const ChatPage = () => {
     const handleSelectConversationWithClose = async (conv) => {
         await handleSelectConversation(conv);
         console.log("🔍 DEBUG: Chọn conversation:", conv.session_id);
-
-        // ❌ BỎ LOGIC TẮT THÔNG BÁO KHI CLICK CONVERSATION
-        // Thông báo chỉ tắt khi ấn nút "Xử lý" và xác nhận
-
         if (isMobile) {
             setSidebarOpen(false);
             setRightPanelOpen(false);
@@ -203,18 +192,7 @@ const ChatPage = () => {
                 setIsLoading(false);
             }
         };
-
-        const fetchTags = async () => {
-            try {
-                const tagData = await getTag();
-                setTag(Array.isArray(tagData) ? tagData : []);
-            } catch (err) {
-                console.error("❌ Error loading tags:", err);
-                setTag([]);
-            }
-        };
         fetchConversations();
-        fetchTags();
     }, []);
 
     useEffect(() => {
@@ -382,57 +360,6 @@ const ChatPage = () => {
             }
         }
     }, [conversations]);
-
-    const onTagSelect = async (conversation, tag) => {
-        console.log("🏷️ Toggling tag:", tag, "for conversation:", conversation);
-        try {
-            let updatedTagNames = conversation.tag_names || [];
-            let updatedTagIds = conversation.tag_ids || [];
-            if (updatedTagNames.includes(tag.name)) {
-                // Nếu đã có thì xóa
-                updatedTagIds = updatedTagIds.filter(id => id !== tag.id);
-                updatedTagNames = updatedTagNames.filter(name => name !== tag.name);
-            } else {
-                // Nếu chưa có thì thêm
-                updatedTagIds = [...updatedTagIds, tag.id];
-                updatedTagNames = [...updatedTagNames, tag.name];
-            }
-
-            const data = {
-                tags: updatedTagIds, // ✅ chỉ gửi ID cho backend
-            };
-
-            const res = await updateTag(conversation.session_id, data);
-            if (res) {
-                // Cập nhật conversations
-                setConversations(prev =>
-                    prev.map(conv =>
-                        conv.session_id === conversation.session_id
-                            ? {
-                                ...conv,
-                                tag_ids: updatedTagIds,
-                                tag_names: updatedTagNames,
-                            }
-                            : conv
-                    )
-                );
-
-                // Cập nhật selectedConversation
-                if (selectedConversation?.session_id === conversation.session_id) {
-                    setSelectedConversation(prev => ({
-                        ...prev,
-                        tag_ids: updatedTagIds,
-                        tag_names: updatedTagNames,
-                    }));
-                }
-
-                console.log("✅ Đã cập nhật tags:", updatedTagNames);
-            }
-        } catch (error) {
-            console.error("❌ Lỗi khi gắn/xóa tag:", error);
-            alert("Có lỗi xảy ra khi gắn/xóa tag!");
-        }
-    };
 
     const handleSelectConversation = async (conv) => {
         try {
@@ -627,8 +554,6 @@ const ChatPage = () => {
                     getStatusColor={() => "gray"}
                     getStatusText={() => ""}
                     isLoading={isLoading}
-                    tags={tag}
-                    onTagSelect={onTagSelect}
                     onDeleteConversations={handleDeleteConversations}
                     // Pass responsive props
                     isMobile={isMobile}
