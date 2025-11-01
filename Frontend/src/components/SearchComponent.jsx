@@ -38,28 +38,6 @@ export default function SearchComponent() {
         }
     }
 
-    const getSimilarityDisplay = (similarity) => {
-        const percentage = Math.round(similarity * 100)
-        let colorClass = "text-gray-500"
-        let bgClass = "bg-gray-100"
-
-        if (percentage >= 80) {
-            colorClass = "text-green-600"
-            bgClass = "bg-green-100"
-        } else if (percentage >= 60) {
-            colorClass = "text-blue-600"
-            bgClass = "bg-blue-100"
-        } else if (percentage >= 40) {
-            colorClass = "text-yellow-600"
-            bgClass = "bg-yellow-100"
-        } else {
-            colorClass = "text-red-600"
-            bgClass = "bg-red-100"
-        }
-
-        return { percentage, colorClass, bgClass }
-    }
-
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-6">
             <div className="flex gap-3">
@@ -107,8 +85,6 @@ export default function SearchComponent() {
                                 answerText = result.content
                             }
 
-                            const { percentage, colorClass, bgClass } = getSimilarityDisplay(result.similarity_score)
-
                             return (
                                 <Card key={index} className="border border-gray-200 shadow-sm">
                                     <CardContent className="p-4">
@@ -125,11 +101,6 @@ export default function SearchComponent() {
                                                         {answerText}
                                                     </p>
                                                 </div>
-                                            </div>
-                                            
-                                            {/* Percentage */}
-                                            <div className={`flex-shrink-0 px-3 py-1 rounded-full ${bgClass}`}>
-                                                <span className={`text-sm font-bold ${colorClass}`}>{percentage}%</span>
                                             </div>
                                         </div>
                                     </CardContent>

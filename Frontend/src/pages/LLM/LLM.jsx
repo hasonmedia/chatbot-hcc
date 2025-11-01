@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Settings, Save, CheckCircle, AlertCircle, Bot, Key, MessageCircle, Building } from "lucide-react";
-import ConfigAINew from './ConfigAINew';
+import ConfigAI from './ConfigAI';
 import ModelSelector from './ModelSelector';
 import ChatChanel from './ChatChanel';
 import CompanyInfo from './CompanyInfo';
@@ -113,7 +113,7 @@ const LLMNew = () => {
                 );
             case 'keys':
                 return (
-                    <ConfigAINew
+                    <ConfigAI
                         llmDetails={llmDetails}
                     />
                 );

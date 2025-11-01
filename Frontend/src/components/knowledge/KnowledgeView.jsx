@@ -54,7 +54,7 @@ export const KnowledgeView = ({ knowledge, onDeleteFile, onEditDetail }) => {
                     )}
                 </div>
 
-                {knowledge.details && knowledge.details.length > 0 && (
+                {knowledge.details && knowledge.details.length > 0 ? (
                     <div className="mb-6">
                         <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                             <FileText className="w-4 h-4" />
@@ -121,23 +121,13 @@ export const KnowledgeView = ({ knowledge, onDeleteFile, onEditDetail }) => {
                             ))}
                         </div>
                     </div>
+                ) : (
+                    <div className="text-center py-12">
+                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có dữ liệu kiến thức</h3>
+                        <p className="text-gray-600 text-sm">Bắt đầu bằng cách thêm file hoặc nội dung kiến thức</p>
+                    </div>
                 )}
-                {/* (HẾT SỬA LOGIC RENDER) */}
-
-                <div className="flex items-center gap-2 text-sm text-gray-500 mt-6 pt-4 border-t">
-                    <Calendar className="w-4 h-4" />
-                    <span>
-                        Tạo lúc: {knowledge.created_at ? new Date(knowledge.created_at).toLocaleDateString('vi-VN') : 'N/A'}
-                    </span>
-                    {knowledge.updated_at && knowledge.updated_at !== knowledge.created_at && (
-                        <>
-                            <span className="mx-2">•</span>
-                            <span>
-                                Cập nhật: {new Date(knowledge.updated_at).toLocaleDateString('vi-VN')}
-                            </span>
-                        </>
-                    )}
-                </div>
             </div>
         </div>
     );

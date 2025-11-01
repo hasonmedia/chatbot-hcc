@@ -103,9 +103,24 @@ const ConversationContent = ({
             {/* Content */}
             <div className="mb-2">
                 <p className={`text-sm transition-colors ${getMessageColor()}`}>
-                    {conv.content && conv.content.length > 30
-                        ? conv.content.slice(0, 30) + "..."
-                        : conv.content || "Chưa có tin nhắn"}
+                    {(() => {
+                        // Parse JSON nếu là bot message
+                        if (conv.content) {
+                            try {
+                                const data = JSON.parse(conv.content);
+                                const message = data.message || conv.content;
+                                return message.length > 50
+                                    ? message.slice(0, 50) + "..."
+                                    : message;
+                            } catch (e) {
+                                // Fallback nếu không parse được JSON
+                                return conv.content.length > 50
+                                    ? conv.content.slice(0, 50) + "..."
+                                    : conv.content;
+                            }
+                        }
+                        return "Chưa có tin nhắn";
+                    })()}
                 </p>
             </div>
 

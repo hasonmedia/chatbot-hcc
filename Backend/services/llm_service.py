@@ -5,9 +5,12 @@ from models.llm import LLM, LLMKey, LLMDetail
 
 async def create_llm_service(data: dict, db: AsyncSession):
     llm_instance = LLM(
-        name=data.get("name"),
-        key=data.get("key"),
         prompt=data.get("prompt"),
+        system_greeting=data.get("system_greeting"),
+        botName=data.get("botName"),
+        bot_model_detail_id=data.get("bot_model_detail_id"),
+        embedding_model_detail_id=data.get("embedding_model_detail_id"),
+        company_id=data.get("company_id")
     )
     db.add(llm_instance)
     await db.commit()

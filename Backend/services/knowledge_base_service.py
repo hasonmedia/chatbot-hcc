@@ -304,7 +304,7 @@ async def update_kb_with_rich_text_service(
         await db.commit() 
         logger.info(f"Đã cập nhật text cho detail_id={detail_id}.")
 
-
+   
         logger.info(f"Đang xóa các chunks cũ của detail_id={detail.id}...")
         await delete_chunks_by_detail_id(detail.id)
 
@@ -360,8 +360,50 @@ async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
 
 
 async def search_kb_service(query: str, db: AsyncSession):
+    """
+    Tìm kiếm tài liệu tương tự trong knowledge base
     
-    return "Chức năng tìm kiếm đang được phát triển."
+    Args:
+        query: Câu hỏi tìm kiếm
+        db: Database session
+    
+    Returns:
+        list: Danh sách kết quả tìm kiếm với similarity score
+    """
+    try:
+        from llm.help_llm import search_similar_documents, get_current_model
+        
+        # Lấy thông tin model embedding
+        model_info = await get_current_model(
+            db_session=db,
+            chat_session_id=None,  # Không cần session_id cho search
+            key_type="embedding"
+        )
+        
+        # Gọi hàm search với top_k=5
+        results = await search_similar_documents(
+            db_session=db,
+            query=query,
+            top_k=5,
+            api_key=model_info["key"],
+            model_name=model_info["name"]
+        )
+        
+        # Format lại kết quả để trả về cho frontend
+        formatted_results = []
+        for result in results:
+            formatted_results.append({
+                "content": result.get("content", ""),
+                "similarity_score": result.get("similarity_score", 0)
+            })
+        
+        return formatted_results
+        
+    except Exception as e:
+        print(f"❌ Lỗi khi tìm kiếm: {e}")
+        import traceback
+        traceback.print_exc()
+        raise Exception(f"Lỗi khi tìm kiếm trong knowledge base: {str(e)}")
 
 def _convert_kb_to_dict(kb: KnowledgeBase):
     """Hàm nội bộ để chuyển KB (model) sang dict (an toàn)"""
