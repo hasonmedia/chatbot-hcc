@@ -45,7 +45,102 @@ async def update_kb_service(kb_id: int, data: dict, db: AsyncSession):
     await db.refresh(kb)
     return kb
 
-
+async def create_kb_with_files_service(
+    kb_id: int,
+    title: str,
+    customer_id: Optional[int],
+    user_id: int,
+    files: List[UploadFile],
+    db: AsyncSession
+):
+    """
+    Tạo knowledge base mới với nhiều files
+    """
+    kb = None 
+    try:
+        result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
+        kb = result.scalar_one_or_none()
+        
+        if not kb:
+            logger.error(f"Không tìm thấy KB {kb_id} để thêm file")
+            return None
+        
+        for file in files:
+            detail = None
+            file_path = None
+            try:
+                file_path = os.path.join(UPLOAD_DIR, file.filename)
+                async with aiofiles.open(file_path, 'wb') as f:
+                    content_file = await file.read()
+                    await f.write(content_file)
+                
+                detail = KnowledgeBaseDetail(
+                    knowledge_base_id=kb.id,
+                    file_name=file.filename,
+                    source_type="FILE", 
+                    file_type=os.path.splitext(file.filename)[1].upper().replace('.', ''),
+                    file_path=file_path,
+                    is_active=True,
+                    user_id= user_id
+                )
+                db.add(detail)
+                await db.flush() 
+                await db.commit() 
+                
+                # Kiểm tra detail.id có tồn tại sau khi commit
+                if not detail.id:
+                    logger.error(f"Lỗi: detail.id không tồn tại sau khi commit cho file {file.filename}")
+                    raise Exception("Detail ID không tồn tại sau khi commit")
+                
+                # Kiểm tra detail có tồn tại trong DB không
+                check_result = await db.execute(
+                    select(KnowledgeBaseDetail).filter(KnowledgeBaseDetail.id == detail.id)
+                )
+                if not check_result.scalar_one_or_none():
+                    logger.error(f"Lỗi: detail_id={detail.id} không tồn tại trong DB cho file {file.filename}")
+                    raise Exception(f"Detail ID {detail.id} không tồn tại trong database")
+                
+                file_result = await process_uploaded_file(
+                    file_path, 
+                    file.filename,
+                    knowledge_base_detail_id=detail.id
+                )
+                
+                if file_result['success']:
+                    logger.info(f"Đã xử lý file: {file.filename} với {file_result.get('chunks_created', 0)} chunks")
+                else:
+                    logger.error(f"Lỗi xử lý file {file.filename}: {file_result.get('error')}")
+                    await delete_chunks_by_detail_id(detail.id)
+                    await db.delete(detail)
+                    await db.commit()
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        
+            except Exception as e:
+                logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
+                if detail and detail.id:
+                    await delete_chunks_by_detail_id(detail.id)
+                    try:
+                        await db.delete(detail)
+                        await db.commit()
+                    except:
+                        pass
+                if file_path and os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+                continue
+        
+        await db.refresh(kb, ['details'])
+        
+        logger.info(f"Đã tạo knowledge base với {len(files)} files")
+        return kb
+        
+    except Exception as e:
+        logger.error(f"Lỗi khi tạo knowledge base: {str(e)}")
+        await db.rollback()
+        raise
 async def update_kb_with_files_service(
     kb_id: int,
     title: Optional[str],
@@ -91,6 +186,19 @@ async def update_kb_with_files_service(
                 await db.flush() 
                 await db.commit() 
                 
+                # Kiểm tra detail.id có tồn tại sau khi commit
+                if not detail.id:
+                    logger.error(f"Lỗi: detail.id không tồn tại sau khi commit cho file {file.filename}")
+                    raise Exception("Detail ID không tồn tại sau khi commit")
+                
+                # Kiểm tra detail có tồn tại trong DB không
+                check_result = await db.execute(
+                    select(KnowledgeBaseDetail).filter(KnowledgeBaseDetail.id == detail.id)
+                )
+                if not check_result.scalar_one_or_none():
+                    logger.error(f"Lỗi: detail_id={detail.id} không tồn tại trong DB cho file {file.filename}")
+                    raise Exception(f"Detail ID {detail.id} không tồn tại trong database")
+                
                 file_result = await process_uploaded_file(
                     file_path, 
                     file.filename,
@@ -126,211 +234,6 @@ async def update_kb_with_files_service(
     await db.refresh(kb, ['details'])
     return kb
 
-# knowledge_base_service.py
-
-async def add_kb_rich_text_service(
-    kb_id: int,
-    customer_id: Optional[int],
-    user_id: int,
-    raw_content: str,
-    db: AsyncSession
-):
-    """
-    Thêm một detail (Rich Text) mới vào KB đã có
-    """
-    try:
-        result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
-        kb = result.scalar_one_or_none()
-        
-        if not kb:
-            logger.error(f"Không tìm thấy KB {kb_id} để thêm rich text")
-            return None
-
-        # Bỏ 2 dòng cập nhật kb.title và kb.customer_id
-
-        detail = KnowledgeBaseDetail(
-            knowledge_base_id=kb.id,
-            source_type="RICH_TEXT",
-            raw_content=raw_content,
-            is_active=True,
-            user_id= user_id
-        )
-        db.add(detail)
-        await db.flush() # Vẫn cần flush để lấy detail.id
-        await db.commit()
-        text_result = await process_rich_text(
-            raw_content,
-            knowledge_base_detail_id=detail.id
-        )
-        
-        if not text_result['success']:
-            logger.error(f"Lỗi xử lý rich text: {text_result.get('error')}")
-            # Nếu lỗi, rollback toàn bộ transaction
-            await db.rollback()
-            await db.commit()
-            return None # Hoặc raise Exception
-        
-        
-        
-        logger.info(f"Đã thêm rich text detail mới vào KB {kb_id}")
-        await db.refresh(kb, ['details'])
-        return _convert_kb_to_dict(kb)
-
-    except Exception as e:
-        logger.error(f"Lỗi khi thêm rich text vào KB (service): {str(e)}")
-        await db.rollback() 
-        raise
-async def create_kb_with_files_service(
-    kb_id: int,
-    title: str,
-    customer_id: Optional[int],
-    user_id: int,
-    files: List[UploadFile],
-    db: AsyncSession
-):
-    """
-    Tạo knowledge base mới với nhiều files
-    """
-    kb = None 
-    try:
-        result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
-        kb = result.scalar_one_or_none()
-        
-        if not kb:
-            logger.error(f"Không tìm thấy KB {kb_id} để thêm file")
-            return None
-        
-        for file in files:
-            detail = None
-            file_path = None
-            try:
-                file_path = os.path.join(UPLOAD_DIR, file.filename)
-                async with aiofiles.open(file_path, 'wb') as f:
-                    content_file = await file.read()
-                    await f.write(content_file)
-                
-                detail = KnowledgeBaseDetail(
-                    knowledge_base_id=kb.id,
-                    file_name=file.filename,
-                    source_type="FILE", 
-                    file_type=os.path.splitext(file.filename)[1].upper().replace('.', ''),
-                    file_path=file_path,
-                    is_active=True,
-                    user_id= user_id
-                )
-                db.add(detail)
-                await db.flush() 
-                await db.commit() 
-                
-                file_result = await process_uploaded_file(
-                    file_path, 
-                    file.filename,
-                    knowledge_base_detail_id=detail.id
-                )
-                
-                if file_result['success']:
-                    logger.info(f"Đã xử lý file: {file.filename} với {file_result.get('chunks_created', 0)} chunks")
-                else:
-                    logger.error(f"Lỗi xử lý file {file.filename}: {file_result.get('error')}")
-                    await delete_chunks_by_detail_id(detail.id)
-                    await db.delete(detail)
-                    await db.commit()
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        
-            except Exception as e:
-                logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
-                if detail and detail.id:
-                    await delete_chunks_by_detail_id(detail.id)
-                    try:
-                        await db.delete(detail)
-                        await db.commit()
-                    except:
-                        pass
-                if file_path and os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except:
-                        pass
-                continue
-        
-        await db.refresh(kb, ['details'])
-        
-        logger.info(f"Đã tạo knowledge base với {len(files)} files")
-        return kb
-        
-    except Exception as e:
-        logger.error(f"Lỗi khi tạo knowledge base: {str(e)}")
-        await db.rollback()
-        raise
-
-async def update_kb_with_rich_text_service(
-    detail_id: int, 
-    customer_id: Optional[int], 
-    user_id: Optional[int],
-    raw_content: str, 
-    db: AsyncSession
-):
-    """
-    Cập nhật một knowledge base detail (RICH_TEXT)
-    Sẽ xóa chunks cũ và tạo lại chunks mới
-    """
-    try:
-        result = await db.execute(
-            select(KnowledgeBaseDetail)
-            .options(selectinload(KnowledgeBaseDetail.knowledge_base)) 
-            .filter(KnowledgeBaseDetail.id == detail_id)
-        )
-        detail = result.scalar_one_or_none()
-        
-        if not detail:
-            logger.error(f"Không tìm thấy KnowledgeBaseDetail với id={detail_id} để cập nhật.")
-            return None
-        
-        if detail.source_type != "RICH_TEXT":
-            logger.error(f"Lỗi: detail_id={detail_id} không phải là RICH_TEXT.")
-            return None
-            
-        kb = detail.knowledge_base
-        if not kb:
-             logger.error(f"Không tìm thấy KnowledgeBase cha cho detail_id={detail_id}.")
-             return None
-
-        if customer_id is not None:
-            kb.customer_id = customer_id
-        
-        detail.raw_content = raw_content
-        detail.user_id = user_id
-        await db.commit() 
-        logger.info(f"Đã cập nhật text cho detail_id={detail_id}.")
-
-   
-        logger.info(f"Đang xóa các chunks cũ của detail_id={detail.id}...")
-        await delete_chunks_by_detail_id(detail.id)
-
-        logger.info(f"Đang tạo chunks mới cho detail_id={detail.id}...")
-        text_result = await process_rich_text(
-            raw_content=raw_content,
-            knowledge_base_detail_id=detail.id
-        )
-
-        if not text_result['success']:
-            logger.error(f"LỖI TÁI TẠO CHUNK: {text_result.get('error')}. "
-                         f"Detail {detail.id} sẽ không có chunk cho đến khi được cập nhật lại.")
-        else:
-            logger.info(f"Đã tạo {text_result.get('chunks_created', 0)} chunks mới.")
-
-        await db.refresh(kb)
-        
-        await db.refresh(kb, ['details']) 
-        
-        return _convert_kb_to_dict(kb)
-
-    except Exception as e:
-        logger.error(f"Lỗi nghiêm trọng khi cập nhật rich text (detail_id={detail_id}): {str(e)}")
-        await db.rollback()
-        raise
-
 async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
     """
     Xóa một file detail khỏi knowledge base (File hoặc Rich Text)
@@ -357,7 +260,6 @@ async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
         return True
     
     return False
-
 
 async def search_kb_service(query: str, db: AsyncSession):
     """
@@ -405,6 +307,179 @@ async def search_kb_service(query: str, db: AsyncSession):
         traceback.print_exc()
         raise Exception(f"Lỗi khi tìm kiếm trong knowledge base: {str(e)}")
 
+async def add_kb_rich_text_service(
+    kb_id: int,
+    customer_id: Optional[int],
+    file_name: str,
+    user_id: int,
+    raw_content: str,
+    db: AsyncSession
+):
+    try:
+        # 1. Truy vấn kb (không cần selectinload ở đây)
+        result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
+        kb = result.scalar_one_or_none()
+        
+        if not kb:
+            logger.error(f"Không tìm thấy KB {kb_id} để thêm rich text")
+            return None
+
+        detail = KnowledgeBaseDetail(
+            knowledge_base_id=kb.id,
+            source_type="RICH_TEXT",
+            file_name=file_name,
+            raw_content=raw_content,
+            is_active=True,
+            user_id= user_id
+        )
+        db.add(detail)
+        await db.flush() # Vẫn cần flush để lấy detail.id
+        await db.commit() # Commit ngay để đảm bảo detail được lưu
+        
+        # Kiểm tra detail.id có tồn tại sau khi commit
+        if not detail.id:
+            logger.error(f"Lỗi: detail.id không tồn tại sau khi commit cho rich text")
+            await db.rollback()
+            return None
+        
+        # Kiểm tra detail có tồn tại trong DB không
+        check_result = await db.execute(
+            select(KnowledgeBaseDetail).filter(KnowledgeBaseDetail.id == detail.id)
+        )
+        if not check_result.scalar_one_or_none():
+            logger.error(f"Lỗi: detail_id={detail.id} không tồn tại trong DB cho rich text")
+            await db.rollback()
+            return None
+        
+        # 2. Xử lý logic nghiệp vụ (KHÔNG COMMIT)
+        text_result = await process_rich_text(
+            raw_content,
+            knowledge_base_detail_id=detail.id
+        )
+        
+        # 3. SỬA LỖI TRANSACTION (Vấn đề 2)
+        if not text_result['success']:
+            logger.error(f"Lỗi xử lý rich text: {text_result.get('error')}")
+            # Xóa detail vừa tạo vì xử lý thất bại
+            await db.delete(detail)
+            await db.commit()
+            return None # KHÔNG commit
+        
+        # 4. Commit CHỈ KHI mọi thứ thành công
+        # Đã commit ở trên rồi, không cần commit lại
+        
+        logger.info(f"Đã thêm rich text detail mới vào KB {kb_id}")
+        
+        # 5. SỬA LỖI MISSINGGREENLET (Vấn đề 1)
+        # Tải lại đối tượng kb HOÀN CHỈNH với đầy đủ 'details' và 'user'
+        
+        stmt = (
+            select(KnowledgeBase)
+            .options(
+                selectinload(KnowledgeBase.details)  # Tải 'details'
+                .selectinload(KnowledgeBaseDetail.user) # Tải 'user' bên trong 'details'
+            )
+            .filter(KnowledgeBase.id == kb_id)
+        )
+        result = await db.execute(stmt)
+        refreshed_kb = result.scalar_one_or_none() # Lấy kb đã tải đầy đủ
+        
+        # Trả về đối tượng đã tải đầy đủ (an toàn)
+        return _convert_kb_to_dict(refreshed_kb)
+
+    except Exception as e:
+        logger.error(f"Lỗi khi thêm rich text vào KB (service): {str(e)}")
+        await db.rollback() 
+        raise
+
+async def update_kb_with_rich_text_service(
+    detail_id: int, 
+    customer_id: Optional[int], 
+    user_id: Optional[int],
+    raw_content: str, 
+    file_name: str,
+    db: AsyncSession
+):
+    """
+    Cập nhật một knowledge base detail (RICH_TEXT)
+    Sẽ xóa chunks cũ và tạo lại chunks mới (TRONG CÙNG 1 TRANSACTION)
+    """
+    try:
+        # Bước 1: Lấy detail và kb cha (phần này đã đúng)
+        result = await db.execute(
+            select(KnowledgeBaseDetail)
+            .options(selectinload(KnowledgeBaseDetail.knowledge_base)) 
+            .filter(KnowledgeBaseDetail.id == detail_id)
+        )
+        detail = result.scalar_one_or_none()
+        
+        if not detail:
+            logger.error(f"Không tìm thấy KnowledgeBaseDetail với id={detail_id} để cập nhật.")
+            return None
+        
+        if detail.source_type != "RICH_TEXT":
+            logger.error(f"Lỗi: detail_id={detail_id} không phải là RICH_TEXT.")
+            return None
+            
+        kb = detail.knowledge_base
+        if not kb:
+             logger.error(f"Không tìm thấy KnowledgeBase cha cho detail_id={detail_id}.")
+             return None
+
+        # Bước 2: Cập nhật thuộc tính (chưa commit)
+        if customer_id is not None:
+            kb.customer_id = customer_id
+        
+        detail.raw_content = raw_content
+        detail.user_id = user_id
+        detail.file_name = file_name
+        
+        logger.info(f"Đã cập nhật thuộc tính cho detail_id={detail_id} (chưa commit).")
+
+        # Bước 3: Xóa chunks cũ (chưa commit)
+        # Hàm delete_chunks_by_detail_id không nhận tham số db
+        logger.info(f"Đang xóa các chunks cũ của detail_id={detail.id} (transaction)")
+        await delete_chunks_by_detail_id(detail_id) # Không truyền db parameter
+
+        # Bước 4: Tạo chunks mới (chưa commit)
+        logger.info(f"Đang tạo chunks mới cho detail_id={detail.id} (transaction)")
+        text_result = await process_rich_text(
+            raw_content=raw_content,
+            knowledge_base_detail_id=detail.id
+        )
+
+        if not text_result['success']:
+            # Nếu thất bại, ném Exception để kích hoạt rollback ở khối 'except'
+            error_msg = f"LỖI TÁI TẠO CHUNK: {text_result.get('error')}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        logger.info(f"Đã tạo {text_result.get('chunks_created', 0)} chunks mới.")
+
+        # Bước 5: Commit MỘT LẦN DUY NHẤT
+        # Chỉ commit khi tất cả các bước trên thành công
+        await db.commit()
+        logger.info(f"Đã commit thành công toàn bộ thay đổi cho detail_id={detail_id}.")
+
+        # Bước 6: SỬA LỖI MissingGreenlet
+        # Tải lại 'kb' với đầy đủ quan hệ để trả về
+        stmt = (
+            select(KnowledgeBase)
+            .options(
+                selectinload(KnowledgeBase.details)
+                .selectinload(KnowledgeBaseDetail.user)
+            )
+            .filter(KnowledgeBase.id == kb.id)
+        )
+        result = await db.execute(stmt)
+        refreshed_kb = result.scalar_one_or_none()
+        
+        return _convert_kb_to_dict(refreshed_kb)
+
+    except Exception as e:
+        logger.error(f"Lỗi nghiêm trọng khi cập nhật rich text (detail_id={detail_id}), ĐANG ROLLBACK: {str(e)}")
+        await db.rollback() # Hoàn tác tất cả thay đổi (cả update text và xóa chunk)
+        raise
 def _convert_kb_to_dict(kb: KnowledgeBase):
     """Hàm nội bộ để chuyển KB (model) sang dict (an toàn)"""
     if not kb:

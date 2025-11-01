@@ -19,17 +19,6 @@ export const searchKnowledge = async (query) => {
     throw error;
   }
 };
-
-export const createKnowledgeRichText = async (data) => {
-  // data = { title, customer_id, raw_content }
-  try {
-    const response = await axiosClient.post("/knowledge-base/rich-text", data);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const createKnowledgeWithFiles = async (formData) => {
   // formData: { title, customer_id, files: [...] }
   try {
@@ -50,6 +39,7 @@ export const createKnowledgeWithFiles = async (formData) => {
 
 export const updateKnowledgeRichText = async (detailId, data) => {
   // data = { title, customer_id, raw_content }
+  console.log(data);
   try {
     const response = await axiosClient.put(
       `/knowledge-base/rich-text/${detailId}`,
@@ -92,6 +82,7 @@ export const deleteKnowledgeDetail = async (detailId) => {
 
 export const addKnowledgeRichText = async (kbId, data) => {
   // data = { title, customer_id, raw_content }
+  console.log(data);
   try {
     const response = await axiosClient.post(
       `/knowledge-base/rich-text/${kbId}`,

@@ -51,7 +51,6 @@ app.include_router(rating_router.router)
 origins = [
     "http://localhost:5173",       # Frontend local development
     "http://localhost:3000",       # Alternative local port
-        "https://chatbot1022.hasontech.com",  # Frontend production URL
 
 ]
 

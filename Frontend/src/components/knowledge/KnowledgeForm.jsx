@@ -9,13 +9,9 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
     // (MỚI) Tự động chọn tab khi edit
     useEffect(() => {
         if (isEdit) {
-            // Nếu đang edit và có raw_content (tức là sửa rich text)
-            // -> tự động chuyển sang tab 'manual'
             if (formData.raw_content) {
                 setUploadMode('manual');
             } else {
-                // Ngược lại, nếu đang edit (VD: thêm file)
-                // -> tự động chuyển sang tab 'file'
                 setUploadMode('file');
             }
         } else {
@@ -56,7 +52,7 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
     const handleRichTextChange = (htmlContent) => {
         const syntheticEvent = {
             target: {
-                name: 'raw_content', // Tên này phải khớp với state của cha
+                name: 'raw_content',
                 value: htmlContent
             }
         };
@@ -182,20 +178,6 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                     />
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Customer ID
-                    </label>
-                    <input
-                        type="text"
-                        name="customer_id"
-                        value={formData.customer_id}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Nhập customer ID..."
-                    />
-                </div>
-
                 {/* 3. THAY ĐỔI JSX HIỂN THỊ */}
                 {uploadMode === 'file' ? (
                     <div>
@@ -279,16 +261,33 @@ export const KnowledgeForm = ({ formData, handleChange, handleSubmit, handleCanc
                         )}
                     </div>
                 ) : (
-                    // === KHỐI NHẬP THỦ CÔNG ===
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Nội dung *
-                        </label>
-                        <TiptapEditor
-                            content={formData.raw_content || ''}
-                            onChange={handleRichTextChange}
-                        />
-                    </div>
+                    <>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Tiêu đề cho nội dung
+                            </label>
+                            <input
+                                type="text"
+                                name="file_name"
+                                value={formData.file_name}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Nhập tiêu đề cho nội dung..."
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Nội dung *
+                            </label>
+                            <TiptapEditor
+                                content={formData.raw_content || ''}
+                                onChange={handleRichTextChange}
+                            />
+                        </div>
+                    </>
+
+
                 )}
 
                 <div className="flex gap-3 pt-4">

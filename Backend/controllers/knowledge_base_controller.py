@@ -18,36 +18,6 @@ async def get_all_kbs_controller(db: AsyncSession):
     # Sửa tên hàm service
     return await knowledge_base_service.get_all_kbs_service(db) 
 
-# ----------------------------------------------------------------
-# CREATE (Tạo mới)
-# ----------------------------------------------------------------
-async def create_kb_with_rich_text_controller(
-    data: dict,
-    db: AsyncSession
-):
-    """
-    Controller tạo KB mới với Rich Text
-    """
-    raw_content = data.get("raw_content")
-    file_name = data.get("file_name")
-    user_id = data.get("user_id")
-    
-    if not raw_content or not file_name or not user_id:
-        raise HTTPException(status_code=400, detail="Thiếu 'file_name', 'raw_content' hoặc 'user_id'")
-
-    kb = await knowledge_base_service.create_kb_with_rich_text_service(
-        customer_id=data.get("customer_id"),
-        user_id=user_id,
-        file_name=file_name,
-        raw_content=raw_content,
-        db=db
-    )
-    
-    return {
-        "message": "Knowledge Base (rich text) created",
-        "knowledge_base": kb
-    }
-
 async def add_kb_rich_text_controller(
     kb_id: int,
     data: dict,

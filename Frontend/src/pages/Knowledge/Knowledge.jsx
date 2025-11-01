@@ -1,6 +1,5 @@
 import {
     getAllKnowledgeBases,
-    createKnowledgeRichText,
     createKnowledgeWithFiles,
     updateKnowledgeRichText,
     updateKnowledgeWithFiles,
@@ -18,6 +17,7 @@ const KnowledgePage = () => {
     const [formData, setFormData] = useState({
         title: "",
         customer_id: "",
+        file_name: "",
         raw_content: "", // Thêm state cho rich text
         detail_id: null  // Thêm state để biết đang sửa detail nào
     });
@@ -55,6 +55,7 @@ const KnowledgePage = () => {
     const resetForm = () => {
         setFormData({
             title: "",
+            file_name: "",
             customer_id: "",
             raw_content: "",
             detail_id: null
@@ -80,6 +81,7 @@ const KnowledgePage = () => {
         setFormData({
             title: knowledge.title, // Lấy title từ KB cha
             customer_id: knowledge.customer_id, // Lấy ID từ KB cha
+            file_name: detail.file_name,
             raw_content: detail.raw_content, // <-- Content của detail
             detail_id: detail.id // <-- ID của detail
         });
@@ -115,6 +117,7 @@ const KnowledgePage = () => {
                     // Case 1: Sửa 1 Rich Text Detail CỤ THỂ
                     const jsonData = {
                         title: formData.title,
+                        file_name: formData.file_name,
                         customer_id: formData.customer_id,
                         raw_content: formData.raw_content,
                         user_id: user.id
@@ -140,6 +143,8 @@ const KnowledgePage = () => {
                     // Case 3 (MỚI): Thêm Rich Text mới vào KB đã có
                     const jsonData = {
                         title: formData.title,
+                        file_name: formData.file_name,
+                        user_id: user.id,
                         customer_id: formData.customer_id,
                         raw_content: formData.raw_content
                     }; // <--- Sửa ở đây
@@ -165,11 +170,13 @@ const KnowledgePage = () => {
                 } else {
                     const jsonData = {
                         title: formData.title,
+                        file_name: formData.file_name,
+                        user_id: user.id,
                         customer_id: formData.customer_id,
-                        raw_content: formData.raw_content,
-                        user_id: user.id
+                        raw_content: formData.raw_content
                     }; // <--- Sửa ở đây
-                    await createKnowledgeRichText(jsonData);
+                    // Gọi API mới
+                    await addKnowledgeRichText(knowledge.id, jsonData);
                 }
             }
 
