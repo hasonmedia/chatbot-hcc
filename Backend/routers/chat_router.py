@@ -35,6 +35,7 @@ async def create_session(request: Request, db: AsyncSession = Depends(get_db)):
     return await create_session_controller(url_channel, db)
 
 
+
 @router.get("/session/{sessionId}")
 async def check_session(
     sessionId: int, 

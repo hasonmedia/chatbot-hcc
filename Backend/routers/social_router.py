@@ -33,10 +33,8 @@ async def customer_ws(websocket: WebSocket):
         await websocket.close(code=1008, reason="Invalid sessionId")
         return
 
-    # SỬA: Phải lấy DB session thủ công cho WebSocket
     async for db in get_db():
         try:
-            # Bạn cần đảm bảo hàm 'customer_chat' chấp nhận 'db'
             await customer_chat(websocket, session_id)
         except WebSocketDisconnect:
             print(f"Customer WS disconnected: {session_id}")
@@ -60,7 +58,7 @@ async def admin_ws(websocket: WebSocket):
         try:
             # SỬA: Truyền 'db' (session) chứ không phải 'get_db' (generator)
             user = await get_user_from_token(token, db) 
-            
+            print("[log]", user)
             # Thêm kiểm tra quyền
             if not user or user.role != "admin":
                 await websocket.close(code=1008, reason="Not authorized")

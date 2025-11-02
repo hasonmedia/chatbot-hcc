@@ -82,13 +82,6 @@ async def update_user(
     data = await request.json()
     return await user_controller.update_user_controller(user_id, data, db)
 
-# @router.get("/customers")
-# async def get_customers(
-#     db: AsyncSession = Depends(get_db),
-#     current_user: User = Depends(get_current_user) 
-# ):
-#     return await user_controller.get_all_customer_info_controller(db)
-
 @router.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")

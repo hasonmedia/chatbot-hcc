@@ -1,3 +1,4 @@
+from models.chat import ChatSession
 from services.chat_service import (
     create_session_service,
     get_history_chat_service,
@@ -35,11 +36,6 @@ async def get_history_chat_controller(chat_session_id: int, page: int = 1, limit
 async def get_all_history_chat_controller(db: AsyncSession):
     messages = await get_all_history_chat_service(db)
     return messages
-    
-async def get_all_customer_controller(data: dict, db: AsyncSession):
-    customers = await get_all_customer_service(data, db)
-    return customers
-
 
 async def update_chat_session_controller(id: int, data: dict, user, db: AsyncSession):
     chatSession = await update_chat_session(id, data, user, db)

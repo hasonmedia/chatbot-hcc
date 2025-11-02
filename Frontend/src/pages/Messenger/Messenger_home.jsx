@@ -36,7 +36,7 @@ export default function ChatPage() {
     const [hasRated, setHasRated] = useState(false);
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
     const [isSubmittingRating, setIsSubmittingRating] = useState(false);
-    
+
     // Hook để hiển thị rating prompt sau 5 phút (300 giây)
     const showRatingPrompt = useRatingTimer(messages, hasRated, 300);
 
@@ -417,9 +417,9 @@ export default function ChatPage() {
                                                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                                                 </div>
                                             </div>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
                                 {/* Rating Prompt - hiển thị sau 3 giây không hoạt động */}
                                 {showRatingPrompt && !hasRated && (
