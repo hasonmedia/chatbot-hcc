@@ -1,25 +1,17 @@
-# Core Framework (Gỡ ghim phiên bản để giải quyết xung đột)
-fastapi
-uvicorn[standard]
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
 
-# Database
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
 pgvector==0.2.4
 
-# Configuration
 python-dotenv==1.0.0
-
-# Authentication & Security
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.6
 bcrypt==4.1.1
-
-# Data Validation (Gỡ ghim pydantic, để fastapi tự chọn)
 pydantic-settings==2.1.0
 
-# Google APIs
 google-generativeai==0.8.5
 google-api-python-client==2.110.0
 google-auth==2.23.4
@@ -27,34 +19,23 @@ google-auth-oauthlib==1.1.0
 google-auth-httplib2==0.1.1
 gspread==5.12.4
 
-# OpenAI
 openai==1.40.0
 
-# Data Processing
 Pillow==10.1.0
-
-# File Processing
 pypdf==4.0.1
 python-docx==1.1.0
-# openpyxl sẽ được cài bởi unstructured[xlsx]
 
-# LangChain Stack (Đã sửa lỗi xung đột)
-langchain
-langchain-core
-langchain-community
-langchain-text-splitters
-langsmith
-langgraph
-unstructured
-unstructured[xlsx]
-networkx
-msoffcrypto-tool
-# Networking
+langchain==0.3.7
+langchain-core==0.3.14
+langchain-community==0.3.4
+langchain-text-splitters==0.3.1
+langsmith==0.1.66
+langgraph==0.1.3
+unstructured==0.14.8
+networkx==3.2.1
+msoffcrypto-tool==5.2.1
+
 requests==2.31.0
-websockets==12.0
-
-# Async File Operations
 aiofiles==23.2.1
-
-# Cache
+websockets==12.0
 redis==5.0.1
