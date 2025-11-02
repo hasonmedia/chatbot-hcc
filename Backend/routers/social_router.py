@@ -60,9 +60,9 @@ async def admin_ws(websocket: WebSocket):
             user = await get_user_from_token(token, db) 
             print("[log]", user)
             # Thêm kiểm tra quyền
-            if not user or user.role != "admin":
-                await websocket.close(code=1008, reason="Not authorized")
-                return
+            # if not user or user.role != "admin":
+            #     await websocket.close(code=1008, reason="Not authorized")
+            #     return
 
             await websocket.accept()
             # Bạn cần đảm bảo hàm 'admin_chat' chấp nhận 'db'
