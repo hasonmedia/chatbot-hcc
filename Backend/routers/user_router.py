@@ -62,9 +62,6 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
 ):
-    # BẮT BUỘC: Thêm kiểm tra quyền, ví dụ chỉ admin
-    if current_user.role != "admin":
-         raise HTTPException(status_code=403, detail="Not authorized to create users")
     data = await request.json()
     return await user_controller.create_user_controller(data, db)
 
