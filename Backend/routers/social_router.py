@@ -33,54 +33,46 @@ async def customer_ws(websocket: WebSocket):
         await websocket.close(code=1008, reason="Invalid sessionId")
         return
 
-    # SỬA: Phải lấy DB session thủ công cho WebSocket
-    async for db in get_db():
+    try:
+        # customer_chat tự tạo DB session khi cần
+        await customer_chat(websocket, session_id)
+    except WebSocketDisconnect:
+        print(f"Customer WS disconnected: {session_id}")
+    except Exception as e:
+        print(f"❌ Lỗi Customer WS: {e}")
+        import traceback
+        traceback.print_exc()
         try:
-            # Bạn cần đảm bảo hàm 'customer_chat' chấp nhận 'db'
-            await customer_chat(websocket, session_id)
-        except WebSocketDisconnect:
-            print(f"Customer WS disconnected: {session_id}")
-            return
-        except Exception as e:
-            print(f"❌ Lỗi Customer WS: {e}")
             await websocket.close(code=1011, reason="Server error")
-            return
-    
-    # Nếu không lấy được DB
-    await websocket.close(code=1011, reason="DB connection failed")
+        except:
+            pass
 
 
 @router.websocket("/ws/admin")
 async def admin_ws(websocket: WebSocket):
     token = websocket.cookies.get("access_token")
+    user = None
+    
+    try:
+        user = await get_user_from_token(token)
+        
+        
+        
 
-    # SỬA: Phải lấy DB session thủ công cho WebSocket
-    async for db in get_db():
-        user = None
+        
+        await admin_chat(websocket, user)
+
+    except WebSocketDisconnect:
+        username = user.username if user else "unknown_admin"
+        print(f"Admin WS disconnected: {username}")
+    except Exception as e:
+        print(f"❌ Lỗi Admin WS: {e}")
+        import traceback
+        traceback.print_exc()
         try:
-            # SỬA: Truyền 'db' (session) chứ không phải 'get_db' (generator)
-            user = await get_user_from_token(token, db) 
-            
-            # Thêm kiểm tra quyền
-            if not user or user.role != "admin":
-                await websocket.close(code=1008, reason="Not authorized")
-                return
-
-            await websocket.accept()
-            # Bạn cần đảm bảo hàm 'admin_chat' chấp nhận 'db'
-            await admin_chat(websocket, user, db) 
-
-        except WebSocketDisconnect:
-            username = user.username if user else "unknown_admin"
-            print(f"Admin WS disconnected: {username}")
-            return
-        except Exception as e:
-            print(f"❌ Lỗi Admin WS: {e}")
             await websocket.close(code=1011, reason="Server error")
-            return
-            
-    # Nếu không lấy được DB
-    await websocket.close(code=1011, reason="DB connection failed")
+        except:
+            pass
 
 
 async def process_message(platform: str, body: dict):

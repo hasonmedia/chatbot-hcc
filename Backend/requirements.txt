@@ -36,19 +36,17 @@ Pillow==10.1.0
 # File Processing
 pypdf==4.0.1
 python-docx==1.1.0
-# openpyxl sẽ được cài bởi unstructured[xlsx]
+openpyxl==3.1.2
+beautifulsoup4==4.12.2
+docx2txt==0.9
+pandas
 
-# LangChain Stack (Đã sửa lỗi xung đột)
+# Langchain
 langchain
 langchain-core
 langchain-community
 langchain-text-splitters
-langsmith
-langgraph
-unstructured
-unstructured[xlsx]
-networkx
-msoffcrypto-tool
+
 # Networking
 requests==2.31.0
 websockets==12.0

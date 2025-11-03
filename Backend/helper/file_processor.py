@@ -5,12 +5,9 @@ Xử lý đọc nội dung từ các file PDF, WORD, Excel và chunk vào databa
 import os
 import logging
 from typing import Dict, Optional, List, Union
-from langchain_community.document_loaders import (
-    UnstructuredExcelLoader,
-    PyPDFLoader,
-    Docx2txtLoader  # Loader đơn giản hơn, không cần internet
-)
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from config.get_embedding import get_embedding_gemini
 from models.knowledge_base import DocumentChunk
 from config.database import AsyncSessionLocal

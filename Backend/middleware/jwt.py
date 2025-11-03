@@ -63,12 +63,7 @@ def decode_token(token: str):
     except JWTError:
         return None
 
-async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
-    """
-    HÀM HELPER MỚI:
-    Giải mã token một cách an toàn và lấy User từ CSDL.
-    Trả về None nếu có bất kỳ lỗi nào (hết hạn, không lệ, không tìm thấy user).
-    """
+async def get_user_from_token(token: str) -> User | None:
     if not token:
         return None
     try:
@@ -81,23 +76,23 @@ async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
         # Nếu token hết hạn hoặc không hợp lệ, trả về None
         return None
 
-    # Truy vấn CSDL để lấy user thật sự
-    result = await db.execute(select(User).filter(User.id == user_id))
-    user = result.scalar_one_or_none()
-    
-    # Trả về user nếu tìm thấy, ngược lại trả về None
-    return user
+    # Tự tạo DB session mới
+    from config.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).filter(User.id == user_id))
+        user = result.scalar_one_or_none()
+        return user
 
 
 async def get_current_user(
     request: Request, db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    SỬA LẠI: Dependency cho HTTP, giờ sẽ gọi hàm helper.
+    Dependency cho HTTP requests - lấy user từ token cookie.
     """
     token = request.cookies.get("access_token")
     
-    user = await get_user_from_token(token, db) # <-- Dùng hàm helper
+    user = await get_user_from_token(token)  # ✅ Không cần truyền db nữa
     
     # Nếu không có user, văng lỗi HTTP cụ thể
     if user is None:

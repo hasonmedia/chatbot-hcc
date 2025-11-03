@@ -1,12 +1,12 @@
 import gspread
 from google.oauth2.service_account import Credentials
-from config.get_embedding import get_embedding_chatgpt, get_embedding_gemini
+from langchain_community.document_loaders import UnstructuredExcelLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from config.get_embedding import get_embedding_gemini
 from models.knowledge_base import DocumentChunk
 from config.database import AsyncSessionLocal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import UnstructuredExcelLoader
 
 
 async def insert_chunks(chunks_data: list):
