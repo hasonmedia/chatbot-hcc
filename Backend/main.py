@@ -49,6 +49,7 @@ app.include_router(rating_router.router)
 
 # CORS Configuration - Không được dùng wildcard (*) khi allow_credentials=True
 origins = [
+    "https://chatbot1022.hasontech.com",
     "http://localhost:5173",       # Frontend local development
     "http://localhost:3000",       # Alternative local port
 

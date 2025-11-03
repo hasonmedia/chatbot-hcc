@@ -1,13 +1,11 @@
-"""
-File Processor Helper
-Xử lý đọc nội dung từ các file PDF, WORD, Excel và chunk vào database
-"""
+
 import os
 import logging
 from typing import Dict, Optional, List, Union
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
+from pypdf import PdfReader
+from docx import Document
 from config.get_embedding import get_embedding_gemini
 from models.knowledge_base import DocumentChunk
 from config.database import AsyncSessionLocal
@@ -88,31 +86,37 @@ class FileProcessor:
     @staticmethod
     async def extract_text_from_pdf(file_path: str) -> Dict[str, any]:
         """
-        Đọc nội dung từ file PDF sử dụng PyPDFLoader
+        Đọc nội dung từ file PDF sử dụng pypdf
         """
         try:
-            loader = PyPDFLoader(file_path)
-            documents = loader.load()
+            reader = PdfReader(file_path)
             
-            # Kết hợp nội dung từ tất cả các trang
-            full_text = "\n\n".join([doc.page_content for doc in documents])
+            # Lấy nội dung từ tất cả các trang
+            full_text = ""
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    full_text += text + "\n\n"
             
             # Metadata
             metadata = {
-                'num_pages': len(documents),
-                'file_type': 'PDF'
+                'num_pages': len(reader.pages),
+                'file_type': 'PDF',
+                'source': file_path
             }
             
-            if documents and documents[0].metadata:
+            # Thêm metadata từ PDF nếu có
+            if reader.metadata:
                 metadata.update({
-                    'source': documents[0].metadata.get('source', ''),
+                    'title': reader.metadata.get('/Title', ''),
+                    'author': reader.metadata.get('/Author', ''),
+                    'subject': reader.metadata.get('/Subject', ''),
                 })
             
             return {
                 'success': True,
-                'content': full_text,
-                'metadata': metadata,
-                'documents': documents  # Để chunk sau
+                'content': full_text.strip(),
+                'metadata': metadata
             }
             
         except Exception as e:
@@ -126,92 +130,55 @@ class FileProcessor:
     @staticmethod
     async def extract_text_from_docx(file_path: str) -> Dict[str, any]:
         """
-        Đọc nội dung từ file DOCX sử dụng Docx2txtLoader
-        (Fallback sang python-docx nếu Docx2txtLoader lỗi)
+        Đọc nội dung từ file DOCX sử dụng python-docx
         """
         try:
-            # Thử dùng Docx2txtLoader trước (đơn giản, không cần internet)
-            try:
-                loader = Docx2txtLoader(file_path)
-                documents = loader.load()
-                
-                # Kết hợp nội dung
-                full_text = "\n\n".join([doc.page_content for doc in documents])
-                
-                # Metadata
-                metadata = {
-                    'num_elements': len(documents),
-                    'file_type': 'DOCX'
-                }
-                
-                if documents and documents[0].metadata:
-                    metadata.update({
-                        'source': documents[0].metadata.get('source', ''),
-                    })
-                
-                return {
-                    'success': True,
-                    'content': full_text,
-                    'metadata': metadata,
-                    'documents': documents
-                }
-            except Exception as e:
-                logger.warning(f"Docx2txtLoader failed: {str(e)}, trying python-docx...")
-                # Fallback sang python-docx
-                raise
-                
+            doc = Document(file_path)
+            text_content = []
+            
+            # Đọc các đoạn văn
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    text_content.append(para.text)
+            
+            # Đọc nội dung trong bảng
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = " | ".join([cell.text.strip() for cell in row.cells])
+                    if row_text.strip():
+                        text_content.append(row_text)
+            
+            full_text = "\n\n".join(text_content)
+            
+            # Metadata
+            metadata = {
+                'num_paragraphs': len(doc.paragraphs),
+                'num_tables': len(doc.tables),
+                'file_type': 'DOCX',
+                'source': file_path
+            }
+            
+            # Thêm core properties nếu có
+            if doc.core_properties:
+                metadata.update({
+                    'title': doc.core_properties.title or '',
+                    'author': doc.core_properties.author or '',
+                    'subject': doc.core_properties.subject or '',
+                })
+            
+            return {
+                'success': True,
+                'content': full_text,
+                'metadata': metadata
+            }
+            
         except Exception as e:
-            # Fallback: Dùng python-docx trực tiếp
-            try:
-                # Cần cài: pip install python-docx
-                from docx import Document 
-                
-                doc = Document(file_path)
-                text_content = []
-                
-                # Đọc các đoạn văn
-                for para in doc.paragraphs:
-                    if para.text.strip():
-                        text_content.append(para.text)
-                
-                # Đọc nội dung trong bảng
-                for table in doc.tables:
-                    for row in table.rows:
-                        row_text = " | ".join([cell.text.strip() for cell in row.cells])
-                        if row_text.strip():
-                            text_content.append(row_text)
-                
-                full_text = "\n\n".join(text_content)
-                
-                # Metadata
-                metadata = {
-                    'num_paragraphs': len(doc.paragraphs),
-                    'num_tables': len(doc.tables),
-                    'file_type': 'DOCX'
-                }
-                
-                # Thêm core properties nếu có
-                if doc.core_properties:
-                    metadata.update({
-                        'title': doc.core_properties.title or '',
-                        'author': doc.core_properties.author or '',
-                        'subject': doc.core_properties.subject or '',
-                    })
-                
-                logger.info(f"✅ Đã đọc DOCX bằng python-docx fallback")
-                return {
-                    'success': True,
-                    'content': full_text,
-                    'metadata': metadata
-                    # Lưu ý: fallback này không trả về 'documents'
-                }
-            except Exception as e2:
-                logger.error(f"Lỗi đọc file DOCX (cả 2 methods): {str(e2)}")
-                return {
-                    'success': False,
-                    'content': '',
-                    'error': str(e2)
-                }
+            logger.error(f"Lỗi đọc file DOCX: {str(e)}")
+            return {
+                'success': False,
+                'content': '',
+                'error': str(e)
+            }
     
     @staticmethod
     async def extract_text_from_excel(file_path: str) -> Dict[str, any]:
@@ -344,15 +311,8 @@ class FileProcessor:
                 chunk_overlap=cls.CHUNK_OVERLAP
             )
             
-            all_chunks = []
-            if 'documents' in result:
-                # Split từ langchain documents (ưu tiên)
-                for doc in result['documents']:
-                    chunks = text_splitter.split_text(doc.page_content)
-                    all_chunks.extend(chunks)
-            else:
-                # Split từ text content (fallback)
-                all_chunks = text_splitter.split_text(result['content'])
+            # Split từ text content
+            all_chunks = text_splitter.split_text(result['content'])
             
             if not all_chunks:
                 return {

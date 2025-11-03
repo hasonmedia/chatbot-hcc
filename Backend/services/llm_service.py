@@ -35,10 +35,12 @@ async def update_llm_service(llm_id: int, data: dict, db: AsyncSession):
     
     # Cập nhật model được chọn cho bot và embedding
     if 'bot_model_detail_id' in data:
-        llm_instance.bot_model_detail_id = data.get('bot_model_detail_id')
-    
+        # Dùng int() thay vì .parse_int()
+        llm_instance.bot_model_detail_id = int(data.get('bot_model_detail_id'))
+
     if 'embedding_model_detail_id' in data:
-        llm_instance.embedding_model_detail_id = data.get('embedding_model_detail_id')
+        # Dùng int() thay vì .parse_int()
+        llm_instance.embedding_model_detail_id = int(data.get('embedding_model_detail_id'))
     
     await db.commit()
     await db.refresh(llm_instance)

@@ -62,9 +62,6 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
 ):
-    # BẮT BUỘC: Thêm kiểm tra quyền, ví dụ chỉ admin
-    if current_user.role != "admin":
-         raise HTTPException(status_code=403, detail="Not authorized to create users")
     data = await request.json()
     return await user_controller.create_user_controller(data, db)
 
@@ -81,13 +78,6 @@ async def update_user(
     
     data = await request.json()
     return await user_controller.update_user_controller(user_id, data, db)
-
-# @router.get("/customers")
-# async def get_customers(
-#     db: AsyncSession = Depends(get_db),
-#     current_user: User = Depends(get_current_user) 
-# ):
-#     return await user_controller.get_all_customer_info_controller(db)
 
 @router.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
