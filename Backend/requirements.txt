@@ -42,10 +42,8 @@ docx2txt==0.9
 pandas
 
 # Langchain
-langchain
-langchain-core
-langchain-community
 langchain-text-splitters
+
 
 # Networking
 requests==2.31.0
