@@ -17,3 +17,4 @@ class User(Base):
     
     
     company_id = Column(Integer, ForeignKey("company.id"), nullable=False)
+

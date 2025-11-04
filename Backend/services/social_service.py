@@ -31,8 +31,7 @@ manager = ConnectionManager()
 
 
 async def send_message_fast_service(data: dict, user, db):
-
-    sender_name = user.get("fullname") if user else None
+    sender_name = user.full_name if user else None
     chat_session_id = data.get("chat_session_id")
     
     # Xử lý ảnh nếu có
