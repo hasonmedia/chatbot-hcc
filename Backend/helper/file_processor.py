@@ -11,61 +11,44 @@ from models.knowledge_base import DocumentChunk
 from config.database import AsyncSessionLocal
 from sqlalchemy import delete, select
 from bs4 import BeautifulSoup # Cần cho rich text: pip install beautifulsoup4
+from config.chromadb_config import add_documents_to_chroma, delete_documents_by_detail_id
 
 logger = logging.getLogger(__name__)
 
 
 async def insert_chunks_to_db(chunks_data: list):
-    """
-    Insert chunks vào database (BULK)
-    
-    Args:
-        chunks_data: List của dict chứa chunk_text, search_vector, knowledge_base_detail_id
-    """
-    async with AsyncSessionLocal() as session:
-        try:
-            new_chunks = []
-            for d in chunks_data:
-                new_chunks.append(
-                    DocumentChunk(
-                        chunk_text=str(d['chunk_text']),
-                        search_vector=d.get('search_vector'),
-                        knowledge_base_detail_id=d['knowledge_base_detail_id']
-                    )
-                )
-            
-            # Thêm tất cả vào session một lần
-            session.add_all(new_chunks) 
-            
-            # Commit một lần duy nhất
-            await session.commit()
-            
-            logger.info(f"Đã insert {len(new_chunks)} chunks vào database")
-        except Exception as e:
-            logger.error(f"Lỗi bulk insert chunks: {str(e)}")
-            await session.rollback()
-            raise
+    try:
+        await add_documents_to_chroma(chunks_data)
+    except Exception as e:
+        logger.error(f"Lỗi bulk insert chunks: {str(e)}")
+        raise
+        
 
 
 async def delete_chunks_by_detail_id(detail_id: int):
     """
     Xóa tất cả chunks liên quan đến một knowledge_base_detail_id
+    Từ cả PostgreSQL VÀ ChromaDB
     
     Args:
         detail_id: ID của knowledge_base_detail
     """
-    async with AsyncSessionLocal() as session:
-        try:
-            await session.execute(
-                delete(DocumentChunk).where(DocumentChunk.knowledge_base_detail_id == detail_id)
-            )
-            await session.commit()
-            logger.info(f"Đã xóa tất cả chunks của detail_id={detail_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Lỗi xóa chunks: {str(e)}")
-            await session.rollback()
-            return False
+    try:
+        # Xóa từ PostgreSQL
+        # await session.execute(
+        #     delete(DocumentChunk).where(DocumentChunk.knowledge_base_detail_id == detail_id)
+        # )
+        # await session.commit()
+        
+        # Xóa từ ChromaDB
+        await delete_documents_by_detail_id(detail_id)
+        
+        logger.info(f"Đã xóa tất cả chunks của detail_id={detail_id} từ PostgreSQL và ChromaDB")
+        return True
+    except Exception as e:
+        logger.error(f"Lỗi xóa chunks: {str(e)}")
+        return False
+        
 
 
 class FileProcessor:

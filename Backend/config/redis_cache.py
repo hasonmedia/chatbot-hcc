@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class RedisCache:
     def __init__(self):
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        self.redis_host = os.getenv("REDIS_HOST", "localhost")
+        self.redis_host = os.getenv("REDIS_HOST", "localhost") 
         self.redis_port = int(os.getenv("REDIS_PORT", 6379))
         self.redis_db = int(os.getenv("REDIS_DB", 0))
         self.redis_password = os.getenv("REDIS_PASSWORD", None)

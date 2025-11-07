@@ -12,3 +12,7 @@ venv
 .env
 config_sheet.json
 
+# ChromaDB data
+chroma_data/
+*.sqlite3
+

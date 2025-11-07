@@ -3,7 +3,6 @@ from datetime import datetime
 from config.database import Base
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from pgvector.sqlalchemy import Vector
 
 class KnowledgeBase(Base):
     __tablename__ = "knowledge_base"
@@ -51,7 +50,7 @@ class DocumentChunk(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     chunk_text = Column(Text, nullable=False)
-    search_vector = Column(Vector(3072))
+    # search_vector đã chuyển sang ChromaDB - không cần lưu trong PostgreSQL nữa
     
     # Foreign key đến knowledge_base_detail thay vì knowledge_base
     knowledge_base_detail_id = Column(Integer, ForeignKey("knowledge_base_detail.id"), nullable=False)

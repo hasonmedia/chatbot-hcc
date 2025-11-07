@@ -16,6 +16,7 @@ async def create_page_service(data: dict, db: AsyncSession):
         webhook_verify_token=data.get("webhook_verify_token"),
         is_active=data.get("is_active", True),
         auto_response_enabled=data.get("auto_response_enabled", True),
+        url=data.get("url"),
         description=data.get("description"),
         category=data.get("category"),
         avatar_url=data.get("avatar_url"),
@@ -39,6 +40,7 @@ async def update_page_service(page_id: int, data: dict, db: AsyncSession):
     page.webhook_verify_token = data.get("webhook_verify_token", page.webhook_verify_token)
     page.is_active = data.get("is_active", page.is_active)
     page.auto_response_enabled = data.get("auto_response_enabled", page.auto_response_enabled)
+    page.url = data.get("url", page.url)
     page.description = data.get("description", page.description)
     page.category = data.get("category", page.category)
     page.avatar_url = data.get("avatar_url", page.avatar_url)

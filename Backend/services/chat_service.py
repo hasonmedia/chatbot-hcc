@@ -274,7 +274,7 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
                 FROM messages m
                 JOIN chat_sessions cs ON cs.id = m.chat_session_id
                 LEFT JOIN customer_info ci ON cs.id = ci.chat_session_id
-                GROUP BY cs.channel, DATE_TRUNC('month', m.created_at)
+                GROUP BY cs.channel, DATE_TRUNC('month', m.created_at)  
             )
             SELECT 
                 curr.channel,
@@ -315,6 +315,207 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
             "pieData": [],
             "lineData": [],
             "tableData": [],
+        }
+
+
+async def get_messages_by_time_service(start_date: str, end_date: str, db: Session) -> Dict[str, Any]:
+    """
+    API 1: Thống kê tổng lượng tin nhắn theo thời gian
+    """
+    try:
+        # Parse dates
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+        
+        # Query tổng số tin nhắn
+        total_query = text("""
+            SELECT COUNT(m.id) AS total
+            FROM messages m
+            WHERE m.created_at BETWEEN :start_date AND :end_date
+        """)
+        
+        result = await db.execute(total_query, {"start_date": start, "end_date": end})
+        total_row = result.fetchone()
+        total_messages = total_row.total if total_row else 0
+        
+        # Query thống kê theo ngày
+        daily_query = text("""
+            SELECT 
+                TO_CHAR(DATE(m.created_at), 'YYYY-MM-DD') AS date,
+                COUNT(m.id) AS count
+            FROM messages m
+            WHERE m.created_at BETWEEN :start_date AND :end_date
+            GROUP BY DATE(m.created_at)
+            ORDER BY DATE(m.created_at)
+        """)
+        
+        result = await db.execute(daily_query, {"start_date": start, "end_date": end})
+        daily_rows = result.fetchall()
+        daily_statistics = [{"date": row.date, "count": row.count} for row in daily_rows]
+        
+        return {
+            "totalMessages": total_messages,
+            "dailyStatistics": daily_statistics
+        }
+        
+    except Exception as e:
+        print(f"Error in get_messages_by_time_service: {e}")
+        traceback.print_exc()
+        return {
+            "totalMessages": 0,
+            "dailyStatistics": []
+        }
+
+
+async def get_messages_by_platform_service(start_date: str, end_date: str, db: Session) -> Dict[str, int]:
+    """
+    API 2: Thống kê lượng tin nhắn theo nền tảng trong khoảng thời gian
+    """
+    try:
+        # Parse dates
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+        
+        # Query thống kê theo platform
+        platform_query = text("""
+            SELECT 
+                cs.channel AS platform,
+                COUNT(m.id) AS count
+            FROM messages m
+            JOIN chat_sessions cs ON cs.id = m.chat_session_id
+            WHERE m.created_at BETWEEN :start_date AND :end_date
+            GROUP BY cs.channel
+        """)
+        
+        result = await db.execute(platform_query, {"start_date": start, "end_date": end})
+        platform_rows = result.fetchall()
+        
+        # Khởi tạo kết quả với các nền tảng mặc định
+        platform_data = {
+            "facebook": 0,
+            "telegram": 0,
+            "zalo": 0,
+            "web": 0
+        }
+        
+        # Cập nhật dữ liệu từ query
+        for row in platform_rows:
+            platform_name = row.platform.lower()
+            if platform_name in platform_data:
+                platform_data[platform_name] = row.count
+        
+        return platform_data
+        
+    except Exception as e:
+        print(f"Error in get_messages_by_platform_service: {e}")
+        traceback.print_exc()
+        return {
+            "facebook": 0,
+            "telegram": 0,
+            "zalo": 0,
+            "web": 0
+        }
+
+
+async def get_ratings_by_time_service(start_date: str, end_date: str, db: Session) -> Dict[str, Any]:
+    """
+    API 1: Thống kê tổng lượng đánh giá theo thời gian
+    """
+    try:
+        # Parse dates
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+        
+        # Query tổng số đánh giá
+        total_query = text("""
+            SELECT COUNT(r.id) AS total
+            FROM rating r
+            WHERE r.created_at BETWEEN :start_date AND :end_date
+        """)
+        
+        result = await db.execute(total_query, {"start_date": start, "end_date": end})
+        total_row = result.fetchone()
+        total_reviews = total_row.total if total_row else 0
+        
+        # Query thống kê theo ngày
+        daily_query = text("""
+            SELECT 
+                TO_CHAR(DATE(r.created_at), 'YYYY-MM-DD') AS date,
+                COUNT(r.id) AS count
+            FROM rating r
+            WHERE r.created_at BETWEEN :start_date AND :end_date
+            GROUP BY DATE(r.created_at)
+            ORDER BY DATE(r.created_at)
+        """)
+        
+        result = await db.execute(daily_query, {"start_date": start, "end_date": end})
+        daily_rows = result.fetchall()
+        daily_statistics = [{"date": row.date, "count": row.count} for row in daily_rows]
+        
+        return {
+            "totalReviews": total_reviews,
+            "dailyStatistics": daily_statistics
+        }
+        
+    except Exception as e:
+        print(f"Error in get_ratings_by_time_service: {e}")
+        traceback.print_exc()
+        return {
+            "totalReviews": 0,
+            "dailyStatistics": []
+        }
+
+
+async def get_ratings_by_star_service(start_date: str, end_date: str, db: Session) -> Dict[str, int]:
+    """
+    API 2: Thống kê đánh giá theo số sao
+    """
+    try:
+        # Parse dates
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+        
+        # Query thống kê theo số sao
+        star_query = text("""
+            SELECT 
+                r.rate AS star,
+                COUNT(r.id) AS count
+            FROM rating r
+            WHERE r.created_at BETWEEN :start_date AND :end_date
+                AND r.rate IS NOT NULL
+            GROUP BY r.rate
+            ORDER BY r.rate
+        """)
+        
+        result = await db.execute(star_query, {"start_date": start, "end_date": end})
+        star_rows = result.fetchall()
+        
+        # Khởi tạo kết quả với các mức sao mặc định
+        star_data = {
+            "1_star": 0,
+            "2_star": 0,
+            "3_star": 0,
+            "4_star": 0,
+            "5_star": 0
+        }
+        
+        # Cập nhật dữ liệu từ query
+        for row in star_rows:
+            star_key = f"{row.star}_star"
+            if star_key in star_data:
+                star_data[star_key] = row.count
+        
+        return star_data
+        
+    except Exception as e:
+        print(f"Error in get_ratings_by_star_service: {e}")
+        traceback.print_exc()
+        return {
+            "1_star": 0,
+            "2_star": 0,
+            "3_star": 0,
+            "4_star": 0,
+            "5_star": 0
         }
 
 

@@ -19,6 +19,10 @@ from controllers.chat_controller import (
     delete_message_controller,
     check_session_controller,
     get_dashboard_summary_controller,
+    get_messages_by_time_controller,
+    get_messages_by_platform_controller,
+    get_ratings_by_time_controller,
+    get_ratings_by_star_controller
 )
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -72,4 +76,93 @@ async def delete_messages(chatId: int, request: Request, db: AsyncSession = Depe
     body = await request.json()        # lấy JSON từ body
     ids = body.get("ids", [])          # danh sách id messages
     return await delete_message_controller(chatId, ids, db)
+
+
+@router.get("/statistics/messages/time")
+async def get_messages_by_time(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 1: Thống kê tổng lượng tin nhắn theo thời gian
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về:
+    - totalMessages: Tổng số tin nhắn
+    - dailyStatistics: Thống kê theo từng ngày
+    """
+    return await get_messages_by_time_controller(startDate, endDate, db)
+
+
+@router.get("/statistics/messages/platform")
+async def get_messages_by_platform(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 2: Thống kê lượng tin nhắn theo nền tảng trong khoảng thời gian
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về số lượng tin nhắn theo từng nền tảng:
+    - facebook
+    - telegram
+    - zalo
+    - web
+    """
+    return await get_messages_by_platform_controller(startDate, endDate, db)
+
+
+@router.get("/statistics/ratings/time")
+async def get_ratings_by_time(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 1: Thống kê tổng lượng đánh giá theo thời gian
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về:
+    - totalReviews: Tổng số đánh giá
+    - dailyStatistics: Thống kê theo từng ngày
+    """
+    return await get_ratings_by_time_controller(startDate, endDate, db)
+
+
+@router.get("/statistics/ratings/star")
+async def get_ratings_by_star(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 2: Thống kê đánh giá theo số sao
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về số lượng đánh giá theo từng mức sao:
+    - 1_star
+    - 2_star
+    - 3_star
+    - 4_star
+    - 5_star
+    """
+    return await get_ratings_by_star_controller(startDate, endDate, db)
+
+
+
+
 

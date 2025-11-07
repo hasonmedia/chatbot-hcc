@@ -378,8 +378,13 @@ async def search_similar_documents(
     api_key: str = None,
     model_name: str = None
 ) -> List[Dict]:
+    """
+    Tìm kiếm documents tương tự sử dụng ChromaDB thay vì PostgreSQL Vector
+    """
+    from config.chromadb_config import search_similar_chunks
     
     try:
+        # Tạo embedding cho query
         if "gemini" in model_name:
             query_embedding = await get_embedding_gemini(query, api_key=api_key)
         else: 
@@ -401,25 +406,18 @@ async def search_similar_documents(
             print(f"⚠️ Unexpected embedding type: {type(query_embedding)}")
             return []
         
-        # Chuyển list thành string format cho vector query
-        query_embedding = "[" + ",".join([str(x) for x in query_embedding_list]) + "]"
-
-        sql = text("""
-            SELECT id, chunk_text, search_vector <-> (:query_embedding)::vector AS similarity
-            FROM document_chunks
-            ORDER BY search_vector <-> (:query_embedding)::vector
-            LIMIT :top_k
-        """)
-
-        result = await db_session.execute(
-            sql, {"query_embedding": query_embedding, "top_k": top_k}
+        # Sử dụng ChromaDB để search
+        chroma_results = await search_similar_chunks(
+            query_embedding=query_embedding_list,
+            top_k=top_k
         )
-        rows = result.fetchall()
 
+        
+        # Format kết quả theo định dạng cũ để giữ nguyên logic
         results = []
-        for row in rows:
+        for item in chroma_results:
             results.append({
-                "content": row.chunk_text
+                "content": item["content"]
             })
 
         return results

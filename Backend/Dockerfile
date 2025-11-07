@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy file requirements trước (tận dụng cache)
-COPY requirements.txt .
+COPY requirements.txt . 
 
 # Cài Python dependencies
 RUN pip install --no-cache-dir --upgrade pip \
