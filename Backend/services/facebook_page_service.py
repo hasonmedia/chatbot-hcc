@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.facebook_page import FacebookPage
+from fastapi import HTTPException
 import json
 
 async def get_all_pages_service(db: AsyncSession):
@@ -9,6 +10,18 @@ async def get_all_pages_service(db: AsyncSession):
 
 
 async def create_page_service(data: dict, db: AsyncSession):
+    # Kiểm tra page_id đã tồn tại
+    result = await db.execute(select(FacebookPage).filter(FacebookPage.page_id == data["page_id"]))
+    existing_page = result.scalar_one_or_none()
+    if existing_page:
+        raise HTTPException(status_code=400, detail=f"Facebook Page ID '{data['page_id']}' đã tồn tại")
+    
+    # Kiểm tra page_name đã tồn tại
+    result = await db.execute(select(FacebookPage).filter(FacebookPage.page_name == data["page_name"]))
+    existing_name = result.scalar_one_or_none()
+    if existing_name:
+        raise HTTPException(status_code=400, detail=f"Tên Facebook Page '{data['page_name']}' đã được sử dụng")
+    
     page = FacebookPage(
         page_id=data["page_id"],
         page_name=data["page_name"],
@@ -35,16 +48,31 @@ async def update_page_service(page_id: int, data: dict, db: AsyncSession):
     if not page:
         return None
     
-    page.page_name = data.get("page_name", page.page_name)
-    page.access_token = data.get("access_token", page.access_token)
-    page.webhook_verify_token = data.get("webhook_verify_token", page.webhook_verify_token)
-    page.is_active = data.get("is_active", page.is_active)
-    page.auto_response_enabled = data.get("auto_response_enabled", page.auto_response_enabled)
-    page.url = data.get("url", page.url)
-    page.description = data.get("description", page.description)
-    page.category = data.get("category", page.category)
-    page.avatar_url = data.get("avatar_url", page.avatar_url)
-    page.cover_url = data.get("cover_url", page.cover_url)
+    # Kiểm tra page_id nếu được cập nhật
+    if "page_id" in data and data["page_id"] != page.page_id:
+        result = await db.execute(select(FacebookPage).filter(FacebookPage.page_id == data["page_id"]))
+        existing_page = result.scalar_one_or_none()
+        if existing_page:
+            raise HTTPException(status_code=400, detail=f"Facebook Page ID '{data['page_id']}' đã tồn tại")
+        page.page_id = data["page_id"]
+    
+    # Kiểm tra page_name nếu được cập nhật
+    if "page_name" in data and data["page_name"] != page.page_name:
+        result = await db.execute(select(FacebookPage).filter(FacebookPage.page_name == data["page_name"]))
+        existing_name = result.scalar_one_or_none()
+        if existing_name:
+            raise HTTPException(status_code=400, detail=f"Tên Facebook Page '{data['page_name']}' đã được sử dụng")
+        page.page_name = data["page_name"]
+    
+    if "access_token" in data: page.access_token = data["access_token"]
+    if "webhook_verify_token" in data: page.webhook_verify_token = data["webhook_verify_token"]
+    if "is_active" in data: page.is_active = data["is_active"]
+    if "auto_response_enabled" in data: page.auto_response_enabled = data["auto_response_enabled"]
+    if "url" in data: page.url = data["url"]
+    if "description" in data: page.description = data["description"]
+    if "category" in data: page.category = data["category"]
+    if "avatar_url" in data: page.avatar_url = data["avatar_url"]
+    if "cover_url" in data: page.cover_url = data["cover_url"]
     page.company_id = 1  
 
     await db.commit()

@@ -8,7 +8,6 @@ from services.llm_service import (
 from llm.help_llm import clear_llm_keys_cache
 
 async def create_llm_key_controller(llm_detail_id: int, data: dict, db: AsyncSession):
-    """Tạo key mới cho LLMDetail"""
     llm_key = await create_llm_key_service(llm_detail_id, data, db)
     
     # Xóa cache để force reload danh sách keys mới

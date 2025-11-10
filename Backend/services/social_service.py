@@ -113,14 +113,14 @@ async def send_message_fast_service(data: dict, user, db):
             
         return response_messages
     
-    # 🚀 Xử lý bot reply trong background (không block WebSocket)
+    # 🚀 Xử lý bot reply
     should_reply = await check_repply_cached(chat_session_id, db)
     if should_reply:
         asyncio.create_task(generate_and_send_bot_response_background(
             data.get("content"),
             chat_session_id,
             session_data,
-            manager  # ✅ FIX: Add manager parameter
+            manager
         ))
         
     

@@ -15,7 +15,6 @@ router = APIRouter(prefix="/rating", tags=["Rating"])
 
 @router.post("/{session_id}")
 async def create_rating(session_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    """Tạo hoặc cập nhật đánh giá cho chat session"""
     data = await request.json()
     return await create_rating_controller(session_id, data, db)
 

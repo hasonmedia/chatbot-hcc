@@ -1,5 +1,9 @@
 async def prompt_builder(knowledge, history, query) -> str:
     
+    print(f"--- Prompt Builder Called --- {knowledge}")
+    
+    
+    
     
     prompt = f"""
         🎯 NHIỆM VỤ CỦA BẠN:
@@ -18,18 +22,13 @@ async def prompt_builder(knowledge, history, query) -> str:
         2. Chỉ **sử dụng thông tin có trong dữ liệu được cung cấp** (kiến thức cơ sở).  
         Nếu thông tin người dùng hỏi **không có trong dữ liệu**, bạn phải nói rõ rằng:
         > “Hiện tại tôi chưa có thông tin chính thức về nội dung này trong cơ sở dữ liệu. Bạn có thể truy cập [https://dichvucong.gov.vn](https://dichvucong.gov.vn) để tra cứu thêm.”
-
         3. Luôn trả lời **ngắn gọn, rõ ràng, đúng pháp lý, thân thiện** và tránh suy đoán.
-
         ---
-
         📚 **ĐẦU VÀO:**
         - **Câu hỏi của người dân:** {query}
         - **Ngữ cảnh hội thoại trước đó:** {history}
         - **Kiến thức cơ sở:** {knowledge}
-
         ---
-
         🗣️ **CÁCH TRẢ LỜI:**
         - Ưu tiên ngôn ngữ **chuẩn hành chính, nhưng dễ hiểu cho người dân**.  
         - Nếu người dùng hỏi về **quy trình, hồ sơ hoặc biểu mẫu**, hãy liệt kê **theo từng bước**.  

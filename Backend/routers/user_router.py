@@ -72,9 +72,14 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
 ):
-    # BẮT BUỘC: Kiểm tra quyền (admin hoặc chính người đó)
-    if current_user.role != "admin" and current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this user")
+    # Kiểm tra quyền: root, superadmin, admin có thể update bất kỳ user nào
+    # User thường chỉ có thể update chính mình
+    allowed_roles = ["root", "superadmin", "admin"]
+    if current_user.role not in allowed_roles and current_user.id != user_id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Bạn không có quyền cập nhật thông tin người dùng này"
+        )
     
     data = await request.json()
     return await user_controller.update_user_controller(user_id, data, db)

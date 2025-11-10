@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  
+load_dotenv() 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 # Kiểm tra và đảm bảo sử dụng async driver

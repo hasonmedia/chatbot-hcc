@@ -27,6 +27,16 @@ async def update_llm(llm_id: int, request: Request, db: AsyncSession = Depends(g
     data = await request.json()
     return await update_llm_controller(llm_id, data, db)
 
+@router.put("/{llm_id}/bot-model")
+async def update_bot_model(llm_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    data = await request.json()
+    return await update_llm_controller(llm_id, {"bot_model_detail_id": data.get("bot_model_detail_id")}, db)
+
+@router.put("/{llm_id}/embedding-model")
+async def update_embedding_model(llm_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    data = await request.json()
+    return await update_llm_controller(llm_id, {"embedding_model_detail_id": data.get("embedding_model_detail_id")}, db)
+
 @router.delete("/{llm_id}")
 async def delete_llm(llm_id: int, db: AsyncSession = Depends(get_db)):
     return await delete_llm_controller(llm_id, db)
@@ -45,7 +55,6 @@ async def get_all_llms(db: AsyncSession = Depends(get_db)):
 
 @router.post("/details/{llm_detail_id}/keys")
 async def create_llm_key(llm_detail_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    """Tạo key mới cho LLMDetail"""
     data = await request.json()
     return await create_llm_key_controller(llm_detail_id, data, db)
 

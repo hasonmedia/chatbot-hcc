@@ -1,5 +1,4 @@
-from http.client import HTTPException
-from fastapi import Response
+from fastapi import Response, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from services import user_service
 from middleware.jwt import create_access_token, set_cookie, create_refresh_token
@@ -7,7 +6,7 @@ from middleware.jwt import create_access_token, set_cookie, create_refresh_token
 async def login_user_controller(data: dict, response: Response, db: AsyncSession):
     user = await user_service.authenticate_user(db, data["username"], data["password"])
     if not user:
-        # Sửa: Nên trả về lỗi 401 Unauthorized
+        
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     access_token_data = {

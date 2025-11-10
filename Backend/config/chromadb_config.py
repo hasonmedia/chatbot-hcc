@@ -28,19 +28,11 @@ except Exception as e:
 
 
 def get_or_create_collection(collection_name: str = "document_chunks"):
-    """
-    Lấy hoặc tạo collection trong ChromaDB
-    
-    Args:
-        collection_name: Tên collection (mặc định: document_chunks)
-    
-    Returns:
-        Collection object
-    """
+
     try:
         collection = chroma_client.get_or_create_collection(
             name=collection_name,
-            metadata={"hnsw:space": "cosine"}  # Sử dụng cosine similarity
+            metadata={"hnsw:space": "cosine"}  
         )
         return collection
     except Exception as e:
@@ -48,137 +40,105 @@ def get_or_create_collection(collection_name: str = "document_chunks"):
         raise
 
 
-async def add_documents_to_chroma(
-    chunks_data: List[Dict],
+async def add_chunks(
+    chunks: List[Dict],
     collection_name: str = "document_chunks"
 ) -> bool:
-    """
-    Thêm documents vào ChromaDB
-    
-    Args:
-        chunks_data: List của dict chứa:
-            - chunk_text: Nội dung text
-            - search_vector: Embedding vector
-            - knowledge_base_detail_id: ID detail
-        collection_name: Tên collection
-    
-    Returns:
-        bool: True nếu thành công
-    """
     try:
         collection = get_or_create_collection(collection_name)
-        
-        # Lấy số lượng documents hiện tại để tạo ID unique
-        current_count = collection.count()
-        
-        # Chuẩn bị dữ liệu cho ChromaDB
-        ids = []
-        documents = []
-        embeddings = []
-        metadatas = []
-        
-        for idx, chunk in enumerate(chunks_data):
-            # Tạo ID unique: detail_id + timestamp + index để tránh trùng
-            import time
-            timestamp = int(time.time() * 1000)  # milliseconds
-            doc_id = f"detail_{chunk['knowledge_base_detail_id']}_ts_{timestamp}_{current_count + idx}"
-            ids.append(doc_id)
-            documents.append(chunk['chunk_text'])
-            embeddings.append(chunk['search_vector'])
-            metadatas.append({
-                'knowledge_base_detail_id': chunk['knowledge_base_detail_id'],
-                'chunk_index': idx
-            })
-        
-        # Add batch vào ChromaDB
+
+        ids = [chunk['id'] for chunk in chunks]
+        documents = [chunk['content'] for chunk in chunks]
+        embeddings = [chunk['embedding'] for chunk in chunks]
+        metadatas = [{'knowledge_id': chunk['knowledge_id']} for chunk in chunks]
+
         collection.add(
             ids=ids,
             documents=documents,
             embeddings=embeddings,
             metadatas=metadatas
         )
-        
+
         logger.info(f"✅ Đã thêm {len(ids)} documents vào ChromaDB collection '{collection_name}'")
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ Lỗi khi thêm documents vào ChromaDB: {str(e)}")
         raise
 
 
-async def delete_documents_by_detail_id(
-    detail_id: int,
+async def delete_chunks(
+    knowledge_id: str,
     collection_name: str = "document_chunks"
 ) -> bool:
-    """
-    Xóa tất cả documents liên quan đến một knowledge_base_detail_id
-    
-    Args:
-        detail_id: ID của knowledge_base_detail
-        collection_name: Tên collection
-    
-    Returns:
-        bool: True nếu thành công
-    """
+
     try:
         collection = get_or_create_collection(collection_name)
-        
-        # Query để lấy tất cả IDs có detail_id này
-        results = collection.get(
-            where={"knowledge_base_detail_id": detail_id}
-        )
-        
+
+        results = collection.get(where={"knowledge_id": knowledge_id})
+
         if results and results['ids']:
-            # Xóa tất cả documents
             collection.delete(ids=results['ids'])
-            logger.info(f"✅ Đã xóa {len(results['ids'])} documents của detail_id={detail_id} từ ChromaDB")
+            logger.info(f"✅ Đã xóa {len(results['ids'])} documents của knowledge_id='{knowledge_id}' từ ChromaDB")
         else:
-            logger.info(f"ℹ️ Không tìm thấy documents nào với detail_id={detail_id}")
-        
+            logger.info(f"ℹ️ Không tìm thấy documents nào với knowledge_id='{knowledge_id}'")
+
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ Lỗi khi xóa documents từ ChromaDB: {str(e)}")
         return False
 
 
-async def search_similar_chunks(
+async def update_chunks(
+    knowledge_id: str,
+    new_chunks: List[Dict],
+    collection_name: str = "document_chunks"
+) -> bool:
+    try:
+        # Xóa các chunk cũ
+        await delete_chunks(knowledge_id, collection_name)
+        # Thêm các chunk mới
+        await add_chunks(new_chunks, collection_name)
+        logger.info(f"✅ Đã cập nhật chunks cho knowledge_id='{knowledge_id}'")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi cập nhật chunks: {str(e)}")
+        raise
+
+
+def list_chunks(collection_name: str = "document_chunks") -> List[Dict]:
+   
+    try:
+        collection = get_or_create_collection(collection_name)
+        results = collection.get(include=["documents", "metadatas"])
+        return results
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi liệt kê chunks: {str(e)}")
+        raise
+
+
+async def search_chunks(
     query_embedding: List[float],
     top_k: int = 5,
     collection_name: str = "document_chunks",
-    detail_ids: Optional[List[int]] = None
+    knowledge_ids: Optional[List[str]] = None
 ) -> List[Dict]:
-    """
-    Tìm kiếm các chunks tương tự dựa trên embedding
-    
-    Args:
-        query_embedding: Vector embedding của query
-        top_k: Số lượng kết quả trả về
-        collection_name: Tên collection
-        detail_ids: List các detail_id để filter (optional)
-    
-    Returns:
-        List các dict chứa content và metadata
-    """
+   
     try:
         collection = get_or_create_collection(collection_name)
-        
-        # Chuẩn bị where clause nếu có filter
+
         where_clause = None
-        if detail_ids:
-            where_clause = {
-                "knowledge_base_detail_id": {"$in": detail_ids}
-            }
-        
-        # Thực hiện query
+        if knowledge_ids:
+            where_clause = {"knowledge_id": {"$in": knowledge_ids}}
+
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=top_k,
             where=where_clause,
             include=["documents", "distances", "metadatas"]
         )
-        
-        # Format kết quả
+
         formatted_results = []
         if results and results['documents'] and results['documents'][0]:
             for idx in range(len(results['documents'][0])):
@@ -187,29 +147,9 @@ async def search_similar_chunks(
                     "distance": results['distances'][0][idx] if results['distances'] else None,
                     "metadata": results['metadatas'][0][idx] if results['metadatas'] else {}
                 })
-        
+
         return formatted_results
-        
+
     except Exception as e:
         logger.error(f"❌ Lỗi khi search trong ChromaDB: {str(e)}")
-        raise
-
-
-def reset_chroma_collection(collection_name: str = "document_chunks"):
-    """
-    Reset (xóa và tạo lại) collection - CHỈ DÙNG KHI CẦN
-    
-    Args:
-        collection_name: Tên collection cần reset
-    """
-    try:
-        chroma_client.delete_collection(name=collection_name)
-        logger.warning(f"⚠️ Đã xóa collection '{collection_name}'")
-        
-        collection = get_or_create_collection(collection_name)
-        logger.info(f"✅ Đã tạo lại collection '{collection_name}'")
-        return collection
-        
-    except Exception as e:
-        logger.error(f"❌ Lỗi khi reset collection: {str(e)}")
         raise
