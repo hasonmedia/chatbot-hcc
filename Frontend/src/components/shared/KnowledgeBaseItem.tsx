@@ -84,7 +84,7 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
   };
 
   const confirmDelete = async () => {
-    await deleteItem(item.id);
+    await deleteItem(item.detail_id);
     setIsDeleteDialogOpen(false);
   };
 
@@ -99,7 +99,7 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       await updateItem({
-        id: item.id,
+        id: item.detail_id,
         data: {
           raw_content: values.raw_content,
           file_name: values.file_name || item.file_name || "",
@@ -120,15 +120,23 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
             <ItemTitle className="truncate text-sm sm:text-base">
               {item.file_name}
             </ItemTitle>
-            <Badge
-              variant={item.file_type !== null ? "secondary" : "outline"}
-              className="text-xs w-fit"
-            >
-              {item.file_type !== null ? item.file_type : "Văn bản"}
-            </Badge>
+            <div className="flex gap-2">
+              <Badge
+                variant={item.file_type !== null ? "secondary" : "outline"}
+                className="text-xs w-fit"
+              >
+                {item.file_type !== null ? item.file_type : "Văn bản"}
+              </Badge>
+              {item.category_name && (
+                <Badge variant="default" className="text-xs w-fit">
+                  {item.category_name}
+                </Badge>
+              )}
+            </div>
           </div>
           <ItemDescription className="text-xs sm:text-sm">
-            Tạo lúc: {formatDateTime(item.created_at)}
+            Tạo lúc: {formatDateTime(item.detail_created_at)}
+            {item.username && <span className="ml-2">• {item.username}</span>}
           </ItemDescription>
         </ItemContent>
         <ItemActions className="shrink-0">

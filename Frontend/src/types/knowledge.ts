@@ -1,19 +1,37 @@
 export interface KnowledgeBaseItem {
-  id: number;
+  detail_id: number;
   file_name: string | null;
   file_type: string | null;
   file_path: string | null;
   source_type: "FILE" | "RICH_TEXT" | null;
   raw_content: string | null;
-  created_at: string;
+  detail_created_at: string;
+  detail_updated_at: string;
   is_active: boolean;
   user_id: number;
+  username: string | null;
+  category_id: number;
+  category_name: string;
 }
+
 export interface KnowledgeBaseResponse {
   id: number;
   title: string;
   created_at: string;
   updated_at: string;
-  customer_id: string;
   details: KnowledgeBaseItem[];
+}
+
+export interface KnowledgeCategory {
+  id: number;
+  name: string;
+  description?: string | null;
+  knowledge_base_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryFormData {
+  name: string;
+  description?: string;
 }

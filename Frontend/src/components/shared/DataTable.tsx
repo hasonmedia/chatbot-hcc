@@ -55,10 +55,9 @@ export function DataTable() {
       );
       handleCloseModals();
       refetchUsers();
-    } catch (err) {
-      toast.error(
-        `Lỗi khi cập nhật: ${(err as Error).message || "Lỗi không xác định"}`
-      );
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.detail || err?.message || "Lỗi không xác định";
+      toast.error(`Lỗi khi cập nhật: ${errorMessage}`);
     }
   };
 
@@ -68,12 +67,9 @@ export function DataTable() {
       toast.success("Đã tạo người dùng mới thành công");
       handleCloseModals();
       refetchUsers();
-    } catch (err) {
-      toast.error(
-        `Lỗi khi tạo người dùng: ${
-          (err as Error).message || "Lỗi không xác định"
-        }`
-      );
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.detail || err?.message || "Lỗi không xác định";
+      toast.error(`Lỗi khi tạo người dùng: ${errorMessage}`);
     }
   };
 

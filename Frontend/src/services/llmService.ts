@@ -32,6 +32,28 @@ export const updateLLM = async (
   return response.data.llm;
 };
 
+export const updateBotModel = async (
+  llm_id: number,
+  bot_model_detail_id: number
+): Promise<LLMData> => {
+  const response = await axiosClient.put<LLMResponse>(
+    `${API_ENDPOINT.LLM.UPDATE(llm_id)}/bot-model`,
+    { bot_model_detail_id }
+  );
+  return response.data.llm;
+};
+
+export const updateEmbeddingModel = async (
+  llm_id: number,
+  embedding_model_detail_id: number
+): Promise<LLMData> => {
+  const response = await axiosClient.put<LLMResponse>(
+    `${API_ENDPOINT.LLM.UPDATE(llm_id)}/embedding-model`,
+    { embedding_model_detail_id }
+  );
+  return response.data.llm;
+};
+
 export const deleteLLM = async (llm_id: number): Promise<void> => {
   await axiosClient.delete<void>(API_ENDPOINT.LLM.DELETE(llm_id));
 };

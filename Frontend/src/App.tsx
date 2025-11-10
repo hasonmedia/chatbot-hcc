@@ -6,6 +6,9 @@ import HomePage from "./pages/HomePage";
 import UserPage from "./pages/UserPage";
 import ConfigChatbot from "./pages/ConfigChatbot";
 import { DataChatbot } from "./pages/DataChatbot";
+import { FacebookPage } from "./pages/FacebookPage";
+import { ZaloPage } from "./pages/ZaloPage";
+import { TelegramPage } from "./pages/TelegramPage";
 import LoginPage from "./pages/LoginPage";
 import ChatPage from "./pages/ChatPage";
 import ClientChat from "./pages/ClientChat";
@@ -13,6 +16,8 @@ import ChannelManagementPage from "./pages/ChannelManagementPage";
 import ActivityLogPage from "./pages/ActivityLogPage";
 import UserGuidePage from "./pages/UserGuidePage";
 import GuestPage from "./pages/GuestPage";
+import ChartManagement from "./pages/ChartManagement";
+import CategoryPage from "./pages/CategoryPage";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute";
 import { useState } from "react";
 
@@ -81,6 +86,16 @@ function App() {
               }
             />
 
+            {/* Quản lý danh mục - root, superadmin, admin */}
+            <Route
+              path="/quan-ly-danh-muc"
+              element={
+                <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
+                  <CategoryPage />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Chat interface - tất cả role */}
             <Route
               path="/quan-ly-chat"
@@ -99,6 +114,46 @@ function App() {
               element={
                 <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
                   <ChannelManagementPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Quản lý Facebook Pages - root, superadmin, admin */}
+            <Route
+              path="/quan-ly-facebook"
+              element={
+                <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
+                  <FacebookPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Quản lý Zalo Bots - root, superadmin, admin */}
+            <Route
+              path="/quan-ly-zalo"
+              element={
+                <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
+                  <ZaloPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Quản lý Telegram Bots - root, superadmin, admin */}
+            <Route
+              path="/quan-ly-telegram"
+              element={
+                <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
+                  <TelegramPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Thống kê - root, superadmin, admin */}
+            <Route
+              path="/thong-ke"
+              element={
+                <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
+                  <ChartManagement />
                 </ProtectedRoute>
               }
             />

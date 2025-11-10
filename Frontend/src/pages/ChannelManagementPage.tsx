@@ -1,115 +1,56 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Facebook, MessageCircle, PlusCircle } from "lucide-react"; // Giả sử 'MessageCircle' là Zalo
+import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Facebook, MessageCircle, Send } from "lucide-react";
 
-// Mock data cho các kênh
-const mockChannels = [
-  {
-    id: 1,
-    name: "Fanpage Bán Hàng 1",
-    platform: "facebook",
-    status: "connected",
-    active: true,
-    avatar: "/icons/facebook.png",
-    fallback: "FB",
-  },
-  {
-    id: 2,
-    name: "Zalo OA Chăm Sóc Khách Hàng",
-    platform: "zalo",
-    status: "connected",
-    active: false,
-    avatar: "/icons/zalo.png",
-    fallback: "ZL",
-  },
-  {
-    id: 3,
-    name: "Fanpage Tin Tức",
-    platform: "facebook",
-    status: "disconnected",
-    active: false,
-    avatar: "/icons/facebook.png",
-    fallback: "FB",
-  },
-];
-
-// Helper để lấy Icon
-const PlatformIcon = ({ platform, ...props }: any) => {
-  if (platform === "facebook") {
-    return <Facebook {...props} />;
-  }
-  if (platform === "zalo") {
-    // Thay thế bằng icon Zalo nếu có
-    return <MessageCircle {...props} />;
-  }
-  return null;
-};
+// Import các page components
+import { FacebookPage } from "@/pages/FacebookPage";
+import { ZaloPage } from "@/pages/ZaloPage";
+import { TelegramPage } from "@/pages/TelegramPage";
 
 export default function ChannelManagementPage() {
+  const [activeTab, setActiveTab] = useState("facebook");
+
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Quản lý Kênh</h2>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Thêm kênh mới
-        </Button>
+    <div className="container mx-auto max-w-7xl py-4 sm:py-6 lg:py-8 px-4 sm:px-6">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+          Quản lý Kênh Tích Hợp
+        </h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
+          Quản lý các kênh tích hợp Facebook, Zalo và Telegram
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {mockChannels.map((channel) => (
-          <Card key={channel.id}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <div className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarImage src={channel.avatar} />
-                  <AvatarFallback>
-                    <PlatformIcon
-                      platform={channel.platform}
-                      className="h-5 w-5"
-                    />
-                  </AvatarFallback>
-                </Avatar>
-                <CardTitle className="text-lg">{channel.name}</CardTitle>
-              </div>
-              <Badge
-                variant={
-                  channel.status === "connected" ? "default" : "destructive"
-                }
-              >
-                {channel.status === "connected" ? "Đã kết nối" : "Đã ngắt"}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Kênh {channel.platform} này đang{" "}
-                {channel.active ? "hoạt động" : "tạm dừng"}.
-              </p>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline">Cài đặt</Button>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id={`active-toggle-${channel.id}`}
-                  checked={channel.active}
-                  disabled={channel.status === "disconnected"}
-                />
-                <Label htmlFor={`active-toggle-${channel.id}`}>Hoạt động</Label>
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="facebook" className="flex items-center gap-2">
+            <Facebook className="h-4 w-4" />
+            <span className="hidden sm:inline">Facebook</span>
+            <span className="sm:hidden">FB</span>
+          </TabsTrigger>
+          <TabsTrigger value="zalo" className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            <span>Zalo</span>
+          </TabsTrigger>
+          <TabsTrigger value="telegram" className="flex items-center gap-2">
+            <Send className="h-4 w-4" />
+            <span className="hidden sm:inline">Telegram</span>
+            <span className="sm:hidden">Tele</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="facebook" className="mt-0">
+          <FacebookPage />
+        </TabsContent>
+
+        <TabsContent value="zalo" className="mt-0">
+          <ZaloPage />
+        </TabsContent>
+
+        <TabsContent value="telegram" className="mt-0">
+          <TelegramPage />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -2,88 +2,215 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from "@/components/ui/dialog";
-import { PlusCircle, Search } from "lucide-react";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { PlusCircle, Search, Filter, X } from "lucide-react";
 import { useKnowledgeBase } from "@/hooks/useKnowledgeBase";
 import {
-  KnowledgeBaseItem,
-  KnowledgeBaseItemSkeleton,
+    KnowledgeBaseItem,
+    KnowledgeBaseItemSkeleton,
 } from "@/components/shared/KnowledgeBaseItem";
 import { KnowledgeBaseForm } from "@/components/shared/KnowledgeBaseForm";
+import { cn } from "@/lib/utils";
 
 export const DataChatbot = () => {
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const { data, isLoadingData } = useKnowledgeBase();
-  const items = data?.details;
-  const filteredData = Array.isArray(items)
-    ? items.filter((item) =>
-        item.source_type?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : [];
+    const [openAddDialog, setOpenAddDialog] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+    const [openFilter, setOpenFilter] = useState(false);
+    
+    const { data, isLoadingData, categories, isLoadingCategories } = useKnowledgeBase(
+        selectedCategories.length > 0 ? selectedCategories : undefined
+    );
 
-  return (
-    <div className="container mx-auto max-w-4xl py-4 sm:py-6 lg:py-8 px-4 sm:px-6">
-      <h1 className="mb-4 sm:mb-6 text-2xl sm:text-3xl font-bold">
-        Dữ liệu Chatbot
-      </h1>
+    // Flatten all details from all knowledge bases
+    const allDetails = data?.flatMap(kb => 
+        kb.details.map(detail => ({
+            ...detail,
+            kb_title: kb.title,
+            kb_id: kb.id
+        }))
+    ) || [];
 
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Tìm kiếm dữ liệu..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    const filteredData = searchTerm
+        ? allDetails.filter((item) =>
+            item.file_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.source_type?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        : allDetails;
+
+    const handleCategoryToggle = (categoryId: number) => {
+        setSelectedCategories(prev =>
+            prev.includes(categoryId)
+                ? prev.filter(id => id !== categoryId)
+                : [...prev, categoryId]
+        );
+    };
+
+    const handleClearCategories = () => {
+        setSelectedCategories([]);
+    };
+
+    const selectedCategoryNames = categories?.filter(cat => 
+        selectedCategories.includes(cat.id)
+    ).map(cat => cat.name) || [];
+
+    return (
+        <div className="container mx-auto max-w-4xl py-4 sm:py-6 lg:py-8 px-4 sm:px-6">
+            <h1 className="mb-4 sm:mb-6 text-2xl sm:text-3xl font-bold">
+                Dữ liệu Chatbot
+            </h1>
+
+            <div className="mb-4 sm:mb-6 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Tìm kiếm dữ liệu..."
+                            className="pl-9"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="flex gap-2">
+                        <Popover open={openFilter} onOpenChange={setOpenFilter}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="relative">
+                                    <Filter className="mr-2 h-4 w-4" />
+                                    Lọc danh mục
+                                    {selectedCategories.length > 0 && (
+                                        <Badge 
+                                            className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full"
+                                            variant="destructive"
+                                        >
+                                            {selectedCategories.length}
+                                        </Badge>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-0" align="end">
+                                <div className="p-3 border-b">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-semibold text-sm">Lọc theo danh mục</h4>
+                                        {selectedCategories.length > 0 && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-auto p-1 text-xs"
+                                                onClick={handleClearCategories}
+                                            >
+                                                Xóa tất cả
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="max-h-64 overflow-y-auto p-2">
+                                    {isLoadingCategories ? (
+                                        <div className="p-2 text-sm text-muted-foreground text-center">
+                                            Đang tải...
+                                        </div>
+                                    ) : categories && categories.length > 0 ? (
+                                        categories.map((category) => (
+                                            <label
+                                                key={category.id}
+                                                className={cn(
+                                                    "flex items-center gap-2 px-2 py-2 rounded-md cursor-pointer hover:bg-accent transition-colors",
+                                                    selectedCategories.includes(category.id) && "bg-accent"
+                                                )}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCategories.includes(category.id)}
+                                                    onChange={() => handleCategoryToggle(category.id)}
+                                                    className="h-4 w-4 rounded border-gray-300"
+                                                />
+                                                <span className="text-sm flex-1">{category.name}</span>
+                                            </label>
+                                        ))
+                                    ) : (
+                                        <div className="p-2 text-sm text-muted-foreground text-center">
+                                            Không có danh mục
+                                        </div>
+                                    )}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
+                        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full sm:w-auto">
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Thêm dữ liệu
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-sm sm:max-w-md lg:max-w-2xl max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Thêm dữ liệu mới</DialogTitle>
+                                </DialogHeader>
+                                <KnowledgeBaseForm onFinished={() => setOpenAddDialog(false)} />
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </div>
+
+                {/* Selected Categories Display */}
+                {selectedCategoryNames.length > 0 && (
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <span className="text-sm text-muted-foreground">Đã chọn:</span>
+                        {selectedCategoryNames.map((name, index) => (
+                            <Badge key={index} variant="secondary" className="gap-1">
+                                {name}
+                                <X
+                                    className="h-3 w-3 cursor-pointer hover:text-destructive"
+                                    onClick={() => {
+                                        const categoryId = categories?.find(c => c.name === name)?.id;
+                                        if (categoryId) handleCategoryToggle(categoryId);
+                                    }}
+                                />
+                            </Badge>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="flex w-full flex-col gap-3 sm:gap-4">
+                {isLoadingData && (
+                    <>
+                        <KnowledgeBaseItemSkeleton />
+                        <KnowledgeBaseItemSkeleton />
+                        <KnowledgeBaseItemSkeleton />
+                    </>
+                )}
+
+                {!isLoadingData &&
+                    filteredData &&
+                    filteredData.length > 0 &&
+                    filteredData.map((item) => (
+                        <KnowledgeBaseItem key={item.detail_id} item={item} />
+                    ))}
+
+                {!isLoadingData && (!filteredData || filteredData.length === 0) && (
+                    <div className="flex h-32 sm:h-40 flex-col items-center justify-center rounded-md border border-dashed">
+                        <p className="text-sm sm:text-base text-muted-foreground text-center px-4">
+                            {selectedCategories.length > 0 
+                                ? "Không tìm thấy dữ liệu với bộ lọc đã chọn."
+                                : "Không tìm thấy dữ liệu."}
+                        </p>
+                    </div>
+                )}
+            </div>
         </div>
-
-        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Thêm dữ liệu
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-sm sm:max-w-md lg:max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Thêm dữ liệu mới</DialogTitle>
-            </DialogHeader>
-            <KnowledgeBaseForm onFinished={() => setOpenAddDialog(false)} />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="flex w-full flex-col gap-3 sm:gap-4">
-        {isLoadingData && (
-          <>
-            <KnowledgeBaseItemSkeleton />
-            <KnowledgeBaseItemSkeleton />
-            <KnowledgeBaseItemSkeleton />
-          </>
-        )}
-
-        {!isLoadingData &&
-          filteredData &&
-          filteredData.length > 0 &&
-          filteredData.map((item) => (
-            <KnowledgeBaseItem key={item.id} item={item} />
-          ))}
-
-        {!isLoadingData && (!filteredData || filteredData.length === 0) && (
-          <div className="flex h-32 sm:h-40 flex-col items-center justify-center rounded-md border border-dashed">
-            <p className="text-sm sm:text-base text-muted-foreground text-center px-4">
-              Không tìm thấy dữ liệu.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    );
 };

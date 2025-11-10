@@ -5,6 +5,8 @@ import {
 } from "@/components/shared/ClientChatUI";
 import { useClientChat } from "@/hooks/useClientChat";
 import { useLLM } from "@/hooks/useLLM";
+import { useFeedbackTimer } from "@/hooks/useFeedbackTimer";
+import FeedbackModal from "@/components/shared/FeedbackModal";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Separator } from "@radix-ui/react-separator";
 import { Loader2 } from "lucide-react";
@@ -25,6 +27,12 @@ const ClientChat = () => {
 
   // Lấy thông tin LLM config để hiển thị botName
   const { llmConfig } = useLLM();
+
+  // Hook theo dõi timer để hiển thị modal đánh giá
+  const { showFeedbackModal, closeFeedbackModal } = useFeedbackTimer({
+    messages,
+    sessionId,
+  });
 
   return (
     <div className="flex h-full flex-col">
@@ -59,6 +67,13 @@ const ClientChat = () => {
         handleSendMessage={handleSendMessage}
         handleKeyDown={handleKeyDown}
         isConnecting={isConnecting}
+        sessionId={sessionId}
+      />
+
+      {/* Modal đánh giá */}
+      <FeedbackModal
+        open={showFeedbackModal}
+        onClose={closeFeedbackModal}
         sessionId={sessionId}
       />
     </div>

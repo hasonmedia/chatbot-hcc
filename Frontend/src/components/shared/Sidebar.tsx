@@ -8,6 +8,7 @@ import {
   BookAlert,
   ChartBar,
   LogOut,
+  FolderKanban,
 } from "lucide-react";
 import {
   Sidebar,
@@ -62,6 +63,12 @@ const items = [
     roles: ["root", "superadmin", "admin"], // root, superadmin, admin
   },
   {
+    title: "Quản lý danh mục",
+    icon: FolderKanban,
+    url: "/quan-ly-danh-muc",
+    roles: ["root", "superadmin", "admin"], // root, superadmin, admin
+  },
+  {
     title: "Quản lý kênh",
     icon: PackageIcon,
     url: "/quan-ly-kenh",
@@ -72,6 +79,12 @@ const items = [
     icon: MessageSquare,
     url: "/quan-ly-chat",
     roles: ["root", "superadmin", "admin", "user"], // Tất cả roles
+  },
+  {
+    title: "Thống kê",
+    icon: ChartBar,
+    url: "/thong-ke",
+    roles: ["root", "superadmin", "admin"], // root, superadmin, admin
   },
   {
     title: "Thống kê hoạt động",
