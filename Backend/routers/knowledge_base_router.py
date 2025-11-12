@@ -13,10 +13,11 @@ router = APIRouter(prefix="/knowledge-base", tags=["Knowledge Base"])
 @router.get("/")
 async def get_all_kbs(
     category_ids: Optional[List[int]] = Query(None, description="List category IDs để filter. Nếu không truyền thì lấy tất cả."),
+    file_types: Optional[List[str]] = Query(None, description="List file types to filter. Example: PDF,DOCX,XLSX,TEXT"),
     db: AsyncSession = Depends(get_db)
 ):
    
-    return await knowledge_base_controller.get_all_kbs_controller(db, category_ids)
+    return await knowledge_base_controller.get_all_kbs_controller(db, category_ids, file_types)
 
 
 @router.get("/search")

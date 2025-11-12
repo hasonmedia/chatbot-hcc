@@ -72,6 +72,8 @@ const KeyItem: React.FC<KeyItemProps> = ({
     canDelete,
     loading,
 }) => {
+    const [isVisible, setIsVisible] = useState(false);
+
     return (
         <div className="grid gap-3 p-4 border rounded-lg bg-white">
             <div className="flex items-center justify-between mb-2">
@@ -93,8 +95,22 @@ const KeyItem: React.FC<KeyItemProps> = ({
 
             <div className="grid gap-1.5">
                 <Label className="text-xs text-gray-600">API Key</Label>
-                <div className="p-2 bg-gray-50 rounded border text-sm font-mono break-all max-w-[50%]">
-                    {keyItem.value ? '••••••••••••••••••••' : 'Không có key'}
+                <div className="relative">
+                    <div className="p-2 bg-gray-50 rounded border text-sm font-mono break-all pr-10">
+                        {keyItem.value ? (isVisible ? keyItem.value : '••••••••••••••••••••') : 'Không có key'}
+                    </div>
+                    {keyItem.value && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-gray-500 hover:text-gray-900"
+                            onClick={() => setIsVisible(!isVisible)}
+                            aria-label={isVisible ? "Ẩn key" : "Hiển thị key"}
+                        >
+                            {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>

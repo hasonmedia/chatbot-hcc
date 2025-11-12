@@ -7,9 +7,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def get_all_kbs_controller(db: AsyncSession, category_ids: Optional[List[int]] = None):
-   
-    return await knowledge_base_service.get_all_kbs_service(db, category_ids) 
+async def get_all_kbs_controller(
+    db: AsyncSession,
+    category_ids: Optional[List[int]] = None,
+    file_types: Optional[List[str]] = None,
+):
+    """
+    Controller trả về all KBs, hỗ trợ filter theo category_ids và file_types
+    """
+    return await knowledge_base_service.get_all_kbs_service(db, category_ids, file_types)
 
 async def add_kb_rich_text_controller(
     data: dict,

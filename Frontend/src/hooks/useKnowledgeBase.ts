@@ -12,13 +12,13 @@ import {
 import type { KnowledgeBaseResponse, KnowledgeCategory } from "@/types/knowledge";
 import { useAuth } from "@/components/context/AuthContext";
 
-export const useKnowledgeBase = (categoryIds?: number[]) => {
+export const useKnowledgeBase = (categoryIds?: number[], fileTypes?: string[]) => {
     const queryClient = useQueryClient();
     const { user } = useAuth();
 
     const { data, isLoading: isLoadingData } = useQuery<KnowledgeBaseResponse[]>({
-        queryKey: ["knowledgeBase", categoryIds],
-        queryFn: () => getAllKnowledgeBaseEndpoint(categoryIds),
+        queryKey: ["knowledgeBase", categoryIds, fileTypes],
+        queryFn: () => getAllKnowledgeBaseEndpoint(categoryIds, fileTypes),
     });
 
     const { data: categories, isLoading: isLoadingCategories } = useQuery<KnowledgeCategory[]>({

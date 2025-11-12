@@ -1,12 +1,16 @@
 import axiosClient from "@/config/axios";
 import { API_ENDPOINT } from "@/constants/apiEndpoint";
 
-export const getAllKnowledgeBaseEndpoint = async (categoryIds?: number[]) => {
+export const getAllKnowledgeBaseEndpoint = async (categoryIds?: number[], fileTypes?: string[]) => {
     
     const params: Record<string, any> = {};
     
     if (categoryIds && categoryIds.length > 0) {
         params.category_ids = categoryIds;
+    }
+    
+    if (fileTypes && fileTypes.length > 0) {
+        params.file_types = fileTypes;
     }
     
     const response = await axiosClient.get(API_ENDPOINT.KNOWLEDGE_BASE.GET_ALL, {

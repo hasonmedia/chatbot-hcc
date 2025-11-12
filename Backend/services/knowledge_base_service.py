@@ -24,14 +24,31 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 
-async def get_all_kbs_service(db: AsyncSession, category_ids: Optional[List[int]] = None):
-    print(category_ids)
+async def get_all_kbs_service(
+    db: AsyncSession,
+    category_ids: Optional[List[int]] = None,
+    file_types: Optional[List[str]] = None,
+):
+    """
+    Lấy tất cả knowledge bases, có thể filter theo danh sách category_ids và/hoặc danh sách file_types.
+    file_types: list of strings như ['PDF','DOCX','XLSX','TEXT'] (không phân biệt hoa thường)
+    """
+    # build where clause dynamically to support category_ids and file_types
+    filters = []
+    params = {}
+
     if category_ids:
-        category_filter = "WHERE kc.id = ANY(:category_ids)"
-        params = {"category_ids": category_ids}
-    else:
-        category_filter = ""
-        params = {}
+        filters.append("kc.id = ANY(:category_ids)")
+        params["category_ids"] = category_ids
+
+    if file_types:
+        # normalize to upper-case and strip dots if any
+        normalized = [ft.upper().replace('.', '') for ft in file_types if ft]
+        if normalized:
+            filters.append("kbd.file_type = ANY(:file_types)")
+            params["file_types"] = normalized
+
+    category_filter = f"WHERE {' AND '.join(filters)}" if filters else ""
 
     sql_query = text(f"""
     WITH detail_cte AS (
@@ -142,7 +159,8 @@ async def create_kb_with_files_service(
                 success  = await process_uploaded_file(
                     file_path, 
                     file.filename,
-                    knowledge_base_detail_id=detail.id
+                    knowledge_base_detail_id=detail.id,
+                    db=db
                 )
                 
                 if success:
@@ -197,6 +215,7 @@ async def add_kb_rich_text_service(
         detail = KnowledgeBaseDetail(
             category_id=category_id,
             source_type="RICH_TEXT",
+            file_type = "TEXT",
             file_name=file_name,
             raw_content=raw_content,
             is_active=True,
@@ -210,7 +229,8 @@ async def add_kb_rich_text_service(
         
         success = await process_rich_text(
             raw_content,
-            knowledge_base_detail_id=detail.id
+            knowledge_base_detail_id=detail.id,
+            db=db
         )
         
         if success:
