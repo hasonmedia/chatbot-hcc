@@ -27,7 +27,7 @@ const ClientChat = () => {
 
   // Lấy thông tin LLM config để hiển thị botName
   const { llmConfig } = useLLM();
-
+  console.log("LLM Config in ClientChat:", llmConfig);
   // Hook theo dõi timer để hiển thị modal đánh giá
   const { showFeedbackModal, closeFeedbackModal } = useFeedbackTimer({
     messages,
