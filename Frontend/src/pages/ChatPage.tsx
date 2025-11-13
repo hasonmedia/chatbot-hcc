@@ -62,7 +62,6 @@ export default function ChatPage() {
   const handleBackToSessions = () => {
     handleSelectSession(null as unknown as string);
   };
-  console.log("Current Session Info:", currentSessionInfo);
   const InfoColumnContent = () => (
     <div className="flex flex-col gap-4 p-4 lg:p-0">
       <Card>

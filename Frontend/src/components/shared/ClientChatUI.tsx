@@ -11,7 +11,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  Paperclip,
   SendHorizontal,
   Bot,
   UserCircle2,
@@ -20,35 +19,8 @@ import {
   HelpCircle,
   FileText,
 } from "lucide-react";
-import type { MessageData } from "@/types/message";
-
-// --- TIỆN ÍCH ---
-
-/**
- * Helper để định dạng thời gian (ví dụ: "10:32")
- */
-export const formatTime = (isoString: string) => {
-  try {
-    if (!isoString) return "vừa xong";
-    const date = new Date(isoString);
-    // Kiểm tra nếu date không hợp lệ
-    if (isNaN(date.getTime())) {
-      return "vừa xong";
-    }
-    return date.toLocaleTimeString("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch (e) {
-    return "vừa xong"; // Fallback
-  }
-};
-
-// --- COMPONENT TIN NHẮN ---
-
-type MessageItemProps = {
-  msg: MessageData;
-};
+import type { MessageItemProps } from "@/types/message";
+import { formatTime } from "@/lib/formatDateTime";
 
 export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
   const isCustomer = msg.sender_type === "customer";
@@ -64,42 +36,27 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
   };
   let displayContent;
 
-  // 2. Thử phân tích (parse) msg.content
   try {
     const parsed = JSON.parse(msg.content);
-
-    // 3. Nếu phân tích thành công VÀ có thuộc tính 'message'
     if (parsed && parsed.message) {
       displayContent = parsed.message;
     } else {
-      // Là JSON nhưng không có 'message', hiển thị nguyên bản
       displayContent = msg.content;
     }
   } catch (error) {
-    // 4. Nếu phân tích lỗi (tức là nó chỉ là text bình thường "hihi")
     displayContent = msg.content;
   }
-  console.log("Rendering message from", msg);
   const getSenderName = () => {
     if (isBot) return "Bot Hỗ trợ";
-    // Hiển thị tên Cán bộ nếu có, nếu không thì hiển thị "Cán bộ Hỗ trợ"
     if (isAdmin) return `Cán bộ: ${msg.sender_type || "Hỗ trợ viên"}`;
-    return null; // Không hiển thị tên cho customer
+    return null;
   };
 
-  // Tin nhắn của Công dân (Người dùng) - Căn lề phải
   if (isCustomer) {
     return (
       <div className="flex items-start gap-3 justify-end">
         <div className="rounded-lg bg-primary text-primary-foreground p-3 max-w-[75%] text-left">
           <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
-          {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
-            <img
-              src={msg.image[0]} /* Lấy ảnh ĐẦU TIÊN trong mảng */
-              alt="Hình ảnh nhận được"
-              className="mt-2 rounded-md max-w-xs"
-            />
-          )}
           <span className="text-xs text-primary-foreground/80 block text-right mt-1">
             {formatTime(msg.created_at)}
           </span>
@@ -111,7 +68,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     );
   }
 
-  // Tin nhắn của Bot hoặc Admin - Căn lề trái
   return (
     <div className="flex items-start gap-3">
       <Avatar className="h-8 w-8">
@@ -122,7 +78,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
         <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
         {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
           <img
-            src={msg.image[0]} /* Lấy ảnh ĐẦU TIÊN trong mảng */
+            src={msg.image[0]}
             alt="Hình ảnh nhận được"
             className="mt-2 rounded-md max-w-xs"
           />
@@ -134,8 +90,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     </div>
   );
 };
-
-// --- COMPONENT CỘT 1: SIDEBAR ---
 
 export const Sidebar: React.FC = () => {
   return (
@@ -160,8 +114,6 @@ export const Sidebar: React.FC = () => {
     </div>
   );
 };
-
-// --- COMPONENT CỘT 3: SUPPORT PANEL ---
 
 export const SupportPanel: React.FC = () => {
   return (
@@ -340,8 +292,6 @@ export const SupportPanel: React.FC = () => {
   );
 };
 
-// --- COMPONENT HEADER KHUNG CHAT ---
-
 type ChatHeaderProps = {
   isConnecting: boolean;
   botName?: string;
@@ -391,7 +341,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   return (
     <div className="p-4">
-      <div className="relative mx-auto max-w-3xl">
+      <div className="relative w-full">
         <Textarea
           placeholder={
             isConnecting ? "Đang kết nối..." : "Nhập câu hỏi của bạn..."
@@ -403,10 +353,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           disabled={isConnecting || !sessionId}
         />
         <div className="absolute right-3 top-3 flex gap-2">
-          <Button variant="ghost" size="icon" disabled>
-            <Paperclip className="h-4 w-4" />
-            <span className="sr-only">Đính kèm tệp (Chưa hỗ trợ)</span>
-          </Button>
           <Button
             size="icon"
             onClick={handleSendMessage}

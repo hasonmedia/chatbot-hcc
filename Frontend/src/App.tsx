@@ -18,22 +18,15 @@ import GuestPage from "./pages/GuestPage";
 import ChartManagement from "./pages/ChartManagement";
 import CategoryPage from "./pages/CategoryPage";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute";
-import { useState } from "react";
 
 function App() {
-  const [page, setPage] = useState("home");
   return (
     <>
       <BrowserRouter>
         <Routes>
-          {/* Trang công khai - không cần đăng nhập */}
-          <Route
-            path="/"
-            element={<GuestPage page={page} setPage={setPage} />}
-          />
+          <Route path="/" element={<GuestPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/chat" element={<ClientChat />} />
-          <Route path="/lien-he" element={<UserGuidePage />} />
 
           {/* Các trang cần đăng nhập và có phân quyền */}
           <Route

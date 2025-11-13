@@ -1,4 +1,4 @@
-import { SupportPanel } from "@/components/shared/ClientChatUI";
+import { Sidebar, SupportPanel } from "@/components/shared/ClientChatUI";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,50 +11,27 @@ import {
   FileSearch,
   HelpCircle,
 } from "lucide-react";
-import ClientChat from "./ClientChat";
 import { Logo, Navbar01 } from "@/components/ui/shadcn-io/navbar-01";
 import { useNavigate } from "react-router-dom";
 
-interface GuestPageProps {
-  page: string;
-  setPage: (page: string) => void;
-}
-
-// Component navigation cho Guest
-const GuestNavigation = ({
-  setPage,
-  page,
-}: {
-  setPage: (page: string) => void;
-  page: string;
-}) => {
+export const GuestNavigation = () => {
+  const navigate = useNavigate();
   return (
     <div className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="container mx-auto px-4">
+      <div className="container px-4">
         <nav className="flex h-14 items-center gap-6">
-          <Button
-            variant={page === "home" ? "secondary" : "ghost"}
-            className="text-sm font-medium"
-            onClick={() => setPage("home")}
-          >
+          <Button className="text-sm font-medium" onClick={() => navigate("/")}>
             <Home className="mr-2 h-4 w-4" />
             Trang chủ
           </Button>
           <Button
-            variant={page === "chat" ? "secondary" : "ghost"}
             className="text-sm font-medium"
-            onClick={() => setPage("chat")}
+            onClick={() => {
+              navigate("/chat");
+            }}
           >
             <MessageCircle className="mr-2 h-4 w-4" />
             Chat Hỗ trợ
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-sm font-medium"
-            onClick={() => window.open("/lien-he", "_blank")}
-          >
-            <HelpCircle className="mr-2 h-4 w-4" />
-            Liên hệ
           </Button>
         </nav>
       </div>
@@ -63,7 +40,8 @@ const GuestNavigation = ({
 };
 
 // Component nội dung trang chủ
-const HomePage = ({ setPage }: { setPage: (page: string) => void }) => {
+const HomePage = () => {
+  const navigate = useNavigate();
   return (
     <div className="flex h-full flex-col">
       {/* Main content */}
@@ -82,7 +60,7 @@ const HomePage = ({ setPage }: { setPage: (page: string) => void }) => {
               <Button
                 size="lg"
                 className="text-lg px-8"
-                onClick={() => setPage("chat")}
+                onClick={() => navigate("/chat")}
               >
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Bắt đầu Chat
@@ -165,7 +143,7 @@ const HomePage = ({ setPage }: { setPage: (page: string) => void }) => {
                 <Button
                   variant="outline"
                   className="h-auto p-4 flex-col space-y-2"
-                  onClick={() => setPage("chat")}
+                  onClick={() => navigate("/")}
                 >
                   <FileSearch className="h-6 w-6" />
                   <span>Tra cứu hồ sơ</span>
@@ -174,7 +152,7 @@ const HomePage = ({ setPage }: { setPage: (page: string) => void }) => {
                 <Button
                   variant="outline"
                   className="h-auto p-4 flex-col space-y-2"
-                  onClick={() => setPage("chat")}
+                  onClick={() => navigate("/")}
                 >
                   <Settings className="h-6 w-6" />
                   <span>Thủ tục hành chính</span>
@@ -198,7 +176,7 @@ const HomePage = ({ setPage }: { setPage: (page: string) => void }) => {
   );
 };
 
-const GuestPage = ({ page, setPage }: GuestPageProps) => {
+const GuestPage = () => {
   const navigate = useNavigate();
 
   const handleLoginClick = () => {
@@ -213,18 +191,19 @@ const GuestPage = ({ page, setPage }: GuestPageProps) => {
         logo={<Logo />}
         ctaText="Bắt đầu Chat"
         onSignInClick={handleLoginClick}
-        onCtaClick={() => setPage("chat")}
       />
 
       {/* Navigation */}
-      <GuestNavigation setPage={setPage} page={page} />
+      <GuestNavigation />
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
+        <div className="w-64 border-r hidden lg:block">
+          <Sidebar />
+        </div>
         {/* Main content */}
         <div className="flex-1 overflow-auto">
-          {page === "chat" && <ClientChat />}
-          {page === "home" && <HomePage setPage={setPage} />}
+          <HomePage />
         </div>
 
         {/* Support panel - moved to bottom on mobile, side on desktop */}

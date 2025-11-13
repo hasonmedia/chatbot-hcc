@@ -30,3 +30,7 @@ export interface BackendSessionData {
   created_at: string; // Sẽ được map thành last_updated
   image: any[];
 }
+
+export interface MessageItemProps {
+  msg: MessageData;
+}

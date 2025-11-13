@@ -154,7 +154,7 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
         )}
         {...props}
       >
-        <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-4">
+        <div className="container mx-auto flex h-16 max-w-full items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             {isMobile && (
               <Popover>
