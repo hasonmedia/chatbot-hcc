@@ -1,8 +1,5 @@
 async def prompt_builder(knowledge, history, query) -> str:
     
-    print(f"--- Prompt Builder Called --- {knowledge}")
-    
-    
     
     
     prompt = f"""

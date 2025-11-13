@@ -4,6 +4,7 @@ from pypdf import PdfReader
 from docx import Document
 import pandas as pd
 from typing import Optional
+import json
 logger = logging.getLogger(__name__)
 
 async def extract_text_from_pdf(file_path: str) -> Optional[str]:
@@ -45,38 +46,26 @@ async def extract_text_from_docx(file_path: str) -> Optional[str]:
         return None
 
 async def extract_text_from_excel(file_path: str) -> Optional[str]:
-    """
-    Đọc nội dung từ file Excel sử dụng pandas
-    """
-    try:
-        excel = pd.ExcelFile(file_path)
-        sheet_texts = []
 
-        for sheet in excel.sheet_names:
-            try:
-                df = pd.read_excel(file_path, sheet)
-                if df.empty:
-                    continue
+    sheet_jsons = {}
 
-                lines = []
-
-                # Mỗi dòng: "Header1: Value1 | Header2: Value2 | ..."
-                for _, row in df.iterrows():
-                    row_items = []
-                    for col, val in row.items():
-                        if pd.notna(val):
-                            row_items.append(f"{col}: {val}")
-                    if row_items:
-                        lines.append(" | ".join(row_items))
-
-                if lines:
-                    sheet_texts.append("\n".join(lines))
-
-            except Exception:
+    excel = pd.ExcelFile(file_path)
+    for sheet in excel.sheet_names:
+        try:
+            df = pd.read_excel(file_path, sheet)
+            if df.empty:
                 continue
 
-        return "\n\n".join(sheet_texts).strip() if sheet_texts else None
+            rows_list = []
+            for _, row in df.iterrows():
+                row_dict = {col: val for col, val in row.items() if pd.notna(val)}
+                if row_dict:
+                    rows_list.append(row_dict)
 
-    except Exception as e:
-        logger.error(f"Lỗi đọc file Excel: {e}")
-        return None
+            if rows_list:
+                sheet_jsons[sheet] = rows_list
+
+        except Exception as e:
+            continue
+
+    return json.dumps(sheet_jsons, ensure_ascii=False, indent=2)

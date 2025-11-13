@@ -4,7 +4,8 @@ from typing import Dict, Optional, List, Union
 import uuid
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from config.get_embedding import get_embedding_gemini
+from config.get_embedding import get_embedding_gemini, get_embedding_chatgpt
+from llm.help_llm import get_current_model
 from bs4 import BeautifulSoup
 from config.chromadb_config import add_chunks, delete_chunks
 from .process_file import extract_text_from_pdf, extract_text_from_docx, extract_text_from_excel
@@ -17,12 +18,13 @@ async def process_uploaded_file(
     file_path: str,
     filename: str,
     knowledge_base_detail_id: int,
+    db,
     chunk_size: int = 3000,
     chunk_overlap: int = 500
 ) -> bool:
     
     try:
-        # 1) Extract text từ file
+        # 1)Extract text từ file
         ext = os.path.splitext(filename)[1].lower()
         if ext == '.pdf':
             content = await extract_text_from_pdf(file_path)
@@ -49,8 +51,18 @@ async def process_uploaded_file(
             return False
 
         # 3) Batch embedding
-        all_vectors = await get_embedding_gemini(all_chunks)
-
+        model = await get_current_model(db_session=db)
+        embedding_info = model["embedding"]
+        embedding_key = embedding_info["key"]
+        
+    
+        
+        if "gemini" in embedding_info["name"].lower():
+            all_vectors = await get_embedding_gemini(all_chunks, api_key=embedding_key)
+        else:
+            all_vectors = await get_embedding_chatgpt(all_chunks, api_key=embedding_key)
+            
+        
         # 4) Chuẩn bị data lưu vào ChromaDB
         chunks_data = [
             {
@@ -76,11 +88,9 @@ async def process_uploaded_file(
 
 async def process_rich_text(
     raw_content: str, 
-    knowledge_base_detail_id: int
+    knowledge_base_detail_id: int,
+    db
 ) -> Dict[str, any]:
-    """
-    Xử lý nội dung rich text (HTML), chunk, tạo vector và lưu vào CSDL
-    """
     try:
         soup = BeautifulSoup(raw_content, "html.parser")
         text_content = soup.get_text(separator="\n", strip=True)
@@ -90,9 +100,13 @@ async def process_rich_text(
 
         # Bước 2: Chunk text
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=3000,
-            chunk_overlap=500
+            chunk_size=5000,
+            chunk_overlap=1000
         )
+        
+       
+        
+        
         all_chunks = text_splitter.split_text(text_content)
         
         if not all_chunks:
@@ -100,7 +114,16 @@ async def process_rich_text(
 
 
         # Bước 3: Tạo Embeddings (Batch)
-        all_vectors = await get_embedding_gemini(all_chunks)
+        model = await get_current_model(db_session=db)
+        embedding_info = model["embedding"]
+        embedding_key = embedding_info["key"]
+        
+    
+        
+        if "gemini" in embedding_info["name"].lower():
+            all_vectors = await get_embedding_gemini(all_chunks, api_key=embedding_key)
+        else:
+            all_vectors = await get_embedding_chatgpt(all_chunks, api_key=embedding_key)
 
         
         # Bước 4: Chuẩn bị data
@@ -120,4 +143,5 @@ async def process_rich_text(
         return True
 
     except Exception as e:
+        print(f"Lỗi xử lý rich text: {str(e)}")
         return False

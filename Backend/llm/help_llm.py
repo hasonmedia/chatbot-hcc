@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config.get_embedding import get_embedding_chatgpt, get_embedding_gemini
 from models.chat import Message
 from models.llm import LLM, LLMKey
-from config.redis_cache import cache_get, cache_set, cache_delete, async_cache_get, async_cache_set
+from config.redis_cache import async_cache_get, async_cache_set
 from llm.prompt import prompt_builder
 from config.chromadb_config import search_chunks
 
@@ -124,6 +124,16 @@ async def get_current_model(db_session: AsyncSession, chat_session_id: int = Non
     try:
         model_info = await get_llm_model_info_cached(db_session)
         
+        
+        if chat_session_id is None:
+            return {
+                "embedding": {
+                    "name": model_info["embedding"],
+                    "key": model_info.get("embedding_free_key")
+                }
+            }
+
+
         result = {}
         
         keys = await get_round_robin_api_key(chat_session_id, db_session)
@@ -215,6 +225,14 @@ async def search_similar_documents(
             query_embedding=query_embedding,
             top_k=top_k
         )
+        
+        for i, res in enumerate(chroma_results, start=1):
+            print(f"--- Result {i} ---")
+            print("Content:")
+            print(res['content'])
+            print("Distance:", res['distance'])
+            print("Metadata:", res['metadata'])
+            print("\n")
 
         
         # Format kết quả
@@ -246,7 +264,7 @@ async def generate_response_prompt(
         # Tìm kiếm tài liệu
         knowledge = await search_similar_documents(
             query, 
-            top_k=10,
+            top_k=5,
             embedding_key=embedding_key,
             embedding_model_name=embedding_model_name
         )
