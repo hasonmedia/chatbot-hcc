@@ -147,7 +147,21 @@ def clear_session_cache(session_id: int):
     cache_delete(session_cache_key)
     cache_delete(repply_cache_key)
 
-
+def get_expire_time(option: str):
+    now = datetime.now()
+    
+    if option == "1h":
+        return now + timedelta(hours=1)
+    elif option == "4h":
+        return now + timedelta(hours=4)
+    elif option == "8am":
+        tomorrow = now.date() + timedelta(days=1)
+        return datetime.combine(tomorrow, datetime.min.time()) + timedelta(hours=8)
+    elif option == "forever":
+        return None  
+    else:
+        raise ValueError("Option không hợp lệ")
+     
 
 async def update_chat_session(id: int, data: dict, user, db: Session):
     try:
@@ -158,14 +172,12 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
 
         new_status = data.get("status")
         new_time = data.get("time")
-        
-        print(new_status)
         if not (chatSession.status == "true" and new_status == "true"):
             receiver_name = chatSession.current_receiver
-            chatSession.current_receiver = "Bot" if new_status == "true" else user.get("fullname")
+            chatSession.current_receiver = "Bot" if new_status == "true" else user.full_name
             chatSession.previous_receiver = receiver_name
             chatSession.status = new_status
-            chatSession.time = datetime.strptime(new_time, '%m/%d/%Y, %I:%M:%S %p')
+            chatSession.time = get_expire_time(new_time)
         
         await db.commit()
         await db.refresh(chatSession)

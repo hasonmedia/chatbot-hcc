@@ -8,7 +8,7 @@ router = APIRouter()
 from middleware.jwt import get_current_user
 import requests
 from fastapi import APIRouter, Request
-
+from pydantic import BaseModel
 from config.websocket_manager import ConnectionManager
 
 from controllers.chat_controller import (
@@ -22,7 +22,8 @@ from controllers.chat_controller import (
     get_messages_by_time_controller,
     get_messages_by_platform_controller,
     get_ratings_by_time_controller,
-    get_ratings_by_star_controller
+    get_ratings_by_star_controller,
+    update_session_controller
 )
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -48,6 +49,24 @@ async def check_session(
 ):
     return await check_session_controller(sessionId, url_channel, db)
 
+class SessionUpdate(BaseModel):
+    time: str | None = None
+    status: str | None = None
+
+@router.patch("/session/{sessionId}")
+async def update_session(
+    sessionId: str,
+    data: SessionUpdate,  
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    return await update_session_controller(
+        data.time,
+        data.status,
+        db,
+        int(sessionId),
+        user
+    )
 @router.get("/history/{chat_session_id}")
 async def get_history_chat(
     chat_session_id: int, 

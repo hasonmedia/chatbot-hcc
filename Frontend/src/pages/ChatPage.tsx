@@ -8,13 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -37,6 +30,9 @@ import {
 
 import { useAdminChat } from "@/hooks/useAdminChat";
 import { SessionItem, MessageItem } from "@/components/shared/ChatComponents";
+import { RadioGroupSetting } from "../components/shared/RadioGroup";
+import Countdown from "@/components/shared/Countdown";
+import { el } from "date-fns/locale";
 
 export default function ChatPage() {
   const {
@@ -49,6 +45,7 @@ export default function ChatPage() {
     newMessage,
     searchTerm,
     setNewMessage,
+    updateChatSessionStatus,
     setSearchTerm,
     handleSelectSession,
     handleSendMessage,
@@ -57,39 +54,54 @@ export default function ChatPage() {
   } = useAdminChat();
 
   const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
-
+  const [isBlockBotSheetOpen, setIsBlockBotSheetOpen] = useState(false);
+  const [selectedBlockOption, setSelectedBlockOption] = useState<string>("");
   const handleSelectSessionResponsive = (sessionId: string) => {
     handleSelectSession(sessionId);
   };
-
   const handleBackToSessions = () => {
     handleSelectSession(null as unknown as string);
   };
-
+  console.log("Current Session Info:", currentSessionInfo);
   const InfoColumnContent = () => (
     <div className="flex flex-col gap-4 p-4 lg:p-0">
       <Card>
         <CardHeader>
           <CardTitle>Thông tin phiên hỗ trợ</CardTitle>
+          <CardDescription>
+            {currentSessionInfo?.time ? (
+              <Countdown
+                targetDate={currentSessionInfo.time}
+                onComplete={() => console.log("Bot duoc khoi dong lai")}
+              />
+            ) : (
+              <span className="text-muted-foreground">Chưa có thời gian</span>
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Cán bộ xử lý</Label>
-            <Select defaultValue="nguyen-van-a" disabled={!currentSessionId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn cán bộ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="chua-gan">Chưa gán</SelectItem>
-                <SelectItem value="nguyen-van-a">Nguyễn Văn A</SelectItem>
-                <SelectItem value="tran-thi-b">Trần Thị B</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Cán bộ đang tiếp nhận</Label>
+            <Input
+              value={
+                currentSessionInfo?.current_receiver || "Chưa có cán bộ xử lý"
+              }
+              disabled
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Cán bộ tiếp nhận trước đó</Label>
+            <Input
+              value={
+                currentSessionInfo?.previous_receiver || "Chưa có cán bộ xử lý"
+              }
+              disabled
+            />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Hồ sơ liên quan</CardTitle>
           <CardDescription>
@@ -109,9 +121,19 @@ export default function ChatPage() {
             Tìm kiếm hồ sơ
           </Button>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
+  const handleArchive = () => {
+    setIsBlockBotSheetOpen(true);
+  };
+
+  const blockOptions = [
+    { id: 1, value: "1h", label: "1 tiếng" },
+    { id: 2, value: "4h", label: "4 tiếng" },
+    { id: 3, value: "8am", label: "8h sáng mai" },
+    { id: 4, value: "forever", label: "Chặn vĩnh viễn" },
+  ];
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
@@ -191,6 +213,9 @@ export default function ChatPage() {
                   variant="default"
                   size="sm"
                   disabled={!currentSessionId}
+                  onClick={() => {
+                    handleArchive();
+                  }}
                   className="hidden sm:flex"
                 >
                   <Archive className="mr-2 h-4 w-4" />
@@ -213,6 +238,60 @@ export default function ChatPage() {
                       <SheetTitle>Thông tin chi tiết</SheetTitle>
                     </SheetHeader>
                     <InfoColumnContent />
+                  </SheetContent>
+                </Sheet>
+
+                <Sheet
+                  open={isBlockBotSheetOpen}
+                  onOpenChange={setIsBlockBotSheetOpen}
+                >
+                  <SheetContent className="w-full sm:w-[400px] p-6 flex flex-col justify-between">
+                    <div>
+                      <SheetHeader>
+                        <SheetTitle className="text-lg font-semibold text-gray-800">
+                          🛑 Chặn Bot
+                        </SheetTitle>
+                        <p className="text-sm text-gray-500">
+                          Chọn phạm vi chặn bot để bảo vệ hệ thống của bạn.
+                        </p>
+                      </SheetHeader>
+
+                      <div className="mt-6">
+                        <RadioGroupSetting
+                          value={selectedBlockOption}
+                          onValueChange={setSelectedBlockOption}
+                          options={blockOptions}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-8 flex justify-end gap-3 border-t pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsBlockBotSheetOpen(false)}
+                        className="rounded-xl"
+                      >
+                        Hủy
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          const res = await updateChatSessionStatus(
+                            currentSessionId!,
+                            "false",
+                            selectedBlockOption
+                          );
+                          if (res.id) {
+                            alert("Chặn bot thành công!");
+                            setIsBlockBotSheetOpen(false);
+                          } else {
+                            alert("Chặn bot thất bại. Vui lòng thử lại.");
+                          }
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
+                      >
+                        Xác nhận chặn
+                      </Button>
+                    </div>
                   </SheetContent>
                 </Sheet>
               </div>

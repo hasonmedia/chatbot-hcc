@@ -31,6 +31,12 @@ async def check_session_controller(sessionId, url_channel, db: AsyncSession):
         "id": chat
     }
 
+async def update_session_controller(time, status, db: AsyncSession, sessionId: int, user: dict ):
+    chat = await update_chat_session(sessionId, {"time": time, "status": status}, user, db)    
+    return {
+        "id": chat
+    }
+
     
 async def get_history_chat_controller(chat_session_id: int, page: int = 1, limit: int = 10, db: AsyncSession = None):
     messages = await get_history_chat_service(chat_session_id, page, limit, db)

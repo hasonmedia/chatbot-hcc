@@ -6,6 +6,7 @@ import {
   getChatHistory,
   sendMessage,
   getAllChatHistory, // (1) Thêm hàm này vào import
+  updateChatSession,
 } from "@/services/chatService";
 
 // Type này từ file gốc của bạn
@@ -14,6 +15,12 @@ export type ChatSession = {
   customer_name: string;
   last_message: string;
   last_updated: string;
+  status?: string;
+  sender_type?: string;
+  time?: string;
+  channel?: string;
+  current_receiver?: string;
+  previous_receiver?: string;
 };
 
 export const useAdminChat = () => {
@@ -291,6 +298,30 @@ export const useAdminChat = () => {
     [handleSendMessage] // Phụ thuộc vào hàm handleSendMessage
   );
 
+  const updateChatSessionStatus = async (
+    sessionId: string,
+    status: string,
+    time: string
+  ) => {
+    try {
+      const res = await updateChatSession(sessionId, { status, time });
+      await getAllChatHistory();
+      setChatSessions((prevSessions) =>
+        prevSessions.map((session) =>
+          session.chat_session_id === sessionId
+            ? {
+                ...session,
+                status: res.id.status,
+                time: res.id.time,
+              }
+            : session
+        )
+      );
+      return res;
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái phiên chat:", error);
+    }
+  };
   // --- Trả về ---
   return {
     // ... (existing code) ...
@@ -303,6 +334,7 @@ export const useAdminChat = () => {
     messages,
     newMessage,
     searchTerm,
+    updateChatSessionStatus,
 
     // State Setters
     setNewMessage,

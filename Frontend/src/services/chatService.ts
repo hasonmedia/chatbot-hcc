@@ -1,4 +1,5 @@
 import axiosClient from "@/config/axios";
+import { API_ENDPOINT } from "@/constants/apiEndpoint";
 
 import type { MessageData } from "@/types/message";
 
@@ -149,6 +150,22 @@ export const createSession = async (): Promise<string> => {
   }
 };
 
+export const updateChatSession = async (
+  sessionId: string,
+  data: { status: string; time: string }
+): Promise<any> => {
+  try {
+    const response = await axiosClient.patch(
+      API_ENDPOINT.CHAT.UPDATE_SESSION_STATUS(sessionId),
+      data
+    );
+    console.log("Cập nhật phiên chat thành công:", response);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi cập nhật phiên chat:", error);
+    throw error;
+  }
+};
 export const checkSession = async (): Promise<string> => {
   // FIX 1: Đổi number -> string
   try {
@@ -277,19 +294,9 @@ export const updateAlertStatus = async (
   }
 };
 
-// Gửi tin nhắn hàng loạt
-export const sendBulkMessage = async (data: any): Promise<any> => {
-  try {
-    const res = await axiosClient.post(`/chat/send_message`, data);
-    return res;
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const getAllChatHistory = async (): Promise<any[]> => {
   try {
-    const response = await axiosClient.get("/chat/admin/history");
+    const response = await axiosClient.get(API_ENDPOINT.CHAT.GET_ADMIN_HISTORY);
     // Map dữ liệu từ backend sang frontend format
     const sessions = response.data.map((item: any) => ({
       chat_session_id: String(item.session_id), // Convert number to string
@@ -305,7 +312,9 @@ export const getAllChatHistory = async (): Promise<any[]> => {
       alert: item.alert,
       channel: item.channel,
       current_receiver: item.current_receiver,
+      previous_receiver: item.previous_receiver,
       sender_type: item.sender_type,
+      time: item.time,
     }));
     return sessions;
   } catch (error) {

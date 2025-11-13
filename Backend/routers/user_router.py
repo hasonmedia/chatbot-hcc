@@ -15,6 +15,7 @@ from jose import jwt, JWTError
 router = APIRouter(prefix="/users", tags=["Users"])
 from controllers import role_controller
 from config.database import get_db
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select 
 
@@ -35,11 +36,17 @@ async def get_me(
         "access_token": access_token,
         "abilities": abilities
     }
-    
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 @router.post("/login")
-async def login_user(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
-    data = await request.json()
-    return await user_controller.login_user_controller(data, response, db)
+async def login_user(
+    data: LoginRequest,  # 👈 body model
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    return await user_controller.login_user_controller(data.dict(), response, db)
 
 
 @router.get("/")
