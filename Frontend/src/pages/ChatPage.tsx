@@ -32,7 +32,7 @@ import { useAdminChat } from "@/hooks/useAdminChat";
 import { SessionItem, MessageItem } from "@/components/shared/ChatComponents";
 import { RadioGroupSetting } from "../components/shared/RadioGroup";
 import Countdown from "@/components/shared/Countdown";
-import { el } from "date-fns/locale";
+import { toast } from "react-toastify";
 
 export default function ChatPage() {
   const {
@@ -100,28 +100,6 @@ export default function ChatPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* <Card>
-        <CardHeader>
-          <CardTitle>Hồ sơ liên quan</CardTitle>
-          <CardDescription>
-            Liên kết với hồ sơ trên Cổng Dịch vụ công.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="ma-ho-so">Mã hồ sơ</Label>
-            <Input
-              id="ma-ho-so"
-              placeholder="Nhập mã hồ sơ..."
-              disabled={!currentSessionId}
-            />
-          </div>
-          <Button className="w-full" disabled={!currentSessionId}>
-            Tìm kiếm hồ sơ
-          </Button>
-        </CardContent>
-      </Card> */}
     </div>
   );
   const handleArchive = () => {
@@ -281,10 +259,10 @@ export default function ChatPage() {
                             selectedBlockOption
                           );
                           if (res.id) {
-                            alert("Chặn bot thành công!");
+                            toast.success("Chặn bot thành công!");
                             setIsBlockBotSheetOpen(false);
                           } else {
-                            alert("Chặn bot thất bại. Vui lòng thử lại.");
+                            toast.error("Chặn bot thất bại. Vui lòng thử lại.");
                           }
                         }}
                         className="bg-red-600 hover:bg-red-700 text-white rounded-xl"

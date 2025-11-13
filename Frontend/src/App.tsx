@@ -13,7 +13,6 @@ import LoginPage from "./pages/LoginPage";
 import ChatPage from "./pages/ChatPage";
 import ClientChat from "./pages/ClientChat";
 import ChannelManagementPage from "./pages/ChannelManagementPage";
-import ActivityLogPage from "./pages/ActivityLogPage";
 import UserGuidePage from "./pages/UserGuidePage";
 import GuestPage from "./pages/GuestPage";
 import ChartManagement from "./pages/ChartManagement";
@@ -148,22 +147,12 @@ function App() {
               }
             />
 
-            {/* Thống kê - root, superadmin, admin */}
-            <Route
-              path="/thong-ke"
-              element={
-                <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
-                  <ChartManagement />
-                </ProtectedRoute>
-              }
-            />
-
             {/* Thống kê hoạt động - root, superadmin, admin */}
             <Route
               path="/thong-ke-hoat-dong"
               element={
                 <ProtectedRoute requiredRoles={["root", "superadmin", "admin"]}>
-                  <ActivityLogPage />
+                  <ChartManagement />
                 </ProtectedRoute>
               }
             />

@@ -81,12 +81,6 @@ const items = [
     roles: ["root", "superadmin", "admin", "user"], // Tất cả roles
   },
   {
-    title: "Thống kê",
-    icon: ChartBar,
-    url: "/thong-ke",
-    roles: ["root", "superadmin", "admin"], // root, superadmin, admin
-  },
-  {
     title: "Thống kê hoạt động",
     icon: ChartBar,
     url: "/thong-ke-hoat-dong",
