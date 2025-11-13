@@ -29,10 +29,10 @@ export const useFeedbackTimer = ({
   useEffect(() => {
     const checkIfRated = async () => {
       if (!sessionId) return;
-      
+
       try {
         const response = await checkRating(sessionId);
-        if (response.has_rating) {
+        if (response.is_rated) {
           setHasRated(true);
         }
       } catch (error) {
@@ -95,7 +95,7 @@ export const useFeedbackTimer = ({
     if (messages.length === 0 || hasRated) return;
 
     const lastMessage = messages[messages.length - 1];
-    
+
     // Nếu tin nhắn cuối là từ customer, reset timer
     if (lastMessage.sender_type === "customer") {
       console.log("Người dùng vừa gửi tin nhắn - reset timer");
@@ -110,7 +110,7 @@ export const useFeedbackTimer = ({
   const closeFeedbackModal = useCallback(() => {
     setShowFeedbackModal(false);
     setHasRated(true); // Đánh dấu đã đánh giá để không hiện modal nữa
-    
+
     // Xóa timer nếu có
     if (timerRef.current) {
       clearTimeout(timerRef.current);
