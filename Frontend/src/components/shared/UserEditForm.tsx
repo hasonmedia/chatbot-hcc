@@ -131,7 +131,7 @@ export function UserForm({
       role: user?.role || "user",
       password: "",
       password_confirmation: "",
-      is_active: true,
+      is_active: user?.is_active,
     },
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -145,7 +145,7 @@ export function UserForm({
       role: user?.role || "user",
       password: "",
       password_confirmation: "",
-      is_active: true,
+      is_active: user?.is_active,
     });
     // Khi reset, xóa lỗi của trường username nếu đang ở chế độ edit
     if (isEditMode) {

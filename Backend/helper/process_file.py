@@ -1,3 +1,4 @@
+import datetime
 import logging
 from typing import Dict
 from pypdf import PdfReader
@@ -53,6 +54,7 @@ async def extract_text_from_excel(file_path: str) -> Optional[str]:
     for sheet in excel.sheet_names:
         try:
             df = pd.read_excel(file_path, sheet)
+            df = df.applymap(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime, datetime.date, datetime.time)) else x)
             if df.empty:
                 continue
 
@@ -63,7 +65,7 @@ async def extract_text_from_excel(file_path: str) -> Optional[str]:
                     rows_list.append(row_dict)
 
             if rows_list:
-                sheet_jsons[sheet] = rows_list
+                sheet_jsons[sheet] = rows_list 
 
         except Exception as e:
             continue

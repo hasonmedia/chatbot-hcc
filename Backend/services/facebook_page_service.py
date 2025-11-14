@@ -2,12 +2,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.facebook_page import FacebookPage
 from fastapi import HTTPException
-import json
 
 async def get_all_pages_service(db: AsyncSession):
-    result = await db.execute(select(FacebookPage))
-    return result.scalars().all()
-
+    try:
+        result = await db.execute(select(FacebookPage))
+        return result.scalars().all()
+    except Exception as e:
+        raise Exception(f"Lỗi lấy danh sách trang Facebook: {str(e)}")         
 
 async def create_page_service(data: dict, db: AsyncSession):
     # Kiểm tra page_id đã tồn tại

@@ -216,11 +216,12 @@ async def search_similar_documents(
     try:
         # Tạo embedding
         if "gemini" in embedding_model_name.lower():
+            print("Using Gemini for embedding")
             query_embedding = await get_embedding_gemini(query, api_key=embedding_key)
         else:
             query_embedding = await get_embedding_chatgpt(query, api_key=embedding_key)
         
-
+        print("123", query_embedding)
         chroma_results = await search_chunks(
             query_embedding=query_embedding,
             top_k=top_k

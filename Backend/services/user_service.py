@@ -12,21 +12,6 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed_password: str):
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-# async def authenticate_user(db: AsyncSession, username: str, password: str):
-#     try:
-#         result = await db.execute(select(User).filter(User.username == username))
-#         user = result.scalar_one_or_none()
-#         if not user or not verify_password(password, user.password_hash):
-#             return None
-#         if not user.is_active:
-#             return None
-#         user.last_login = datetime.now()
-#         await db.commit()
-#         await db.refresh(user)
-#         return user 
-#     except Exception as e:
-#         print(f"Error during authentication: {e}")
-#         return None
 async def authenticate_user(db: AsyncSession, username: str, password: str):
     try:
         result = await db.execute(select(User).filter(User.username == username))

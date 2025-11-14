@@ -24,6 +24,8 @@ import type { MessageItemProps } from "@/types/message";
 import { formatTime } from "@/lib/formatDateTime";
 import { useLLM } from "@/hooks/useLLM";
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
   const isCustomer = msg.sender_type === "customer";
   const isBot = msg.sender_type === "bot";
@@ -58,7 +60,27 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     return (
       <div className="flex items-start gap-3 justify-end">
         <div className="rounded-lg bg-primary text-primary-foreground p-3 max-w-[75%] text-left">
-          <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+          {/* <p className="text-sm whitespace-pre-wrap">{displayContent}</p> */}
+          <ReactMarkdown
+            // 2. Thêm plugin vào đây
+            remarkPlugins={[remarkGfm]}
+            // Đoạn code tùy chỉnh link của bạn vẫn giữ nguyên
+            components={{
+              a: ({ href, children, ...props }) => (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-800"
+                  {...props}
+                >
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {displayContent}
+          </ReactMarkdown>
           <span className="text-xs text-primary-foreground/80 block text-right mt-1">
             {formatTime(msg.created_at)}
           </span>
@@ -69,7 +91,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
       </div>
     );
   }
-
+  console.log("Rendering message from", displayContent);
   return (
     <div className="flex items-start gap-3">
       <Avatar className="h-8 w-8">
@@ -77,7 +99,27 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
       </Avatar>
       <div className="rounded-lg bg-muted p-3 max-w-[75%]">
         <p className="text-sm font-semibold mb-1">{getSenderName()}</p>
-        <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+        {/* <p className="text-sm whitespace-pre-wrap">{displayContent}</p> */}
+        <ReactMarkdown
+          // 2. Thêm plugin vào đây
+          remarkPlugins={[remarkGfm]}
+          // Đoạn code tùy chỉnh link của bạn vẫn giữ nguyên
+          components={{
+            a: ({ href, children, ...props }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+                {...props}
+              >
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {displayContent}
+        </ReactMarkdown>
         {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
           <img
             src={msg.image[0]}

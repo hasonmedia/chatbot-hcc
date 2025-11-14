@@ -8,8 +8,8 @@ import type { MessageData } from "@/types/message";
 import type { ChatSession } from "@/hooks/useAdminChat";
 import { UserCircle2, Bot } from "lucide-react";
 import { useLLM } from "@/hooks/useLLM";
-// --- HÀM TIỆN ÍCH ---
-
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 export const formatTime = (isoString: string) => {
   try {
     if (!isoString) return "vừa xong";
@@ -107,13 +107,33 @@ export function SessionItem({
             {formatTimeAgo(session.last_updated)}
           </span>
         </div>
-        <p
+        {/* <p
           className={`mt-1 truncate text-sm w-full ${
             isActive ? "text-foreground" : "text-muted-foreground"
           } ${isClosed && "italic"}`}
         >
           {displayContent}
-        </p>
+        </p> */}
+        <ReactMarkdown
+          // 2. Thêm plugin vào đây
+          remarkPlugins={[remarkGfm]}
+          // Đoạn code tùy chỉnh link của bạn vẫn giữ nguyên
+          components={{
+            a: ({ href, children, ...props }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+                {...props}
+              >
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {displayContent}
+        </ReactMarkdown>
       </div>
     </Button>
   );
@@ -171,7 +191,26 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
           {" "}
           {/* <-- Đổi sang bg-muted */}
           <p className="text-sm font-semibold mb-1">{getSenderName()}</p>
-          <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+          <ReactMarkdown
+            // 2. Thêm plugin vào đây
+            remarkPlugins={[remarkGfm]}
+            // Đoạn code tùy chỉnh link của bạn vẫn giữ nguyên
+            components={{
+              a: ({ href, children, ...props }) => (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-800"
+                  {...props}
+                >
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {displayContent}
+          </ReactMarkdown>
           {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
             <img
               src={msg.image[0]}
@@ -204,7 +243,27 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
         {" "}
         {/* <-- Đổi sang bg-primary */}
         {/* Không hiển thị tên cho customer */}
-        <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+        {/* <p className="text-sm whitespace-pre-wrap">{displayContent}</p> */}
+        <ReactMarkdown
+          // 2. Thêm plugin vào đây
+          remarkPlugins={[remarkGfm]}
+          // Đoạn code tùy chỉnh link của bạn vẫn giữ nguyên
+          components={{
+            a: ({ href, children, ...props }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800"
+                {...props}
+              >
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {displayContent}
+        </ReactMarkdown>
         {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
           <img
             src={msg.image[0]}
