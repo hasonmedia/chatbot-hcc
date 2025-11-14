@@ -40,6 +40,7 @@ async def get_me(
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 @router.post("/login")
 async def login_user(
     data: LoginRequest,  # 👈 body model

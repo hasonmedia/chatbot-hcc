@@ -55,6 +55,14 @@ def get_global_abilities_for_user(current_user: User):
             "can_create": False,
             "avalilable_roles": []
         },
+        "update_user": {
+            "can_edit": False,
+            "avalilable_roles": []
+        },
+        "delete_user": {
+            "can_delete": False,
+            "avalilable_roles": []
+        },
         "companies": {
             "can_create": False
         }
@@ -64,10 +72,18 @@ def get_global_abilities_for_user(current_user: User):
         abilities["users"]["can_create"] = True
         abilities["users"]["avalilable_roles"] = ["root","superadmin", "admin", "user"]
         abilities["companies"]["can_create"] = True
+        
+        
+        abilities["update_user"]["can_edit"] = True
+        abilities["update_user"]["avalilable_roles"] = ["root","superadmin", "admin", "user"]
     elif current_user.role == "superadmin":
         abilities["users"]["can_create"] = True
         abilities["users"]["avalilable_roles"] = ["superadmin", "admin", "user"]
         abilities["companies"]["can_create"] = True
+        
+        
+        abilities["update_user"]["can_edit"] = True
+        abilities["update_user"]["avalilable_roles"] = ["admin", "user"]
     elif current_user.role == "admin":
         abilities["users"]["can_create"] = True
         abilities["users"]["avalilable_roles"] = ["user"]

@@ -141,7 +141,8 @@ async def update_user_service(db: AsyncSession, user_id: int, data: dict):
     if "password" in data: user.password_hash = hash_password(data["password"])
     if "role" in data: user.role = data["role"]
     if "company_id" in data: user.company_id = data["company_id"]
-
+    if "is_active" in data: user.is_active = data["is_active"]
+    
     await db.commit()
     await db.refresh(user)
     return user
