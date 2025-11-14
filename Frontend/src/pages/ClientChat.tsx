@@ -14,7 +14,6 @@ import { Separator } from "@radix-ui/react-separator";
 import { Loader2 } from "lucide-react";
 import { Logo, Navbar01 } from "@/components/ui/shadcn-io/navbar-01";
 import { useNavigate } from "react-router-dom";
-import { GuestNavigation } from "./GuestPage";
 
 const ChatUI = () => {
   const {
@@ -95,7 +94,7 @@ const ClientChat = () => {
       />
 
       {/* Navigation */}
-      <GuestNavigation />
+      {/* <GuestNavigation /> */}
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">

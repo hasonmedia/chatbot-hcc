@@ -18,6 +18,7 @@ import GuestPage from "./pages/GuestPage";
 import ChartManagement from "./pages/ChartManagement";
 import CategoryPage from "./pages/CategoryPage";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute";
+import { Guide } from "./pages/Guide";
 
 function App() {
   return (
@@ -27,7 +28,7 @@ function App() {
           <Route path="/" element={<GuestPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/chat" element={<ClientChat />} />
-
+          <Route path="/huong-dan" element={<Guide />} />
           {/* Các trang cần đăng nhập và có phân quyền */}
           <Route
             element={

@@ -22,12 +22,7 @@ export const useLLM = () => {
       setError(null);
 
       const llms = await getAllLLMs();
-      if (llms.length > 0) {
-        // Assume we use the first LLM config
-        const firstLLM = llms[0];
-        const llmWithKeys = await getLLMById(firstLLM.id);
-        setLlmConfig(llmWithKeys);
-      }
+      setLlmConfig(llms);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load LLM config"

@@ -18,15 +18,17 @@ import {
   FileSearch,
   HelpCircle,
   FileText,
+  ChartBarBig,
 } from "lucide-react";
 import type { MessageItemProps } from "@/types/message";
 import { formatTime } from "@/lib/formatDateTime";
-
+import { useLLM } from "@/hooks/useLLM";
+import { useNavigate } from "react-router-dom";
 export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
   const isCustomer = msg.sender_type === "customer";
   const isBot = msg.sender_type === "bot";
   const isAdmin = msg.sender_type === "admin";
-
+  const { llmConfig } = useLLM();
   const getAvatarFallback = () => {
     if (isCustomer) return <UserCircle2 />;
     if (isBot) return <Bot />;
@@ -47,7 +49,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     displayContent = msg.content;
   }
   const getSenderName = () => {
-    if (isBot) return "Bot Hỗ trợ";
+    if (isBot) return llmConfig?.botName || "Bot hỗ trợ";
     if (isAdmin) return `Cán bộ: ${msg.sender_type || "Hỗ trợ viên"}`;
     return null;
   };
@@ -92,21 +94,36 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
 };
 
 export const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <div className="flex h-full flex-col border-r bg-muted/40 p-4">
       <div className="flex h-14 items-center mb-4">
         <h1 className="text-xl font-bold">Dịch Vụ Công</h1>
       </div>
       <nav className="flex flex-col gap-2">
-        <Button variant="ghost" className="justify-start">
+        <Button
+          variant="ghost"
+          className="justify-start"
+          onClick={() => {
+            navigate("/");
+          }}
+        >
           <Home className="mr-2 h-4 w-4" />
           Trang chủ
         </Button>
-        <Button variant="ghost" className="justify-start">
-          <FileSearch className="mr-2 h-4 w-4" />
-          Tra cứu hồ sơ
+        <Button
+          variant="ghost"
+          className="justify-start"
+          onClick={() => navigate("/chat")}
+        >
+          <ChartBarBig className="mr-2 h-4 w-4" />
+          Chat hỗ trợ
         </Button>
-        <Button variant="secondary" className="justify-start">
+        <Button
+          variant="ghost"
+          className="justify-start"
+          onClick={() => navigate("/huong-dan")}
+        >
           <HelpCircle className="mr-2 h-4 w-4" />
           Hỗ trợ trực tuyến
         </Button>

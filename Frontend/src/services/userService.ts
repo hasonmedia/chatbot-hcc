@@ -47,6 +47,12 @@ export const updateUser = async (
   );
   return response.data;
 };
+export const deleteUser = async (id: number): Promise<{ message: string }> => {
+  const response = await axiosClient.delete<{ message: string }>(
+    API_ENDPOINT.USER.DELETE(id)
+  );
+  return response.data;
+};
 export const getCustomers = async (): Promise<User[]> => {
   const response = await axiosClient.get<User[]>(
     API_ENDPOINT.USER.GET_CUSTOMER

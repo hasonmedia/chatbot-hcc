@@ -33,6 +33,15 @@ export const GuestNavigation = () => {
             <MessageCircle className="mr-2 h-4 w-4" />
             Chat Hỗ trợ
           </Button>
+          <Button
+            className="text-sm font-medium"
+            onClick={() => {
+              navigate("/huong-dan");
+            }}
+          >
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Hướng dẫn sử dụng
+          </Button>
         </nav>
       </div>
     </div>
@@ -69,7 +78,7 @@ const HomePage = () => {
                 variant="outline"
                 size="lg"
                 className="text-lg px-8"
-                onClick={() => window.open("/lien-he", "_blank")}
+                onClick={() => navigate("/huong-dan")}
               >
                 <HelpCircle className="mr-2 h-5 w-5" />
                 Hướng dẫn
@@ -161,7 +170,7 @@ const HomePage = () => {
                 <Button
                   variant="outline"
                   className="h-auto p-4 flex-col space-y-2"
-                  onClick={() => window.open("/lien-he", "_blank")}
+                  onClick={() => navigate("/huong-dan")}
                 >
                   <HelpCircle className="h-6 w-6" />
                   <span>Hướng dẫn sử dụng</span>
@@ -194,7 +203,7 @@ const GuestPage = () => {
       />
 
       {/* Navigation */}
-      <GuestNavigation />
+      {/* <GuestNavigation /> */}
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">

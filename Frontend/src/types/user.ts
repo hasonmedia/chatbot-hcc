@@ -8,6 +8,7 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
   company_id: number;
+  is_active: boolean;
 }
 export interface UserResponse {
   permission: {

@@ -9,9 +9,9 @@ import type {
   LLMKeyData,
 } from "@/types/llm";
 
-export const getAllLLMs = async (): Promise<LLMData[]> => {
+export const getAllLLMs = async (): Promise<LLMData> => {
   const response = await axiosClient.get<LLMData[]>(API_ENDPOINT.LLM.GET_ALL);
-  return response.data;
+  return response.data[0];
 };
 
 export const createLLM = async (llmData: Partial<LLM>): Promise<LLMData> => {

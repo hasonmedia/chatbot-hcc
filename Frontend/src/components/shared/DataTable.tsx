@@ -14,9 +14,9 @@ import type { User } from "@/types/user";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { UserForm } from "./UserEditForm";
-import { updateUser, registerUser } from "@/services/userService";
-import { formatDateTime } from "@/lib/formatDateTime";
+import { updateUser, registerUser, deleteUser } from "@/services/userService";
 import type { UserResponse } from "@/types/user";
+import ConfirmDialog from "./ConfirmDialog";
 
 export function DataTable() {
   const { users, loading, error, refetchUsers } = useUsers();
@@ -24,6 +24,11 @@ export function DataTable() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserResponse | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{
+    id: number;
+    fullName: string;
+  } | null>(null);
 
   const viewableUsers = useMemo(() => {
     if (!users) return [];
@@ -56,7 +61,8 @@ export function DataTable() {
       handleCloseModals();
       refetchUsers();
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.detail || err?.message || "Lỗi không xác định";
+      const errorMessage =
+        err?.response?.data?.detail || err?.message || "Lỗi không xác định";
       toast.error(`Lỗi khi cập nhật: ${errorMessage}`);
     }
   };
@@ -68,11 +74,31 @@ export function DataTable() {
       handleCloseModals();
       refetchUsers();
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.detail || err?.message || "Lỗi không xác định";
+      const errorMessage =
+        err?.response?.data?.detail || err?.message || "Lỗi không xác định";
       toast.error(`Lỗi khi tạo người dùng: ${errorMessage}`);
     }
   };
+  const askDeleteUser = (userId: number, fullName: string) => {
+    setSelectedUser({ id: userId, fullName });
+    setConfirmOpen(true);
+  };
+  const handleConfirmDelete = async () => {
+    if (!selectedUser) return;
 
+    try {
+      toast.warn(`Đang xóa người dùng ${selectedUser.fullName}...`);
+      await deleteUser(selectedUser.id);
+      toast.success(`Đã xóa thành công ${selectedUser.fullName}`);
+      refetchUsers();
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail || err.message || "Lỗi không xác định";
+      toast.error(`Lỗi: ${msg}`);
+    } finally {
+      setConfirmOpen(false);
+    }
+  };
   if (loading) {
     return <div className="text-center p-4">Đang tải dữ liệu...</div>;
   }
@@ -90,7 +116,6 @@ export function DataTable() {
           Thêm người dùng
         </Button>
       </div>
-
       <div className="rounded-md border overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -106,7 +131,7 @@ export function DataTable() {
                 </TableHead>
                 <TableHead className="min-w-[100px]">Vai trò</TableHead>
                 <TableHead className="min-w-[120px] hidden md:table-cell">
-                  Ngày tạo
+                  Tình trạng
                 </TableHead>
                 <TableHead className="text-right min-w-[100px]">
                   Thao tác
@@ -139,7 +164,15 @@ export function DataTable() {
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">
-                      {formatDateTime(item.user.createdAt)}
+                      {item.user.is_active ? (
+                        <Badge variant="success" className="text-xs">
+                          Hoạt động
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-xs">
+                          Không hoạt động
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -150,6 +183,16 @@ export function DataTable() {
                             onClick={() => handleEditClick(item)}
                           >
                             Sửa
+                          </Button>
+                        )}
+                        {item.permission.can_delete && (
+                          <Button
+                            variant="destructive"
+                            onClick={() =>
+                              askDeleteUser(item.user.id, item.user.full_name)
+                            }
+                          >
+                            Xóa
                           </Button>
                         )}
                       </div>
@@ -169,7 +212,6 @@ export function DataTable() {
           </Table>
         </div>
       </div>
-
       {isEditOpen && currentUser && (
         <UserForm
           mode="edit"
@@ -179,13 +221,21 @@ export function DataTable() {
           onSave={handleSaveUser}
         />
       )}
-
       {isCreateOpen && (
         <UserForm
           mode="create"
           isOpen={isCreateOpen}
           onClose={handleCloseModals}
           onSave={handleCreateUser}
+        />
+      )}
+      {confirmOpen && (
+        <ConfirmDialog
+          open={confirmOpen}
+          title="Xác nhận xóa"
+          description={`Bạn có chắc muốn xóa người dùng ${selectedUser?.fullName}?`}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmOpen(false)}
         />
       )}
     </>
