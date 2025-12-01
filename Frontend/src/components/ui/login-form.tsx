@@ -25,12 +25,10 @@ export function LoginForm({
     e.preventDefault();
     try {
       await loginUser(username, password);
-      console.log(user);
       toast.success(`Xin chào, ${user?.full_name || username}!`);
       navigate("/trang-chu"); // ✅ chuyển về trang chính
-    } catch (err) {
-      toast.error("Sai tài khoản hoặc mật khẩu!");
-      console.error(err);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Đăng nhập thất bại");
     }
   };
 

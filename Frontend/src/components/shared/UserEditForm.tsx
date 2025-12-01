@@ -15,6 +15,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,7 +32,9 @@ import {
 import type { User, UserResponse } from "@/types/user";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "react-toastify";
-
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 const getFormSchema = (mode: "create" | "edit") => {
   return z
     .object({
@@ -51,6 +54,7 @@ const getFormSchema = (mode: "create" | "edit") => {
       role: z.enum(["root", "superadmin", "admin", "user"]),
       password: z.string().optional(),
       password_confirmation: z.string().optional(),
+      is_active: z.boolean().optional(),
     })
     .superRefine((data, ctx) => {
       const { password, password_confirmation } = data;
@@ -127,9 +131,11 @@ export function UserForm({
       role: user?.role || "user",
       password: "",
       password_confirmation: "",
+      is_active: user?.is_active,
     },
   });
-
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   React.useEffect(() => {
     // --- 3. Cập nhật Reset ---
     form.reset({
@@ -139,6 +145,7 @@ export function UserForm({
       role: user?.role || "user",
       password: "",
       password_confirmation: "",
+      is_active: user?.is_active,
     });
     // Khi reset, xóa lỗi của trường username nếu đang ở chế độ edit
     if (isEditMode) {
@@ -154,6 +161,7 @@ export function UserForm({
         email: data.email,
         role: data.role,
         company_id: auth?.company_id,
+        is_active: data.is_active,
       };
       if (data.username) {
         saveData.username = data.username;
@@ -270,6 +278,27 @@ export function UserForm({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="is_active" // Đặt tên field là 'active' hoặc 'is_active'
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel>Trạng thái tài khoản</FormLabel>
+                    <FormDescription>
+                      Nếu tắt, tài khoản sẽ bị vô hiệu hóa và không thể đăng
+                      nhập.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             {/* Trường Password */}
             <FormField
@@ -278,36 +307,60 @@ export function UserForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mật khẩu</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder={
-                        isEditMode
-                          ? "Bỏ trống để giữ nguyên mật khẩu"
-                          : "Nhập mật khẩu (ít nhất 6 ký tự)"
-                      }
-                      {...field}
-                    />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder={
+                          isEditMode
+                            ? "Bỏ trống để giữ nguyên mật khẩu"
+                            : "Nhập mật khẩu (ít nhất 6 ký tự)"
+                        }
+                        {...field}
+                      />
+                    </FormControl>
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Trường Password Confirmation */}
+            {/* Xác nhận mật khẩu */}
             <FormField
               control={form.control}
               name="password_confirmation"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Xác nhận mật khẩu</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Nhập lại mật khẩu"
-                      {...field}
-                    />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Nhập lại mật khẩu"
+                        {...field}
+                      />
+                    </FormControl>
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

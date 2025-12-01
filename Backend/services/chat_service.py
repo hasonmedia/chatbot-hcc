@@ -14,81 +14,95 @@ import traceback
 from config.redis_cache import cache_delete
 
 async def create_session_service(url_channel: str, db):
-    session = ChatSession(
-        name=f"W-{random.randint(10**7, 10**8 - 1)}",
-        channel="web",
-        url_channel = url_channel or "https://chatbotbe.a2alab.vn/chat"  # Sử dụng url_channel từ widget
-    )
-    db.add(session)
-    await db.commit()
-    await db.refresh(session)
-    return session.id
+    try:
+
+        session = ChatSession(
+            name=f"W-{random.randint(10**7, 10**8 - 1)}",
+            channel="web",
+            url_channel = url_channel or "https://chatbotbe.a2alab.vn/chat"  # Sử dụng url_channel từ widget
+        )
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
+        return session.id
+    except Exception as e:
+        await db.rollback()
+        raise Exception("Lỗi khi tạo phiên chat mới")
 
 async def check_session_service(sessionId, url_channel, db):
-    result = await db.execute(select(ChatSession).filter(ChatSession.id == sessionId))
-    session = result.scalar_one_or_none()
-    if session:
-        return session.id
-    
-    # Nếu session không tồn tại, tạo session mới với url_channel
-    session = ChatSession(
-        name=f"W-{random.randint(10**7, 10**8 - 1)}",
-        channel="web",
-        url_channel = url_channel or "https://chatbotbe.a2alab.vn/chat"
-    )
-    
-    db.add(session)
-    await db.flush()   # để session.id được gán ngay
-    session_id = session.id
-    await db.commit()
-    return session_id
+    try:
+
+        result = await db.execute(select(ChatSession).filter(ChatSession.id == sessionId))
+        session = result.scalar_one_or_none()
+        if session:
+            return session.id
+        
+        # Nếu session không tồn tại, tạo session mới với url_channel
+        session = ChatSession(
+            name=f"W-{random.randint(10**7, 10**8 - 1)}",
+            channel="web",
+            url_channel = url_channel or "https://chatbotbe.a2alab.vn/chat"
+        )
+        
+        db.add(session)
+        await db.flush()   # để session.id được gán ngay
+        session_id = session.id
+        await db.commit()
+        return session_id
+    except Exception as e:
+        await db.rollback()
+        raise Exception("Lỗi khi kiểm tra hoặc tạo phiên chat mới")
     
 
 async def get_history_chat_service(chat_session_id: int, page: int = 1, limit: int = 10, db=None):
+    try: 
     # ✅ Validate chat_session_id
-    if not chat_session_id or chat_session_id <= 0:
-        print(f"❌ Invalid chat_session_id: {chat_session_id}")
-        return []
-    
-    # ✅ Kiểm tra session có tồn tại không
-    result = await db.execute(select(ChatSession).filter(ChatSession.id == chat_session_id))
-    session_exists = result.scalar_one_or_none()
-    if not session_exists:
-        print(f"❌ Session {chat_session_id} không tồn tại")
-        return []
-    
-    offset = (page - 1) * limit
-    
-    from sqlalchemy import func
-    result = await db.execute(
-        select(func.count(Message.id)).filter(Message.chat_session_id == chat_session_id)
-    )
-    total_messages = result.scalar()
+        if not chat_session_id or chat_session_id <= 0:
+            print(f"❌ Invalid chat_session_id: {chat_session_id}")
+            return []
+        
+        # ✅ Kiểm tra session có tồn tại không
+        result = await db.execute(select(ChatSession).filter(ChatSession.id == chat_session_id))
+        session_exists = result.scalar_one_or_none()
+        if not session_exists:
+            print(f"❌ Session {chat_session_id} không tồn tại")
+            return []
+        
+        offset = (page - 1) * limit
+        
+        from sqlalchemy import func
+        result = await db.execute(
+            select(func.count(Message.id)).filter(Message.chat_session_id == chat_session_id)
+        )
+        total_messages = result.scalar()
 
-    result = await db.execute(
-        select(Message)
-        .filter(Message.chat_session_id == chat_session_id)
-        .order_by(Message.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
-    messages = result.scalars().all()
-    
-    messages = list(reversed(messages))
-    
-    # Detach objects from session để tránh UPDATE không mong muốn
-    for msg in messages:
-        db.expunge(msg)
-        # ✅ Đảm bảo chat_session_id luôn đúng
-        if msg.chat_session_id != chat_session_id:
-            print(f"⚠️ WARNING: Message {msg.id} có chat_session_id không khớp!")
-            continue
-        try:
-            msg.image = json.loads(msg.image) if msg.image else []
-        except Exception:
-            msg.image = []
+        result = await db.execute(
+            select(Message)
+            .filter(Message.chat_session_id == chat_session_id)
+            .order_by(Message.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        messages = result.scalars().all()
+        
+        messages = list(reversed(messages))
+        
+        # Detach objects from session để tránh UPDATE không mong muốn
+        for msg in messages:
+            db.expunge(msg)
+            # ✅ Đảm bảo chat_session_id luôn đúng
+            if msg.chat_session_id != chat_session_id:
+                print(f"⚠️ WARNING: Message {msg.id} có chat_session_id không khớp!")
+                continue
+            try:
+                msg.image = json.loads(msg.image) if msg.image else []
+            except Exception:
+                msg.image = []
 
-    return messages
+        return messages
+    except Exception as e:
+        await db.rollback()
+        raise Exception("Lỗi khi lấy lịch sử chat")
     
 async def get_all_history_chat_service(db):
     try:
@@ -138,6 +152,7 @@ async def get_all_history_chat_service(db):
     except Exception as e:
         print(e)
         traceback.print_exc()
+        raise Exception("Lỗi khi lấy tất cả lịch sử chat")
 
 
 def clear_session_cache(session_id: int):
@@ -196,43 +211,51 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
     except Exception as e:
         print(e)
         await db.rollback()
-        return None
+        raise Exception("Lỗi khi cập nhật phiên chat")
 
 async def delete_chat_session(ids: list[int], db):
-    result = await db.execute(select(ChatSession).filter(ChatSession.id.in_(ids)))
-    sessions = result.scalars().all()
-    if not sessions:
-        return 0
-    
-    # Clear cache cho từng session trước khi xóa
-    for s in sessions:
-        clear_session_cache(s.id)
-        await db.delete(s)
-    await db.commit()
-    return len(sessions)
+    try:
+        result = await db.execute(select(ChatSession).filter(ChatSession.id.in_(ids)))
+        sessions = result.scalars().all()
+        if not sessions:
+            return 0
+        
+        # Clear cache cho từng session trước khi xóa
+        for s in sessions:
+            clear_session_cache(s.id)
+            await db.delete(s)
+        await db.commit()
+        return len(sessions)
+    except Exception as e:
+        print(e)
+        await db.rollback()
+        raise Exception("Lỗi khi xóa phiên chat")
 
 async def delete_message(chatId: int, ids: list[int], db):
-    print("chatId", chatId)
-    print("data", ids)
-    result = await db.execute(
-        select(Message).filter(
-            Message.id.in_(ids),
-            Message.chat_session_id == chatId
-        )
-    )
-    messages = result.scalars().all()
-    
-    if not messages:
-        return 0
+    try:
         
-    for m in messages:
-        await db.delete(m)
-    await db.commit()
-    return len(messages)
+        result = await db.execute(
+            select(Message).filter(
+                Message.id.in_(ids),
+                Message.chat_session_id == chatId
+            )
+        )
+        messages = result.scalars().all()
+        
+        if not messages:
+            return 0
+            
+        for m in messages:
+            await db.delete(m)
+        await db.commit()
+        return len(messages)
+    except Exception as e:
+        print(e)
+        await db.rollback()
+        raise Exception("Lỗi khi xóa tin nhắn")
 
 async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
     try:
-        # 1️⃣ Tổng số tin nhắn theo kênh (barData + pieData)
         bar_query = text("""
             SELECT 
                 cs.channel AS channel,
@@ -247,7 +270,6 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
         bar_data = [{"channel": r.channel, "messages": r.messages} for r in bar_rows]
         pie_data = [{"name": r.channel, "value": r.messages} for r in bar_rows]
 
-        # 2️⃣ So sánh tin nhắn giữa 2 tháng gần nhất (lineData)
         line_query = text("""
             SELECT 
                 cs.channel,
@@ -275,7 +297,6 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
 
         line_data = list(line_data_dict.values())
 
-        # 3️⃣ Bảng chi tiết: khách hàng, tin nhắn, % thay đổi (tableData)
         table_query = text("""
             WITH month_stats AS (
                 SELECT 
@@ -311,7 +332,6 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
             for r in table_rows
         ]
 
-        # ✅ Trả về dữ liệu tổng hợp
         return {
             "barData": bar_data,
             "pieData": pie_data,
@@ -322,12 +342,7 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error generating dashboard summary: {e}")
         traceback.print_exc()
-        return {
-            "barData": [],
-            "pieData": [],
-            "lineData": [],
-            "tableData": [],
-        }
+        raise Exception("Lỗi khi lấy dữ liệu tổng quan dashboard")
 
 
 async def get_messages_by_time_service(start_date: str, end_date: str, db: Session) -> Dict[str, Any]:
@@ -373,10 +388,7 @@ async def get_messages_by_time_service(start_date: str, end_date: str, db: Sessi
     except Exception as e:
         print(f"Error in get_messages_by_time_service: {e}")
         traceback.print_exc()
-        return {
-            "totalMessages": 0,
-            "dailyStatistics": []
-        }
+        raise Exception("Lỗi khi lấy thống kê tin nhắn theo thời gian")
 
 
 async def get_messages_by_platform_service(start_date: str, end_date: str, db: Session) -> Dict[str, int]:
@@ -421,12 +433,7 @@ async def get_messages_by_platform_service(start_date: str, end_date: str, db: S
     except Exception as e:
         print(f"Error in get_messages_by_platform_service: {e}")
         traceback.print_exc()
-        return {
-            "facebook": 0,
-            "telegram": 0,
-            "zalo": 0,
-            "web": 0
-        }
+        raise Exception("Lỗi khi lấy thống kê tin nhắn theo nền tảng")
 
 
 async def get_ratings_by_time_service(start_date: str, end_date: str, db: Session) -> Dict[str, Any]:
@@ -472,10 +479,7 @@ async def get_ratings_by_time_service(start_date: str, end_date: str, db: Sessio
     except Exception as e:
         print(f"Error in get_ratings_by_time_service: {e}")
         traceback.print_exc()
-        return {
-            "totalReviews": 0,
-            "dailyStatistics": []
-        }
+        raise Exception("Lỗi khi lấy thống kê đánh giá theo thời gian")
 
 
 async def get_ratings_by_star_service(start_date: str, end_date: str, db: Session) -> Dict[str, int]:
@@ -502,7 +506,6 @@ async def get_ratings_by_star_service(start_date: str, end_date: str, db: Sessio
         result = await db.execute(star_query, {"start_date": start, "end_date": end})
         star_rows = result.fetchall()
         
-        # Khởi tạo kết quả với các mức sao mặc định
         star_data = {
             "1_star": 0,
             "2_star": 0,
@@ -522,12 +525,4 @@ async def get_ratings_by_star_service(start_date: str, end_date: str, db: Sessio
     except Exception as e:
         print(f"Error in get_ratings_by_star_service: {e}")
         traceback.print_exc()
-        return {
-            "1_star": 0,
-            "2_star": 0,
-            "3_star": 0,
-            "4_star": 0,
-            "5_star": 0
-        }
-
-
+        raise Exception("Lỗi khi lấy thống kê đánh giá theo số sao")

@@ -8,6 +8,9 @@ export const API_ENDPOINT = {
     UPDATE(id: number) {
       return `/users/${id}`;
     },
+    DELETE(id: number) {
+      return `/users/${id}`;
+    },
     GET_CUSTOMER: "/users/customers",
     REFRESH_TOKEN: "/users/refresh",
   },

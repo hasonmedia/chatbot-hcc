@@ -194,7 +194,6 @@ async def generate_and_send_bot_response_background(
     session_data: dict,
     manager
 ):
-    """🚀 Background task: Generate bot response và gửi qua WebSocket"""
     async with AsyncSessionLocal() as new_db:
         try:
             # Generate response sử dụng hàm chung

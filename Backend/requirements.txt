@@ -45,6 +45,13 @@ pandas
 
 # Langchain
 langchain-text-splitters
+sentence-transformers
+transformers
+torch
+llama-index
+llama-index-vector-stores-chroma
+llama-index-embeddings-openai
+llama-index-embeddings-gemini
 
 
 # Networking

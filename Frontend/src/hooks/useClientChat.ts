@@ -8,7 +8,8 @@ import {
   sendMessage,
 } from "@/services/chatService"; // Đảm bảo đường dẫn này đúng
 import type { MessageData } from "@/types/message";
-
+import { getAllLLMs } from "@/services/llmService";
+import type { LLMData } from "@/types/llm";
 export const useClientChat = () => {
   // --- State ---
   const [messages, setMessages] = useState<MessageData[]>([]);
@@ -16,7 +17,7 @@ export const useClientChat = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true); // Loading lịch sử
   const [isConnecting, setIsConnecting] = useState(true); // Đang kết nối/khởi tạo session
-
+  const [llms, setLlms] = useState<LLMData>();
   // --- Ref ---
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -31,8 +32,17 @@ export const useClientChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-
-  // Effect (2): Khởi tạo chat, session và WebSocket
+  useEffect(() => {
+    const fetchLLMs = async () => {
+      try {
+        const llms = await getAllLLMs();
+        setLlms(llms); // Giả định chỉ có một LLM được sử dụng
+      } catch (error) {
+        console.error("Error fetching LLMs:", error);
+      }
+    };
+    fetchLLMs();
+  }, []);
   useEffect(() => {
     const initializeChat = async () => {
       setIsConnecting(true);
@@ -53,16 +63,16 @@ export const useClientChat = () => {
         }
 
         setSessionId(currentSessionId);
-
         // Tải lịch sử chat
         setIsLoading(true);
+
         const history = await getChatHistory(currentSessionId);
         if (isNewSession) {
           const welcomeMessage: MessageData = {
             id: `welcome-${Date.now()}`, // ID tạm thời, chỉ dùng ở UI
             chat_session_id: currentSessionId,
             sender_type: "bot", // Tin nhắn từ bot
-            content: "Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?", // Nội dung tin nhắn
+            content: llms?.system_greeting as string, // Nội dung tin nhắn
             created_at: new Date().toISOString(), // Thời gian hiện tại
             image: null,
           };
@@ -83,7 +93,6 @@ export const useClientChat = () => {
             created_at: data.created_at || new Date().toISOString(),
             id: data.id || `msg-${Date.now()}`,
           };
-          console.log("Tin nhắn sau khi normalize:", normalizedMessage);
           // Cập nhật state tin nhắn
           setMessages((prevMessages) => [...prevMessages, normalizedMessage]);
         };
@@ -105,7 +114,7 @@ export const useClientChat = () => {
     return () => {
       disconnectCustomer();
     };
-  }, []); // Chỉ chạy 1 lần khi component mount
+  }, [llms]); // Chỉ chạy 1 lần khi component mount
 
   // Xử lý gửi tin nhắn
   const handleSendMessage = useCallback(() => {

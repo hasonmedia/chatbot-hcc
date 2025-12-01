@@ -40,12 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-
-      await login(username, password); // Gửi request login (cookie lưu tự động)
+      await login(username, password);
       const me = await getMe(); // Gọi lại để lấy thông tin user
       setUser(me);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Đăng nhập thất bại");
+      console.error("Login error:", err);
+      setError(err.response?.data?.details || "Đăng nhập thất bại");
       throw err;
     } finally {
       setLoading(false);

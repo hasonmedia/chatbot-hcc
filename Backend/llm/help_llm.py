@@ -7,7 +7,7 @@ from models.chat import Message
 from models.llm import LLM, LLMKey
 from config.redis_cache import async_cache_get, async_cache_set
 from llm.prompt import prompt_builder
-from config.chromadb_config import search_chunks
+from llm.help_search_query import search_data
 
 
 async def get_all_key(db_session: AsyncSession) -> list:
@@ -207,36 +207,59 @@ async def get_latest_messages(
 async def search_similar_documents(
     query: str, 
     top_k: int,
+    bot_key: str,
+    bot_model_name: str,
     embedding_key: str = None,
     embedding_model_name: str = None
+    
 ) -> List[Dict]:
     
-    
-    
     try:
-        # Tạo embedding
-        if "gemini" in embedding_model_name.lower():
-            query_embedding = await get_embedding_gemini(query, api_key=embedding_key)
-        else:
-            query_embedding = await get_embedding_chatgpt(query, api_key=embedding_key)
+        # 1) Lấy metadata filter từ query
+        # metadata = await search_metadata(
+        #     query=query,
+        #     model_name=bot_model_name,
+        #     api_key=bot_key
+        # )
         
+        # metadata_filter = {}
+        # if metadata.get("category_id"):
+        #     metadata_filter["category_id"] = metadata["category_id"]
 
-        chroma_results = await search_chunks(
-            query_embedding=query_embedding,
+        # # file_names
+        # if metadata.get("file_names") and len(metadata["file_names"]) > 0:
+        #     metadata_filter["file_names"] = metadata["file_names"]
+
+        # print(f"🔍 Metadata filter: {metadata_filter}")
+    
+        
+        candidates = await search_data(
+            query=query,
+            embedding_key=embedding_key,
+            embedding_model_name=embedding_model_name,
             top_k=top_k
         )
         
-        for i, res in enumerate(chroma_results, start=1):
-            print(f"--- Result {i} ---")
-            print("Content:")
-            print(res['content'])
-            print("Distance:", res['distance'])
-            print("Metadata:", res['metadata'])
-            print("\n")
-
         
-        # Format kết quả
-        return [{"content": item["content"]} for item in chroma_results]
+        return candidates
+        
+        
+        
+        
+        
+
+        # # 4) Nếu không ra kết quả, tìm lại không filter
+        # if not candidates:
+        #     print(f"⚠️ Không tìm thấy kết quả với filter {metadata_filter}, tìm lại không filter...")
+        #     candidates = await search_data(
+        #         query=query,
+        #         embedding_key=embedding_key,
+        #         metadata_filter=None,
+        #         top_k=top_k
+        #     )
+
+        # reranked = rerank_candidates(query, candidates, top_n=top_k)
+        # return reranked
 
     except Exception as e:
         raise Exception(f"Lỗi khi tìm kiếm: {str(e)}")
@@ -264,10 +287,13 @@ async def generate_response_prompt(
         # Tìm kiếm tài liệu
         knowledge = await search_similar_documents(
             query, 
-            top_k=5,
+            top_k=10,
             embedding_key=embedding_key,
-            embedding_model_name=embedding_model_name
+            embedding_model_name=embedding_model_name,
+            bot_key=bot_key,
+            bot_model_name=bot_model_name
         )
+        
         
         
         # Tạo prompt
@@ -276,6 +302,7 @@ async def generate_response_prompt(
             history=history,
             query=query
         )
+        
         
         
         if "gemini" in bot_model_name.lower():
@@ -288,9 +315,9 @@ async def generate_response_prompt(
             from llm.gpt import generate_gpt_response
             response_json = await generate_gpt_response(
                 api_key=bot_key,
-                query=query,
                 prompt=prompt
             )
+
 
         return response_json
         
@@ -331,4 +358,6 @@ async def clear_llm_keys_cache(llm_detail_id: int = None, key_type: str = None) 
     except Exception as e:
         print(f"❌ Lỗi khi xóa cache keys: {e}")
         return False
+
+
 
