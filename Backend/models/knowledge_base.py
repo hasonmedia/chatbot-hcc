@@ -3,7 +3,6 @@ from datetime import datetime
 from config.database import Base
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from pgvector.sqlalchemy import Vector
 
 class KnowledgeBase(Base):
     __tablename__ = "knowledge_base"
@@ -12,21 +11,35 @@ class KnowledgeBase(Base):
     title = Column(String(500), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    customer_id = Column(Integer)
     
     # Relationship
-    details = relationship("KnowledgeBaseDetail", back_populates="knowledge_base", cascade="all, delete-orphan")
+    categories = relationship("KnowledgeCategory", back_populates="knowledge_base", cascade="all, delete-orphan")
+
+
+class KnowledgeCategory(Base):
+    """
+    Bảng phân loại kiến thức - trung gian giữa KnowledgeBase và KnowledgeBaseDetail
+    Quan hệ: KnowledgeBase 1 -> N KnowledgeCategory 1 -> N KnowledgeBaseDetail
+    """
+    __tablename__ = "knowledge_category"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    knowledge_base_id = Column(Integer, ForeignKey("knowledge_base.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    knowledge_base = relationship("KnowledgeBase", back_populates="categories")
+    details = relationship("KnowledgeBaseDetail", back_populates="category", cascade="all, delete-orphan")
 
 
 class KnowledgeBaseDetail(Base):
-    """
-    Bảng chi tiết lưu thông tin từng file được upload
-    Quan hệ 1-nhiều với KnowledgeBase
-    """
     __tablename__ = "knowledge_base_detail"
 
     id = Column(Integer, primary_key=True, index=True)
-    knowledge_base_id = Column(Integer, ForeignKey("knowledge_base.id"), nullable=False)
+    category_id = Column(Integer, ForeignKey("knowledge_category.id"), nullable=False)
     
     # Thông tin file
     file_name = Column(String(255), nullable=True)
@@ -42,20 +55,10 @@ class KnowledgeBaseDetail(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
-    knowledge_base = relationship("KnowledgeBase", back_populates="details")
-    chunks = relationship("DocumentChunk", back_populates="detail", cascade="all, delete-orphan")
+    category = relationship("KnowledgeCategory", back_populates="details")
     user = relationship("User", foreign_keys=[user_id])
 
-class DocumentChunk(Base):
-    __tablename__ = "document_chunks"
 
-    id = Column(Integer, primary_key=True, index=True)
-    chunk_text = Column(Text, nullable=False)
-    search_vector = Column(Vector(3072))
     
-    # Foreign key đến knowledge_base_detail thay vì knowledge_base
-    knowledge_base_detail_id = Column(Integer, ForeignKey("knowledge_base_detail.id"), nullable=False)
     
-    # Relationship
-    detail = relationship("KnowledgeBaseDetail", back_populates="chunks")
-    
+

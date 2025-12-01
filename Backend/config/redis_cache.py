@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 class RedisCache:
     def __init__(self):
-        self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        self.redis_host = os.getenv("REDIS_HOST", "localhost")
+        self.redis_url = os.getenv("REDIS_URL", "redis://192.168.1.216:6379/0")
+        self.redis_host = os.getenv("REDIS_HOST", "192.168.1.216") 
         self.redis_port = int(os.getenv("REDIS_PORT", 6379))
         self.redis_db = int(os.getenv("REDIS_DB", 0))
         self.redis_password = os.getenv("REDIS_PASSWORD", None)
@@ -127,16 +127,6 @@ class RedisCache:
             logger.error(f"Error checking cache key {key}: {e}")
             return False
 
-    def expire(self, key: str, ttl: int) -> bool:
-        try:
-            client = self.get_sync_client()
-            if client is None:
-                return False
-            return bool(client.expire(key, ttl))
-        except Exception as e:
-            logger.error(f"Error setting expire for key {key}: {e}")
-            return False
-
     # ================== ASYNC OPERATIONS ==================
     async def async_set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         try:
@@ -192,39 +182,6 @@ class RedisCache:
             logger.error(f"Error async checking cache key {key}: {e}")
             return False
 
-    # ================== UTILITY ==================
-    def flush_all(self) -> bool:
-        try:
-            client = self.get_sync_client()
-            if client is None:
-                return False
-            client.flushdb()
-            return True
-        except Exception as e:
-            logger.error(f"Error flushing cache: {e}")
-            return False
-
-    def get_info(self) -> Optional[dict]:
-        try:
-            client = self.get_sync_client()
-            if client is None:
-                return None
-            return client.info()
-        except Exception as e:
-            logger.error(f"Error getting Redis info: {e}")
-            return None
-
-    def close_connections(self):
-        try:
-            if self._sync_client:
-                self._sync_client.close()
-                self._sync_client = None
-            if self._async_client:
-                asyncio.create_task(self._async_client.close())
-                self._async_client = None
-        except Exception as e:
-            logger.error(f"Error closing Redis connections: {e}")
-
 
 # ================== SINGLETON + HELPERS ==================
 redis_cache = RedisCache()
@@ -260,44 +217,3 @@ async def async_cache_delete(key: str) -> bool:
 
 async def async_cache_exists(key: str) -> bool:
     return await redis_cache.async_exists(key)
-
-
-# ================== DECORATORS ==================
-def cache_result(key_prefix: str, ttl: Optional[int] = None):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(sorted(kwargs.items())))}"
-
-            cached_result = cache_get(cache_key)
-            if cached_result is not None:
-                return cached_result
-
-            result = func(*args, **kwargs)
-            if result is not None:
-                cache_set(cache_key, result, ttl)
-
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-def async_cache_result(key_prefix: str, ttl: Optional[int] = None):
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            cache_key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(sorted(kwargs.items())))}"
-
-            cached_result = await async_cache_get(cache_key)
-            if cached_result is not None:
-                return cached_result
-
-            result = await func(*args, **kwargs)
-            if result is not None:
-                await async_cache_set(cache_key, result, ttl)
-
-            return result
-
-        return wrapper
-
-    return decorator

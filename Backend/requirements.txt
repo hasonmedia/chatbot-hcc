@@ -6,7 +6,9 @@ uvicorn[standard]
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
-pgvector==0.2.4
+chromadb
+numpy<2.0
+alembic==1.13.1
 
 # Configuration
 python-dotenv==1.0.0
@@ -16,8 +18,8 @@ python-jose[cryptography]==3.3.0
 python-multipart==0.0.6
 bcrypt==4.1.1
 
-# Data Validation (Gỡ ghim pydantic, để fastapi tự chọn)
-pydantic-settings==2.1.0
+# Data Validation
+pydantic-settings
 
 # Google APIs
 google-generativeai==0.8.5
@@ -36,21 +38,24 @@ Pillow==10.1.0
 # File Processing
 pypdf==4.0.1
 python-docx==1.1.0
-# openpyxl sẽ được cài bởi unstructured[xlsx]
+openpyxl==3.1.2
+beautifulsoup4==4.12.2
+docx2txt==0.9
+pandas
 
-# LangChain Stack (Đã sửa lỗi xung đột)
-langchain
-langchain-core
-langchain-community
+# Langchain
 langchain-text-splitters
-langsmith
-langgraph
-unstructured
-unstructured[xlsx]
-networkx
-msoffcrypto-tool
+sentence-transformers
+transformers
+torch
+llama-index
+llama-index-vector-stores-chroma
+llama-index-embeddings-openai
+llama-index-embeddings-gemini
+
+
 # Networking
-requests==2.31.0
+requests
 websockets==12.0
 
 # Async File Operations

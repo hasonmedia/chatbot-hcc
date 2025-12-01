@@ -5,9 +5,12 @@ from models.llm import LLM, LLMKey, LLMDetail
 
 async def create_llm_service(data: dict, db: AsyncSession):
     llm_instance = LLM(
-        name=data.get("name"),
-        key=data.get("key"),
         prompt=data.get("prompt"),
+        system_greeting=data.get("system_greeting"),
+        botName=data.get("botName"),
+        bot_model_detail_id=data.get("bot_model_detail_id"),
+        embedding_model_detail_id=data.get("embedding_model_detail_id"),
+        company_id=data.get("company_id")
     )
     db.add(llm_instance)
     await db.commit()
@@ -32,10 +35,12 @@ async def update_llm_service(llm_id: int, data: dict, db: AsyncSession):
     
     # Cập nhật model được chọn cho bot và embedding
     if 'bot_model_detail_id' in data:
-        llm_instance.bot_model_detail_id = data.get('bot_model_detail_id')
-    
+        # Dùng int() thay vì .parse_int()
+        llm_instance.bot_model_detail_id = int(data.get('bot_model_detail_id'))
+
     if 'embedding_model_detail_id' in data:
-        llm_instance.embedding_model_detail_id = data.get('embedding_model_detail_id')
+        # Dùng int() thay vì .parse_int()
+        llm_instance.embedding_model_detail_id = int(data.get('embedding_model_detail_id'))
     
     await db.commit()
     await db.refresh(llm_instance)
@@ -81,11 +86,27 @@ async def get_all_llms_service(db: AsyncSession):
 # ===== LLM Key Services =====
 
 async def create_llm_key_service(llm_detail_id: int, data: dict, db: AsyncSession):
-    """Tạo key mới cho LLMDetail"""
+    # Kiểm tra tên key trùng trong cùng llm_detail và cùng type
+    key_type = data.get("type", "bot")
+    key_name = data.get("name")
+    
+    # Lấy tất cả keys có cùng llm_detail_id và type
+    result = await db.execute(
+        select(LLMKey).filter(
+            LLMKey.llm_detail_id == llm_detail_id,
+            LLMKey.type == key_type,
+            LLMKey.name == key_name
+        )
+    )
+    existing_key = result.scalar_one_or_none()
+    
+    if existing_key:
+        raise ValueError(f"Key với tên '{key_name}' đã tồn tại trong {key_type} model này")
+    
     llm_key = LLMKey(
-        name=data.get("name"),
+        name=key_name,
         key=data.get("key"),
-        type=data.get("type", "bot"),  # Mặc định là "bot"
+        type=key_type,
         llm_detail_id=llm_detail_id
     )
     db.add(llm_key)
@@ -100,6 +121,23 @@ async def update_llm_key_service(key_id: int, data: dict, db: AsyncSession):
     llm_key = result.scalar_one_or_none()
     if not llm_key:
         return None
+    
+    # Nếu cập nhật tên, kiểm tra tên trùng
+    new_name = data.get('name')
+    if new_name and new_name != llm_key.name:
+        # Kiểm tra tên key trùng trong cùng llm_detail và cùng type
+        check_result = await db.execute(
+            select(LLMKey).filter(
+                LLMKey.llm_detail_id == llm_key.llm_detail_id,
+                LLMKey.type == llm_key.type,
+                LLMKey.name == new_name,
+                LLMKey.id != key_id  # Loại trừ key hiện tại
+            )
+        )
+        existing_key = check_result.scalar_one_or_none()
+        
+        if existing_key:
+            raise ValueError(f"Key với tên '{new_name}' đã tồn tại trong {llm_key.type} model này")
     
     llm_key.name = data.get('name', llm_key.name)
     llm_key.key = data.get('key', llm_key.key)

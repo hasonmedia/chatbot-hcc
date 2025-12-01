@@ -8,15 +8,12 @@ from services.llm_service import (
 from llm.help_llm import clear_llm_keys_cache
 
 async def create_llm_key_controller(llm_detail_id: int, data: dict, db: AsyncSession):
-    """Tạo key mới cho LLMDetail"""
     llm_key = await create_llm_key_service(llm_detail_id, data, db)
     
     # Xóa cache để force reload danh sách keys mới
     await clear_llm_keys_cache(llm_detail_id)
     
     return {
-        "message": "LLM key created",
-        "llm_key": {
             "id": llm_key.id,
             "name": llm_key.name,
             "key": llm_key.key,
@@ -24,7 +21,6 @@ async def create_llm_key_controller(llm_detail_id: int, data: dict, db: AsyncSes
             "llm_detail_id": llm_key.llm_detail_id,
             "created_at": llm_key.created_at,
             "updated_at": llm_key.updated_at
-        }
     }
 
 
@@ -38,8 +34,6 @@ async def update_llm_key_controller(key_id: int, data: dict, db: AsyncSession):
     await clear_llm_keys_cache(llm_key.llm_detail_id)
     
     return {
-        "message": "LLM key updated",
-        "llm_key": {
             "id": llm_key.id,
             "name": llm_key.name,
             "key": llm_key.key,
@@ -47,7 +41,7 @@ async def update_llm_key_controller(key_id: int, data: dict, db: AsyncSession):
             "llm_detail_id": llm_key.llm_detail_id,
             "created_at": llm_key.created_at,
             "updated_at": llm_key.updated_at
-        }
+    
     }
 
 

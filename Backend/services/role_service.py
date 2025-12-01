@@ -14,15 +14,23 @@ async def get_users_with_permission(db: AsyncSession, current_user: User):
     return users_dto
 
 def calculate_permission_for_user(current_user: User, target_user: User ):
-    print(current_user.role)
     can_view = False
     can_edit = False
     can_delete = False
 
-    if current_user.role == "root" or current_user.role == "superadmin":
+    if current_user.role == "root":
         can_view = True
         can_edit = True
         can_delete = True
+    elif current_user.role == "superadmin":
+        if target_user.role in ["superadmin"]:
+            can_view = True
+            can_edit = False
+            can_delete = False
+        elif target_user.role in ["admin", "user"]:
+            can_view = True
+            can_edit = True
+            can_delete = True
     elif current_user.role == "admin":
         if target_user.role in ["user"] and current_user.company_id == target_user.company_id:
             can_view = True
@@ -53,6 +61,9 @@ def get_global_abilities_for_user(current_user: User):
     abilities = {
         "users": {
             "can_create": False,
+            "can_edit": False,
+            "can_delete": False,
+            "can_view": False,
             "avalilable_roles": []
         },
         "companies": {
@@ -62,17 +73,25 @@ def get_global_abilities_for_user(current_user: User):
 
     if current_user.role == "root":
         abilities["users"]["can_create"] = True
+        abilities["users"]["can_edit"] = True
+        abilities["users"]["can_delete"] = True
+        abilities["users"]["can_view"] = True
         abilities["users"]["avalilable_roles"] = ["root","superadmin", "admin", "user"]
         abilities["companies"]["can_create"] = True
+
     elif current_user.role == "superadmin":
         abilities["users"]["can_create"] = True
-        abilities["users"]["avalilable_roles"] = ["superadmin", "admin", "user"]
+        abilities["users"]["can_edit"] = True
+        abilities["users"]["can_delete"] = True
+        abilities["users"]["can_view"] = True
+        abilities["users"]["avalilable_roles"] = [ "admin", "user"]
         abilities["companies"]["can_create"] = True
     elif current_user.role == "admin":
         abilities["users"]["can_create"] = True
+        abilities["users"]["can_edit"] = True
+        abilities["users"]["can_delete"] = True
+        abilities["users"]["can_view"] = True
         abilities["users"]["avalilable_roles"] = ["user"]
-    elif current_user.role == "user":
-        abilities["users"]["can_create"] = False
-        abilities["users"]["avalilable_roles"] = []
-    
+
     return abilities
+    

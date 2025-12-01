@@ -6,22 +6,25 @@ from services.llm_service import (
     get_llm_by_id_service,
     get_all_llms_service
 )
-from llm.help_llm import clear_llm_model_cache
+from llm.help_llm import clear_llm_keys_cache
 
 async def create_llm_controller(data: dict, db: AsyncSession):
     llm_instance = await create_llm_service(data, db)
     
     # Xóa cache nếu tạo LLM id=1
     if llm_instance.id == 1:
-        await clear_llm_model_cache()
+        await clear_llm_keys_cache()
     
     return {
         "message": "LLM created",
         "llm": {
             "id": llm_instance.id,
-            "name": llm_instance.name,
-            "key": llm_instance.key,
             "prompt": llm_instance.prompt,
+            "system_greeting": llm_instance.system_greeting,
+            "botName": llm_instance.botName,
+            "bot_model_detail_id": llm_instance.bot_model_detail_id,
+            "embedding_model_detail_id": llm_instance.embedding_model_detail_id,
+            "company_id": llm_instance.company_id,
             "created_at": llm_instance.created_at
         }
     }
@@ -33,15 +36,18 @@ async def update_llm_controller(llm_id: int, data: dict, db: AsyncSession):
     
     # Xóa cache nếu cập nhật LLM id=1
     if llm_id == 1:
-        await clear_llm_model_cache()
+        await clear_llm_keys_cache()
     
     return {
         "message": "LLM updated",
         "llm": {
             "id": llm_instance.id,
-            "name": llm_instance.name,
-            "key": llm_instance.key,
             "prompt": llm_instance.prompt,
+            "system_greeting": llm_instance.system_greeting,
+            "botName": llm_instance.botName,
+            "bot_model_detail_id": llm_instance.bot_model_detail_id,
+            "embedding_model_detail_id": llm_instance.embedding_model_detail_id,
+            "company_id": llm_instance.company_id,
             "created_at": llm_instance.created_at
         }
     }
@@ -53,7 +59,7 @@ async def delete_llm_controller(llm_id: int, db: AsyncSession):
     
     # Xóa cache nếu xóa LLM id=1
     if llm_id == 1:
-        await clear_llm_model_cache()
+        await clear_llm_keys_cache()
     
     return {"message": "LLM deleted", "llm_id": llm_instance.id}
 

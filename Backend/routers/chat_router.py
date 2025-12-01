@@ -1,7 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, Response, HTTPException, BackgroundTasks
 import json
-from models.field_config import FieldConfig
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db
 import asyncio
@@ -9,19 +8,22 @@ router = APIRouter()
 from middleware.jwt import get_current_user
 import requests
 from fastapi import APIRouter, Request
-
+from pydantic import BaseModel
 from config.websocket_manager import ConnectionManager
 
 from controllers.chat_controller import (
     create_session_controller,
     get_history_chat_controller,
     get_all_history_chat_controller,
-    update_chat_session_controller,
     delete_chat_session_controller,
     delete_message_controller,
     check_session_controller,
-    get_all_customer_controller,
     get_dashboard_summary_controller,
+    get_messages_by_time_controller,
+    get_messages_by_platform_controller,
+    get_ratings_by_time_controller,
+    get_ratings_by_star_controller,
+    update_session_controller
 )
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -38,6 +40,7 @@ async def create_session(request: Request, db: AsyncSession = Depends(get_db)):
     return await create_session_controller(url_channel, db)
 
 
+
 @router.get("/session/{sessionId}")
 async def check_session(
     sessionId: int, 
@@ -46,6 +49,24 @@ async def check_session(
 ):
     return await check_session_controller(sessionId, url_channel, db)
 
+class SessionUpdate(BaseModel):
+    time: str | None = None
+    status: str | None = None
+
+@router.patch("/session/{sessionId}")
+async def update_session(
+    sessionId: str,
+    data: SessionUpdate,  
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    return await update_session_controller(
+        data.time,
+        data.status,
+        db,
+        int(sessionId),
+        user
+    )
 @router.get("/history/{chat_session_id}")
 async def get_history_chat(
     chat_session_id: int, 
@@ -55,28 +76,6 @@ async def get_history_chat(
 ):
     return await get_history_chat_controller(chat_session_id, page, limit, db)
 
-@router.put("/alert/{session_id}")
-async def update_alert_status(session_id: int, alert_data: dict, db: AsyncSession = Depends(get_db)):
-    """Cập nhật trạng thái alert cho chat session"""
-    try:
-        from models.chat import ChatSession
-        from sqlalchemy import select
-        
-        result = await db.execute(select(ChatSession).filter(ChatSession.id == session_id))
-        chat_session = result.scalar_one_or_none()
-        if not chat_session:
-            raise HTTPException(status_code=404, detail="Chat session not found")
-        
-        chat_session.alert = alert_data.get("alert", "false")
-        await db.commit()
-        
-        return {"success": True, "message": "Alert status updated successfully"}
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error updating alert status: {str(e)}")
-
-
-
 @router.get("/admin/history")
 async def get_history_chat(db: AsyncSession = Depends(get_db)):
     return await get_all_history_chat_controller(db)
@@ -84,21 +83,6 @@ async def get_history_chat(db: AsyncSession = Depends(get_db)):
 @router.get("/admin/count_by_channel")
 async def count_messages_by_channel(db: AsyncSession = Depends(get_db)):
     return await get_dashboard_summary_controller(db)
-
-@router.get("/admin/customers")
-async def get_customer_chat(
-    channel: Optional[str] = Query(None, description="Lọc theo channel"),
-    tag_id: Optional[int] = Query(None, description="Lọc theo tag"),
-    db: AsyncSession = Depends(get_db)
-):
-    data = {"channel": channel, "tag_id": tag_id}
-    return await get_all_customer_controller(data, db)
-
-@router.patch("/{id}")
-async def update_config(id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = await get_current_user(request)
-    data = await request.json()
-    return await update_chat_session_controller(id, data, user, db)
 
 @router.delete("/chat_sessions")
 async def delete_chat_sessions(request: Request, db: AsyncSession = Depends(get_db)):
@@ -111,4 +95,93 @@ async def delete_messages(chatId: int, request: Request, db: AsyncSession = Depe
     body = await request.json()        # lấy JSON từ body
     ids = body.get("ids", [])          # danh sách id messages
     return await delete_message_controller(chatId, ids, db)
+
+
+@router.get("/statistics/messages/time")
+async def get_messages_by_time(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 1: Thống kê tổng lượng tin nhắn theo thời gian
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về:
+    - totalMessages: Tổng số tin nhắn
+    - dailyStatistics: Thống kê theo từng ngày
+    """
+    return await get_messages_by_time_controller(startDate, endDate, db)
+
+
+@router.get("/statistics/messages/platform")
+async def get_messages_by_platform(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 2: Thống kê lượng tin nhắn theo nền tảng trong khoảng thời gian
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về số lượng tin nhắn theo từng nền tảng:
+    - facebook
+    - telegram
+    - zalo
+    - web
+    """
+    return await get_messages_by_platform_controller(startDate, endDate, db)
+
+
+@router.get("/statistics/ratings/time")
+async def get_ratings_by_time(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 1: Thống kê tổng lượng đánh giá theo thời gian
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về:
+    - totalReviews: Tổng số đánh giá
+    - dailyStatistics: Thống kê theo từng ngày
+    """
+    return await get_ratings_by_time_controller(startDate, endDate, db)
+
+
+@router.get("/statistics/ratings/star")
+async def get_ratings_by_star(
+    startDate: str = Query(..., description="Ngày bắt đầu, định dạng YYYY-MM-DD"),
+    endDate: str = Query(..., description="Ngày kết thúc, định dạng YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    API 2: Thống kê đánh giá theo số sao
+    
+    Tham số:
+    - startDate: Ngày bắt đầu (YYYY-MM-DD)
+    - endDate: Ngày kết thúc (YYYY-MM-DD)
+    
+    Trả về số lượng đánh giá theo từng mức sao:
+    - 1_star
+    - 2_star
+    - 3_star
+    - 4_star
+    - 5_star
+    """
+    return await get_ratings_by_star_controller(startDate, endDate, db)
+
+
+
+
 

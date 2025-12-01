@@ -9,68 +9,40 @@ from typing import Optional, List
 
 router = APIRouter(prefix="/knowledge-base", tags=["Knowledge Base"])
 
-# ----------------------------------------------------------------
-# GET / READ
-# ----------------------------------------------------------------
 
 @router.get("/")
-async def get_all_kbs(db: AsyncSession = Depends(get_db)):
-    """
-    Lấy tất cả Knowledge Base và details của chúng
-    """
-    # Sửa tên controller (thêm 's')
-    return await knowledge_base_controller.get_all_kbs_controller(db)
+async def get_all_kbs(
+    category_ids: Optional[List[int]] = Query(None, description="List category IDs để filter. Nếu không truyền thì lấy tất cả."),
+    file_types: Optional[List[str]] = Query(None, description="List file types to filter. Example: PDF,DOCX,XLSX,TEXT"),
+    db: AsyncSession = Depends(get_db)
+):
+   
+    return await knowledge_base_controller.get_all_kbs_controller(db, category_ids, file_types)
+
 
 @router.get("/search")
 async def search_kb(query: str = Query(...), db: AsyncSession = Depends(get_db)):
     return await knowledge_base_controller.search_kb_controller(query, db)
 
-# ----------------------------------------------------------------
-# CREATE (Tạo mới)
-# ----------------------------------------------------------------
+
 
 @router.post("/upload-files")
 async def create_kb_files(
-    kb_id: int = Form(...),
-    title: str = Form(...),
-    customer_id: Optional[int] = Form(None),
+    category_id: int = Form(...),
     files: List[UploadFile] = File(...),
     user_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Tạo knowledge base mới từ nhiều files upload
-    """
+
     return await knowledge_base_controller.create_kb_with_files_controller(
-        kb_id=kb_id,
-        title=title,
-        customer_id=customer_id,
+        category_id=category_id,
         files=files,
         user_id=user_id,
         db=db
     )
 
 
-@router.patch("/update-files/{kb_id}")
-async def update_kb_files(
-    kb_id: int,
-    title: Optional[str] = Form(None),
-    customer_id: Optional[int] = Form(None),
-    user_id: Optional[int] = Form(None),
-    files: List[UploadFile] = File(None), # Thêm file là optional
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Cập nhật knowledge base (thêm file mới vào KB đã có)
-    """
-    return await knowledge_base_controller.update_kb_with_files_controller(
-        kb_id=kb_id,
-        title=title,
-        customer_id=customer_id,
-        files=files,
-        user_id=user_id,
-        db=db
-    )
+
 
 @router.put("/rich-text/{detail_id}")
 async def update_kb_rich_text(
@@ -92,22 +64,47 @@ async def delete_kb_detail(
     detail_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Xóa một file/text detail (và các chunks của nó)
-    """
+
     return await knowledge_base_controller.delete_kb_detail_controller(detail_id, db)
 
 @router.post("/rich-text/{kb_id}")
 async def add_kb_rich_text(
-    kb_id: int,
-    data: dict = Body(...), # Body: {"title": "...", "customer_id": "...", "raw_content": "..."}
+    data: dict = Body(...),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Thêm một detail (Rich Text) mới vào KB đã có
-    """
     return await knowledge_base_controller.add_kb_rich_text_controller(
-        kb_id=kb_id,
         data=data,
         db=db
     )
+    
+    
+#Categories
+@router.get("/categories")
+async def get_all_categories(db: AsyncSession = Depends(get_db)):
+
+    return await knowledge_base_controller.get_all_categories_controller(db)
+
+@router.post("/categories")
+async def create_category(
+    data: dict = Body(...),
+    db: AsyncSession = Depends(get_db)
+):
+
+    return await knowledge_base_controller.create_category_controller(data, db)
+
+@router.put("/categories/{category_id}")
+async def update_category(
+    category_id: int,
+    data: dict = Body(...),
+    db: AsyncSession = Depends(get_db)
+):
+
+    return await knowledge_base_controller.update_category_controller(category_id, data, db)
+
+@router.delete("/categories/{category_id}")
+async def delete_category(
+    category_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+
+    return await knowledge_base_controller.delete_category_controller(category_id, db)

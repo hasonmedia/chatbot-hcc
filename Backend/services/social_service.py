@@ -31,8 +31,7 @@ manager = ConnectionManager()
 
 
 async def send_message_fast_service(data: dict, user, db):
-
-    sender_name = user.get("fullname") if user else None
+    sender_name = user.full_name if user else None
     chat_session_id = data.get("chat_session_id")
     
     # Xử lý ảnh nếu có
@@ -114,14 +113,14 @@ async def send_message_fast_service(data: dict, user, db):
             
         return response_messages
     
-    # 🚀 Xử lý bot reply trong background (không block WebSocket)
+    # 🚀 Xử lý bot reply
     should_reply = await check_repply_cached(chat_session_id, db)
     if should_reply:
         asyncio.create_task(generate_and_send_bot_response_background(
             data.get("content"),
             chat_session_id,
             session_data,
-            manager  # ✅ FIX: Add manager parameter
+            manager
         ))
         
     

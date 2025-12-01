@@ -10,7 +10,6 @@ from services.rating_service import (
 
 
 async def create_rating_controller(session_id: int, data: dict, db: AsyncSession):
-    """Tạo hoặc cập nhật đánh giá"""
     rate = data.get("rate")
     comment = data.get("comment", "")
     

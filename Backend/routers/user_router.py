@@ -15,6 +15,7 @@ from jose import jwt, JWTError
 router = APIRouter(prefix="/users", tags=["Users"])
 from controllers import role_controller
 from config.database import get_db
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select 
 
@@ -35,11 +36,18 @@ async def get_me(
         "access_token": access_token,
         "abilities": abilities
     }
-    
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 @router.post("/login")
-async def login_user(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
-    data = await request.json()
-    return await user_controller.login_user_controller(data, response, db)
+async def login_user(
+    data: LoginRequest,  # 👈 body model
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    return await user_controller.login_user_controller(data.dict(), response, db)
 
 
 @router.get("/")
@@ -62,9 +70,6 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
 ):
-    # BẮT BUỘC: Thêm kiểm tra quyền, ví dụ chỉ admin
-    if current_user.role != "admin":
-         raise HTTPException(status_code=403, detail="Not authorized to create users")
     data = await request.json()
     return await user_controller.create_user_controller(data, db)
 
@@ -75,19 +80,17 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
 ):
-    # BẮT BUỘC: Kiểm tra quyền (admin hoặc chính người đó)
-    if current_user.role != "admin" and current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this user")
+    # Kiểm tra quyền: root, superadmin, admin có thể update bất kỳ user nào
+    # User thường chỉ có thể update chính mình
+    allowed_roles = ["root", "superadmin", "admin"]
+    if current_user.role not in allowed_roles and current_user.id != user_id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Bạn không có quyền cập nhật thông tin người dùng này"
+        )
     
     data = await request.json()
     return await user_controller.update_user_controller(user_id, data, db)
-
-# @router.get("/customers")
-# async def get_customers(
-#     db: AsyncSession = Depends(get_db),
-#     current_user: User = Depends(get_current_user) 
-# ):
-#     return await user_controller.get_all_customer_info_controller(db)
 
 @router.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):

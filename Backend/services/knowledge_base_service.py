@@ -1,17 +1,22 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
-from models.knowledge_base import KnowledgeBase, KnowledgeBaseDetail, DocumentChunk
+from sqlalchemy import text
+from models.knowledge_base import KnowledgeBase, KnowledgeBaseDetail, KnowledgeCategory
 from fastapi import UploadFile
 from helper.file_processor import (
     process_uploaded_file, 
-    delete_chunks_by_detail_id,
     process_rich_text 
 )
+
+from config.chromadb_config import delete_chunks
+
 from typing import Optional, List
 import logging
 import os
 import aiofiles
+from collections import defaultdict
+from config.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -19,186 +24,115 @@ UPLOAD_DIR = "upload/knowledge_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-async def get_all_kbs_service(db: AsyncSession):
+
+
+async def get_all_kbs_service(
+    db: AsyncSession,
+    category_ids: Optional[List[int]] = None,
+    file_types: Optional[List[str]] = None,
+):
     """
-    Lấy knowledge base DUY NHẤT với tất cả details
-    (Vì hệ thống chỉ hỗ trợ 1 KB)
+    Lấy tất cả knowledge bases, có thể filter theo danh sách category_ids và/hoặc danh sách file_types.
+    file_types: list of strings như ['PDF','DOCX','XLSX','TEXT'] (không phân biệt hoa thường)
     """
-    result = await db.execute(
-        select(KnowledgeBase).options(
-            selectinload(KnowledgeBase.details).selectinload(KnowledgeBaseDetail.user)
-        )
+    # build where clause dynamically to support category_ids and file_types
+    filters = []
+    params = {}
+
+    if category_ids:
+        filters.append("kc.id = ANY(:category_ids)")
+        params["category_ids"] = category_ids
+
+    if file_types:
+        # normalize to upper-case and strip dots if any
+        normalized = [ft.upper().replace('.', '') for ft in file_types if ft]
+        if normalized:
+            filters.append("kbd.file_type = ANY(:file_types)")
+            params["file_types"] = normalized
+
+    category_filter = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+    sql_query = text(f"""
+    WITH detail_cte AS (
+        SELECT
+            kbd.id AS detail_id,
+            kbd.file_name,
+            kbd.file_type,
+            kbd.file_path,
+            kbd.source_type,
+            kbd.raw_content,
+            kbd.created_at AS detail_created_at,
+            kbd.updated_at AS detail_updated_at,
+            kbd.is_active,
+            u.id AS user_id,
+            u.username,
+            kc.id AS category_id,
+            kc.name AS category_name,
+            kb.id AS kb_id,
+            kb.title AS kb_title,
+            kb.created_at AS kb_created_at,
+            kb.updated_at AS kb_updated_at
+        FROM knowledge_base_detail kbd
+        LEFT JOIN knowledge_category kc ON kbd.category_id = kc.id
+        LEFT JOIN knowledge_base kb ON kc.knowledge_base_id = kb.id
+        LEFT JOIN users u ON u.id = kbd.user_id
+        {category_filter}
+        ORDER BY  kbd.created_at DESC
     )
-    kb = result.scalars().first() 
-    return _convert_kb_to_dict(kb)
+    SELECT
+        kb_id,
+        kb_title,
+        kb_created_at,
+        kb_updated_at,
+        jsonb_agg(
+            jsonb_build_object(
+                'detail_id', detail_id,
+                'file_name', file_name,
+                'file_type', file_type,
+                'file_path', file_path,
+                'source_type', source_type,
+                'raw_content', raw_content,
+                'detail_created_at', detail_created_at,
+                'detail_updated_at', detail_updated_at,
+                'is_active', is_active,
+                'user_id', user_id,
+                'username', username,
+                'category_id', category_id,
+                'category_name', category_name
+            ) ORDER BY detail_created_at DESC
+        ) AS details
+    FROM detail_cte
+    GROUP BY kb_id, kb_title, kb_created_at, kb_updated_at
+    ORDER BY kb_id;
+    """)
 
-async def update_kb_service(kb_id: int, data: dict, db: AsyncSession):
-    """Update knowledge base cơ bản (chỉ title, customer_id)"""
-    result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
-    kb = result.scalar_one_or_none()
-    if not kb:
-        return None
-    kb.title = data.get("title", kb.title)
-    kb.customer_id = data.get("customer_id", kb.customer_id)
+    result = await db.execute(sql_query, params)
+    rows = result.fetchall()
+
     
-    await db.commit()
-    await db.refresh(kb)
-    return kb
-
-
-async def update_kb_with_files_service(
-    kb_id: int,
-    title: Optional[str],
-    customer_id: Optional[int],
-    user_id: int,
-    files: List[UploadFile],
-    db: AsyncSession
-):
-    """
-    Cập nhật knowledge base (thêm files mới)
-    """
-    result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
-    kb = result.scalar_one_or_none()
-    if not kb:
-        return None
+    kb_data = [
+        {
+            "id": row.kb_id,
+            "title": row.kb_title,
+            "created_at": row.kb_created_at,
+            "updated_at": row.kb_updated_at,
+            "details": row.details
+        }
+        for row in rows
+    ]
     
-    if title is not None:
-        kb.title = title
-    if customer_id is not None:
-        kb.customer_id = customer_id
-    
-    if files and len(files) > 0:
-        for file in files:
-            detail = None
-            file_path = None
-            try:
-                file_path = os.path.join(UPLOAD_DIR, file.filename)
-                async with aiofiles.open(file_path, 'wb') as f:
-                    content_file = await file.read()
-                    await f.write(content_file)
-                
-                detail = KnowledgeBaseDetail(
-                    knowledge_base_id=kb.id,
-                    file_name=file.filename,
-                    source_type="FILE", 
-                    file_type=os.path.splitext(file.filename)[1].upper().replace('.', ''),
-                    file_path=file_path,
-                    is_active=True,
-                    user_id= user_id
-                )
-                db.add(detail)
-                print("them ok")
-                await db.flush() 
-                await db.commit() 
-                
-                file_result = await process_uploaded_file(
-                    file_path, 
-                    file.filename,
-                    knowledge_base_detail_id=detail.id
-                )
-                
-                if file_result['success']:
-                    logger.info(f"Đã thêm file: {file.filename} với {file_result.get('chunks_created', 0)} chunks")
-                else:
-                    logger.error(f"Lỗi xử lý file {file.filename}: {file_result.get('error')}")
-                    await delete_chunks_by_detail_id(detail.id)
-                    await db.delete(detail)
-                    await db.commit()
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        
-            except Exception as e:
-                logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
-                if detail and detail.id:
-                    await delete_chunks_by_detail_id(detail.id)
-                    try:
-                        await db.delete(detail)
-                        await db.commit()
-                    except:
-                        pass
-                if file_path and os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except:
-                        pass
-                continue
-    
-    await db.refresh(kb, ['details'])
-    return kb
+    return kb_data
 
-# knowledge_base_service.py
 
-async def add_kb_rich_text_service(
-    kb_id: int,
-    customer_id: Optional[int],
-    user_id: int,
-    raw_content: str,
-    db: AsyncSession
-):
-    """
-    Thêm một detail (Rich Text) mới vào KB đã có
-    """
-    try:
-        result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
-        kb = result.scalar_one_or_none()
-        
-        if not kb:
-            logger.error(f"Không tìm thấy KB {kb_id} để thêm rich text")
-            return None
 
-        # Bỏ 2 dòng cập nhật kb.title và kb.customer_id
-
-        detail = KnowledgeBaseDetail(
-            knowledge_base_id=kb.id,
-            source_type="RICH_TEXT",
-            raw_content=raw_content,
-            is_active=True,
-            user_id= user_id
-        )
-        db.add(detail)
-        await db.flush() # Vẫn cần flush để lấy detail.id
-        await db.commit()
-        text_result = await process_rich_text(
-            raw_content,
-            knowledge_base_detail_id=detail.id
-        )
-        
-        if not text_result['success']:
-            logger.error(f"Lỗi xử lý rich text: {text_result.get('error')}")
-            # Nếu lỗi, rollback toàn bộ transaction
-            await db.rollback()
-            await db.commit()
-            return None # Hoặc raise Exception
-        
-        
-        
-        logger.info(f"Đã thêm rich text detail mới vào KB {kb_id}")
-        await db.refresh(kb, ['details'])
-        return _convert_kb_to_dict(kb)
-
-    except Exception as e:
-        logger.error(f"Lỗi khi thêm rich text vào KB (service): {str(e)}")
-        await db.rollback() 
-        raise
 async def create_kb_with_files_service(
-    kb_id: int,
-    title: str,
-    customer_id: Optional[int],
     user_id: int,
+    category_id: int,
     files: List[UploadFile],
     db: AsyncSession
 ):
-    """
-    Tạo knowledge base mới với nhiều files
-    """
-    kb = None 
+    
     try:
-        result = await db.execute(select(KnowledgeBase).filter(KnowledgeBase.id == kb_id))
-        kb = result.scalar_one_or_none()
-        
-        if not kb:
-            logger.error(f"Không tìm thấy KB {kb_id} để thêm file")
-            return None
         
         for file in files:
             detail = None
@@ -210,38 +144,46 @@ async def create_kb_with_files_service(
                     await f.write(content_file)
                 
                 detail = KnowledgeBaseDetail(
-                    knowledge_base_id=kb.id,
+                    category_id=category_id,  
                     file_name=file.filename,
                     source_type="FILE", 
                     file_type=os.path.splitext(file.filename)[1].upper().replace('.', ''),
                     file_path=file_path,
                     is_active=True,
-                    user_id= user_id
+                    user_id=user_id
                 )
                 db.add(detail)
                 await db.flush() 
                 await db.commit() 
                 
-                file_result = await process_uploaded_file(
+                
+                
+                success  = await process_uploaded_file(
+                    category_id,
                     file_path, 
                     file.filename,
-                    knowledge_base_detail_id=detail.id
+                    knowledge_base_detail_id=detail.id,
+                    db=db
                 )
                 
-                if file_result['success']:
-                    logger.info(f"Đã xử lý file: {file.filename} với {file_result.get('chunks_created', 0)} chunks")
+                if success:
+                    logger.info(f"✅ Đã xử lý thành công file: {file.filename}")
                 else:
-                    logger.error(f"Lỗi xử lý file {file.filename}: {file_result.get('error')}")
-                    await delete_chunks_by_detail_id(detail.id)
+                    logger.error(f"❌ Lỗi xử lý file: {file.filename}")
+                    # Xóa chunks (nếu có)
+                    await delete_chunks(detail.id)
+                    
+                    # Xóa detail DB
                     await db.delete(detail)
                     await db.commit()
+                    # Xóa file
                     if os.path.exists(file_path):
                         os.remove(file_path)
                         
             except Exception as e:
                 logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
                 if detail and detail.id:
-                    await delete_chunks_by_detail_id(detail.id)
+                    await delete_chunks(detail.id)
                     try:
                         await db.delete(detail)
                         await db.commit()
@@ -254,28 +196,73 @@ async def create_kb_with_files_service(
                         pass
                 continue
         
-        await db.refresh(kb, ['details'])
         
-        logger.info(f"Đã tạo knowledge base với {len(files)} files")
-        return kb
+        return True
         
     except Exception as e:
         logger.error(f"Lỗi khi tạo knowledge base: {str(e)}")
         await db.rollback()
         raise
 
-async def update_kb_with_rich_text_service(
-    detail_id: int, 
-    customer_id: Optional[int], 
-    user_id: Optional[int],
-    raw_content: str, 
+
+
+async def add_kb_rich_text_service(
+    file_name: str,
+    user_id: int,
+    raw_content: str,
+    category_id: int,
     db: AsyncSession
 ):
-    """
-    Cập nhật một knowledge base detail (RICH_TEXT)
-    Sẽ xóa chunks cũ và tạo lại chunks mới
-    """
     try:
+       
+        detail = KnowledgeBaseDetail(
+            category_id=category_id,
+            source_type="RICH_TEXT",
+            file_type = "TEXT",
+            file_name=file_name,
+            raw_content=raw_content,
+            is_active=True,
+            user_id=user_id
+        )
+        db.add(detail)
+        await db.flush() 
+        await db.commit() 
+        
+        
+        
+        success = await process_rich_text(
+            raw_content,
+            knowledge_base_detail_id=detail.id,
+            db=db
+        )
+        
+        if success:
+            return detail
+        
+        else:
+            
+            await delete_chunks(detail.id)
+            await db.delete(detail)
+            await db.commit() 
+            
+            return None
+        
+
+    except Exception as e:
+        logger.error(f"Lỗi khi thêm rich text vào KB (service): {str(e)}")
+        await db.rollback() 
+        raise
+
+async def update_kb_with_rich_text_service(
+    detail_id: int, 
+    user_id: Optional[int],
+    raw_content: str, 
+    file_name: str,
+    db: AsyncSession
+):
+    
+    try:
+        # Bước 1: Lấy detail và kb cha (phần này đã đúng)
         result = await db.execute(
             select(KnowledgeBaseDetail)
             .options(selectinload(KnowledgeBaseDetail.knowledge_base)) 
@@ -296,102 +283,319 @@ async def update_kb_with_rich_text_service(
              logger.error(f"Không tìm thấy KnowledgeBase cha cho detail_id={detail_id}.")
              return None
 
+        # Bước 2: Cập nhật thuộc tính (chưa commit)
         if customer_id is not None:
             kb.customer_id = customer_id
         
         detail.raw_content = raw_content
         detail.user_id = user_id
-        await db.commit() 
-        logger.info(f"Đã cập nhật text cho detail_id={detail_id}.")
+        detail.file_name = file_name
+        
+        logger.info(f"Đã cập nhật thuộc tính cho detail_id={detail_id} (chưa commit).")
 
+        # Bước 3: Xóa chunks cũ (chưa commit)
+        # Hàm delete_chunks_by_detail_id không nhận tham số db
+        logger.info(f"Đang xóa các chunks cũ của detail_id={detail.id} (transaction)")
+        await delete_chunks_by_detail_id(detail_id) # Không truyền db parameter
 
-        logger.info(f"Đang xóa các chunks cũ của detail_id={detail.id}...")
-        await delete_chunks_by_detail_id(detail.id)
-
-        logger.info(f"Đang tạo chunks mới cho detail_id={detail.id}...")
+        # Bước 4: Tạo chunks mới (chưa commit)
+        logger.info(f"Đang tạo chunks mới cho detail_id={detail.id} (transaction)")
         text_result = await process_rich_text(
             raw_content=raw_content,
             knowledge_base_detail_id=detail.id
         )
 
         if not text_result['success']:
-            logger.error(f"LỖI TÁI TẠO CHUNK: {text_result.get('error')}. "
-                         f"Detail {detail.id} sẽ không có chunk cho đến khi được cập nhật lại.")
-        else:
-            logger.info(f"Đã tạo {text_result.get('chunks_created', 0)} chunks mới.")
+            # Nếu thất bại, ném Exception để kích hoạt rollback ở khối 'except'
+            error_msg = f"LỖI TÁI TẠO CHUNK: {text_result.get('error')}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        logger.info(f"Đã tạo {text_result.get('chunks_created', 0)} chunks mới.")
 
-        await db.refresh(kb)
+        # Bước 5: Commit MỘT LẦN DUY NHẤT
+        # Chỉ commit khi tất cả các bước trên thành công
+        await db.commit()
+        logger.info(f"Đã commit thành công toàn bộ thay đổi cho detail_id={detail_id}.")
+
+        # Bước 6: SỬA LỖI MissingGreenlet
+        # Tải lại 'kb' với đầy đủ quan hệ để trả về
+        stmt = (
+            select(KnowledgeBase)
+            .options(
+                selectinload(KnowledgeBase.details)
+                .selectinload(KnowledgeBaseDetail.user)
+            )
+            .filter(KnowledgeBase.id == kb.id)
+        )
+        result = await db.execute(stmt)
+        refreshed_kb = result.scalar_one_or_none()
         
-        await db.refresh(kb, ['details']) 
-        
-        return _convert_kb_to_dict(kb)
+        return _convert_kb_to_dict(refreshed_kb)
 
     except Exception as e:
-        logger.error(f"Lỗi nghiêm trọng khi cập nhật rich text (detail_id={detail_id}): {str(e)}")
-        await db.rollback()
+        logger.error(f"Lỗi nghiêm trọng khi cập nhật rich text (detail_id={detail_id}), ĐANG ROLLBACK: {str(e)}")
+        await db.rollback() # Hoàn tác tất cả thay đổi (cả update text và xóa chunk)
         raise
 
-async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
+
+
+def _convert_kb_to_dict(kb: KnowledgeBase, category_ids: Optional[List[int]] = None):
     """
-    Xóa một file detail khỏi knowledge base (File hoặc Rich Text)
-    Đồng thời xóa tất cả chunks liên quan
+    Chuyển KB model sang dict với filter theo category_ids
+    
+    Args:
+        kb: KnowledgeBase object
+        category_ids: List category IDs để filter. Nếu None thì lấy tất cả.
+    
+    Returns:
+        dict: KB data với details đã flatten và filter
     """
-    result = await db.execute(
-        select(KnowledgeBaseDetail).filter(KnowledgeBaseDetail.id == detail_id)
-    )
-    detail = result.scalar_one_or_none()
-    
-    if detail:
-        await delete_chunks_by_detail_id(detail_id)
-        logger.info(f"Đã xóa chunks của detail_id={detail_id}")
-        
-        if detail.file_path and os.path.exists(detail.file_path):
-            try:
-                os.remove(detail.file_path)
-                logger.info(f"Đã xóa file: {detail.file_path}")
-            except Exception as e:
-                logger.error(f"Lỗi xóa file: {str(e)}")
-        
-        await db.delete(detail)
-        await db.commit()
-        return True
-    
-    return False
-
-
-async def search_kb_service(query: str, db: AsyncSession):
-    
-    return "Chức năng tìm kiếm đang được phát triển."
-
-def _convert_kb_to_dict(kb: KnowledgeBase):
-    """Hàm nội bộ để chuyển KB (model) sang dict (an toàn)"""
     if not kb:
         return None
+    
+    # Flatten tất cả details từ các categories
+    all_details = []
+    
+    if kb.categories:
+        for category in kb.categories:
+            # Nếu có filter và category này không trong filter thì skip
+            if category_ids is not None and category.id not in category_ids:
+                continue
+            
+            # Thêm details của category này vào list
+            if category.details:
+                for detail in category.details:
+                    all_details.append({
+                        "id": detail.id,
+                        "file_name": detail.file_name,
+                        "file_type": detail.file_type,
+                        "file_path": detail.file_path,
+                        "source_type": detail.source_type,
+                        "raw_content": detail.raw_content,
+                        "created_at": detail.created_at,
+                        "updated_at": detail.updated_at,
+                        "is_active": detail.is_active,
+                        "user_id": detail.user_id,
+                        "category_id": category.id,
+                        "category_name": category.name,
+                        "user": {
+                            "id": detail.user.id,
+                            "username": detail.user.username,
+                            "full_name": detail.user.full_name,
+                            "email": detail.user.email
+                        } if detail.user else None
+                    })
     
     return {
         "id": kb.id,
         "title": kb.title,
         "created_at": kb.created_at,
         "updated_at": kb.updated_at,
-        "customer_id": kb.customer_id,
-        "details": [
-            {
-                "id": detail.id,
-                "file_name": detail.file_name,
-                "file_type": detail.file_type,
-                "file_path": detail.file_path,
-                "source_type": detail.source_type,
-                "raw_content": detail.raw_content,
-                "created_at": detail.created_at,
-                "is_active": detail.is_active,
-                "user_id": detail.user_id,
-                "user": {
-                    "id": detail.user.id,
-                    "username": detail.user.username,
-                    "full_name": detail.user.full_name,
-                    "email": detail.user.email
-                } if detail.user else None
-            }
-            for detail in kb.details
-        ] if kb.details else []
+        "details": all_details
     }
+    
+
+async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
+    try:
+        await delete_chunks(detail_id)
+        detail = await db.get(KnowledgeBaseDetail, detail_id)
+        await db.delete(detail)
+        await db.commit()
+        return True
+    except Exception as e:
+        await db.rollback()
+        return False
+    
+
+async def search_kb_service(query: str, db: AsyncSession):
+   
+    try:
+        from llm.help_llm import search_similar_documents, get_current_model
+        
+        # Lấy thông tin model embedding
+        model_info = await get_current_model(
+            db_session=db,
+            chat_session_id=None,  
+            key_type="embedding"
+        )
+        
+        results = await search_similar_documents(
+            db_session=db,
+            query=query,
+            top_k=5,
+            api_key=model_info["key"],
+            model_name=model_info["name"]
+        )
+        
+        # Format lại kết quả để trả về cho frontend
+        formatted_results = []
+        for result in results:
+            formatted_results.append({
+                "content": result.get("content", ""),
+                "similarity_score": result.get("similarity_score", 0)
+            })
+        
+        return formatted_results
+        
+    except Exception as e:
+        print(f"❌ Lỗi khi tìm kiếm: {e}")
+        import traceback
+        traceback.print_exc()
+        raise Exception(f"Lỗi khi tìm kiếm trong knowledge base: {str(e)}")
+
+async def get_all_categories_service(db: AsyncSession):
+   
+    try:
+        result = await db.execute(
+            select(KnowledgeCategory)
+            .order_by(KnowledgeCategory.id)
+        )
+        categories = result.scalars().all()
+        
+        # Chuyển đổi sang list of dict
+        categories_list = [
+            {
+                "id": category.id,
+                "name": category.name,
+                "description": category.description,
+                "knowledge_base_id": category.knowledge_base_id,
+                "created_at": category.created_at,
+                "updated_at": category.updated_at
+            }
+            for category in categories
+        ]
+        
+        return categories_list
+        
+    except Exception as e:
+        logger.error(f"Lỗi khi lấy danh sách categories: {str(e)}")
+        raise Exception(f"Lỗi khi lấy danh sách categories: {str(e)}")
+
+async def create_category_service(name: str, description: Optional[str], db: AsyncSession):
+    """
+    Tạo category mới với knowledge_base_id = 1
+    
+    Args:
+        name: Tên category (bắt buộc)
+        description: Mô tả category (có thể null)
+        db: Database session
+    
+    Returns:
+        dict: Category mới được tạo
+    """
+    try:
+        category = KnowledgeCategory(
+            name=name,
+            description=description,
+            knowledge_base_id=1  # Luôn là 1
+        )
+        db.add(category)
+        await db.commit()
+        await db.refresh(category)
+        
+        logger.info(f"Đã tạo category mới: {name}")
+        
+        return {
+            "id": category.id,
+            "name": category.name,
+            "description": category.description,
+            "knowledge_base_id": category.knowledge_base_id,
+            "created_at": category.created_at,
+            "updated_at": category.updated_at
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Lỗi khi tạo category: {str(e)}")
+        raise Exception(f"Lỗi khi tạo category: {str(e)}")
+
+async def update_category_service(category_id: int, name: str, description: Optional[str], db: AsyncSession):
+    """
+    Cập nhật category
+    
+    Args:
+        category_id: ID của category cần cập nhật
+        name: Tên mới
+        description: Mô tả mới
+        db: Database session
+    
+    Returns:
+        dict: Category đã cập nhật hoặc None nếu không tìm thấy
+    """
+    try:
+        result = await db.execute(
+            select(KnowledgeCategory).filter(KnowledgeCategory.id == category_id)
+        )
+        category = result.scalar_one_or_none()
+        
+        if not category:
+            return None
+        
+        category.name = name
+        category.description = description
+        
+        await db.commit()
+        await db.refresh(category)
+        
+        logger.info(f"Đã cập nhật category ID {category_id}")
+        
+        return {
+            "id": category.id,
+            "name": category.name,
+            "description": category.description,
+            "knowledge_base_id": category.knowledge_base_id,
+            "created_at": category.created_at,
+            "updated_at": category.updated_at
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Lỗi khi cập nhật category: {str(e)}")
+        raise Exception(f"Lỗi khi cập nhật category: {str(e)}")
+
+async def delete_category_service(category_id: int, db: AsyncSession):
+    """
+    Xóa category (cascade sẽ xóa tất cả details của category)
+    
+    Args:
+        category_id: ID của category cần xóa
+        db: Database session
+    
+    Returns:
+        bool: True nếu xóa thành công, False nếu không tìm thấy
+    """
+    try:
+        result = await db.execute(
+            select(KnowledgeCategory).filter(KnowledgeCategory.id == category_id)
+        )
+        category = result.scalar_one_or_none()
+        
+        if not category:
+            return False
+        
+        # Xóa tất cả chunks của các details thuộc category này
+        details_result = await db.execute(
+            select(KnowledgeBaseDetail).filter(KnowledgeBaseDetail.category_id == category_id)
+        )
+        details = details_result.scalars().all()
+        
+        for detail in details:
+            await delete_chunks_by_detail_id(detail.id)
+            logger.info(f"Đã xóa chunks của detail_id={detail.id}")
+        
+        # Xóa category (cascade sẽ xóa các details)
+        await db.delete(category)
+        await db.commit()
+        
+        logger.info(f"Đã xóa category ID {category_id}")
+        return True
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Lỗi khi xóa category: {str(e)}")
+        raise Exception(f"Lỗi khi xóa category: {str(e)}")
+    
+    
+
+
