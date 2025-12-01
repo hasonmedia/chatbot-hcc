@@ -27,7 +27,7 @@ class LLMDetail(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(150), nullable=False)  # "gemini" hoặc "gpt"
-    key_free = Column(String(150), nullable=False)
+    key_free = Column(Text, nullable=True)
     llm_id = Column(Integer, ForeignKey("llm.id"), nullable=False)
 
     # Quan hệ ngược lại với LLM

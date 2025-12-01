@@ -15,6 +15,8 @@ from typing import Optional, List
 import logging
 import os
 import aiofiles
+from collections import defaultdict
+from config.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +159,7 @@ async def create_kb_with_files_service(
                 
                 
                 success  = await process_uploaded_file(
+                    category_id,
                     file_path, 
                     file.filename,
                     knowledge_base_detail_id=detail.id,
@@ -592,4 +595,7 @@ async def delete_category_service(category_id: int, db: AsyncSession):
         await db.rollback()
         logger.error(f"Lỗi khi xóa category: {str(e)}")
         raise Exception(f"Lỗi khi xóa category: {str(e)}")
+    
+    
+
 

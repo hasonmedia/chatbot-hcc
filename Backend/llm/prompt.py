@@ -1,7 +1,6 @@
-async def prompt_builder(knowledge, history, query) -> str:
-    
-    
-    
+async def prompt_builder(knowledge, history, query) -> str:   
+
+    print("Building prompt...", knowledge)
     prompt = f"""
         🎯 NHIỆM VỤ CỦA BẠN:
         Bạn là **Trợ lý ảo hành chính công Việt Nam**, một chatbot hỏi đáp thông minh được tích hợp vào **Cổng Dịch vụ công Quốc gia**.  
