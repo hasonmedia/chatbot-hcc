@@ -34,6 +34,7 @@ export const useKnowledgeBase = (categoryIds?: number[], fileTypes?: string[]) =
             kb_id: number;
             data: {
                 file_name: string;
+                description: string;
                 raw_content: string;
                 user_id: number;
                 category_id: number;
@@ -73,6 +74,7 @@ export const useKnowledgeBase = (categoryIds?: number[], fileTypes?: string[]) =
         id: number;
         data: {
             raw_content: string;
+            description: string;
             file_name: string;
         };
     }

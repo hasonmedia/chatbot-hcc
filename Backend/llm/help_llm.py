@@ -7,12 +7,12 @@ from models.chat import Message
 from models.llm import LLM, LLMKey
 from config.redis_cache import async_cache_get, async_cache_set
 from llm.prompt import prompt_builder
-from llm.help_search_query import search_data
+from llm.help_search_query import search_data, search_metadata
 
 
-async def get_all_key(db_session: AsyncSession) -> list:
+async def get_all_key(db_session: AsyncSession, llm_detail_id: int) -> list:
     
-    cache_key = "list_keys"
+    cache_key = f"list_keys:llm_detail_{llm_detail_id}"
     
     # 1. Thử lấy từ cache trước
     cached_keys = await async_cache_get(cache_key)
@@ -21,11 +21,14 @@ async def get_all_key(db_session: AsyncSession) -> list:
     
     
     # 2. Nếu không có trong cache, query từ database
-    result = await db_session.execute(
-        select(LLMKey.key, LLMKey.type).order_by(LLMKey.id)
-    )
+    query = select(LLMKey.key, LLMKey.type, LLMKey.llm_detail_id).order_by(LLMKey.id)
     
-    keys = [{"key": row.key, "type": row.type} for row in result.all()]
+    # Filter theo llm_detail_id
+    query = query.where(LLMKey.llm_detail_id == llm_detail_id)
+    
+    result = await db_session.execute(query)
+    
+    keys = [{"key": row.key, "type": row.type, "llm_detail_id": row.llm_detail_id} for row in result.all()]
     
    
     await async_cache_set(cache_key, keys, ttl=3600)
@@ -34,21 +37,48 @@ async def get_all_key(db_session: AsyncSession) -> list:
 
 
 async def get_round_robin_api_key(
-    chat_session_id: int,
-    db_session: AsyncSession
+    db_session: AsyncSession,
+    model_info: dict,
+    chat_session_id: int = None
 ) -> dict:
 
     try:
-        # Lấy tất cả key
-        llm_keys_all = await get_all_key(db_session)
         keys_result = {}
 
+
+        if chat_session_id is None:
+            # Lấy key của embedding model
+            embedding_detail_id = model_info["embedding"]["id"]
+            llm_keys_all = await get_all_key(db_session, llm_detail_id=embedding_detail_id)
+            embedding_keys = [k for k in llm_keys_all if k["type"] == "embedding"]
+
+
+            counter_key = f"llm_key_global_counter:llm_detail_{embedding_detail_id}:type_embedding"
+            current_counter = await async_cache_get(counter_key)
+            current_counter = int(current_counter) if current_counter is not None else 0
+
+            selected_index = current_counter % len(embedding_keys)
+
+            # Cập nhật counter
+            await async_cache_set(counter_key, current_counter + 1, ttl=86400)
+
+            # Trả key embedding
+            keys_result["embedding_key"] = embedding_keys[selected_index]["key"]
+
+            return keys_result
+        
+        
+        
         for key_type in ["bot", "embedding"]:
-            # Lọc key theo type
+            # Lấy llm_detail_id tương ứng
+            llm_detail_id = model_info[key_type]["id"]
+            
+            # Lấy key theo llm_detail_id và type
+            llm_keys_all = await get_all_key(db_session, llm_detail_id=llm_detail_id)
             llm_keys = [k for k in llm_keys_all if k["type"] == key_type]
 
             # Kiểm tra session cache
-            session_key = f"llm_key_session:session_{chat_session_id}:type_{key_type}"
+            session_key = f"llm_key_session:session_{chat_session_id}:llm_detail_{llm_detail_id}:type_{key_type}"
             assigned_index = await async_cache_get(session_key)
 
             if assigned_index is not None:
@@ -56,7 +86,7 @@ async def get_round_robin_api_key(
                 continue
 
             # Session mới, Round-Robin
-            counter_key = f"llm_key_global_counter:type_{key_type}"
+            counter_key = f"llm_key_global_counter:llm_detail_{llm_detail_id}:type_{key_type}"
             current_counter = await async_cache_get(counter_key)
             current_counter = int(current_counter) if current_counter is not None else 0
 
@@ -93,24 +123,25 @@ async def get_llm_model_info_cached(db_session: AsyncSession) -> dict:
     
     # 2. Nếu không có trong cache, query từ database
     bot_result = await db_session.execute(
-        select(LLMDetail.name, LLMDetail.key_free)
+        select(LLMDetail.id, LLMDetail.name, LLMDetail.key_free)
         .join(LLM, LLM.bot_model_detail_id == LLMDetail.id)
         .where(LLM.id == 1)
     )
     bot_row = bot_result.first()
     
     embedding_result = await db_session.execute(
-        select(LLMDetail.name, LLMDetail.key_free)
+        select(LLMDetail.id, LLMDetail.name, LLMDetail.key_free)
         .join(LLM, LLM.embedding_model_detail_id == LLMDetail.id)
         .where(LLM.id == 1)
     )
+    
     
     embedding_row = embedding_result.first()
     
     
     model_data = {
-        "bot": bot_row.name,
-        "embedding": embedding_row.name
+        "bot": {"id": bot_row.id, "name": bot_row.name},
+        "embedding": {"id": embedding_row.id, "name": embedding_row.name}
     }
     
     
@@ -122,36 +153,45 @@ async def get_llm_model_info_cached(db_session: AsyncSession) -> dict:
 async def get_current_model(db_session: AsyncSession, chat_session_id: int = None) -> dict:
    
     try:
+        
         model_info = await get_llm_model_info_cached(db_session)
         
         
+        
+        
         if chat_session_id is None:
+            
+            
+            # lấy key
+            keys_result = await get_round_robin_api_key(db_session, model_info)
+            
+            
             return {
                 "embedding": {
-                    "name": model_info["embedding"],
-                    "key": model_info.get("embedding_free_key")
+                    "name": model_info["embedding"]["name"],
+                    "key": keys_result["embedding_key"]
                 }
             }
 
 
         result = {}
         
-        keys = await get_round_robin_api_key(chat_session_id, db_session)
+        keys = await get_round_robin_api_key(db_session, model_info, chat_session_id)
         
         
         result["bot"] = {
-                "name": model_info["bot"],
-                "key": keys["bot_key"] if keys["bot_key"] else model_info.get("bot_free_key", None)
+                "name":model_info["embedding"]["name"],
+                "key": keys["bot_key"]
             }
         
         result["embedding"] = {
-            "name": model_info["embedding"],
-            "key": keys["embedding_key"] if keys["embedding_key"] else model_info.get("embedding_free_key", None)
+            "name": model_info["embedding"]["name"],
+            "key": keys["embedding_key"]
         }
         return result
             
     except Exception as e:
-        print(f"❌ Error getting current model: {e}")
+        print(f" Error getting current model: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -215,51 +255,31 @@ async def search_similar_documents(
 ) -> List[Dict]:
     
     try:
-        # 1) Lấy metadata filter từ query
-        # metadata = await search_metadata(
-        #     query=query,
-        #     model_name=bot_model_name,
-        #     api_key=bot_key
-        # )
         
-        # metadata_filter = {}
-        # if metadata.get("category_id"):
-        #     metadata_filter["category_id"] = metadata["category_id"]
-
-        # # file_names
-        # if metadata.get("file_names") and len(metadata["file_names"]) > 0:
-        #     metadata_filter["file_names"] = metadata["file_names"]
-
-        # print(f"🔍 Metadata filter: {metadata_filter}")
+        # 1) Lấy metadata filter từ query
+        metadata = await search_metadata(
+            query=query,
+            model_name=bot_model_name,
+            api_key=bot_key
+        )
+        
+        
+        print("🔍 Metadata from LLM:", metadata)
+        
+        
     
         
         candidates = await search_data(
             query=query,
             embedding_key=embedding_key,
             embedding_model_name=embedding_model_name,
-            top_k=top_k
+            top_k=5,
+            metadata_filter=metadata
         )
         
+                
         
         return candidates
-        
-        
-        
-        
-        
-
-        # # 4) Nếu không ra kết quả, tìm lại không filter
-        # if not candidates:
-        #     print(f"⚠️ Không tìm thấy kết quả với filter {metadata_filter}, tìm lại không filter...")
-        #     candidates = await search_data(
-        #         query=query,
-        #         embedding_key=embedding_key,
-        #         metadata_filter=None,
-        #         top_k=top_k
-        #     )
-
-        # reranked = rerank_candidates(query, candidates, top_n=top_k)
-        # return reranked
 
     except Exception as e:
         raise Exception(f"Lỗi khi tìm kiếm: {str(e)}")
@@ -280,6 +300,7 @@ async def generate_response_prompt(
 ) -> dict:
     
     try:
+        
         # Lấy lịch sử
         history = await get_latest_messages(db_session, chat_session_id, limit=10)
         

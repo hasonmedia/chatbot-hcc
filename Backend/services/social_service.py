@@ -22,7 +22,6 @@ from helper.help_redis import (
     clear_check_reply_cache
 )
 
-# ✅ Get ConnectionManager singleton instance
 manager = ConnectionManager()
 
 
@@ -34,7 +33,7 @@ async def send_message_fast_service(data: dict, user, db):
     sender_name = user.full_name if user else None
     chat_session_id = data.get("chat_session_id")
     
-    # Xử lý ảnh nếu có
+    
     image_url = []
     if data.get("image"):
         try:
@@ -63,28 +62,21 @@ async def send_message_fast_service(data: dict, user, db):
     
     response_messages.append(user_message)
     
-    # 🚀 Lưu tin nhắn vào database (background task với DB session riêng)
     asyncio.create_task(save_message_to_db_background(data, sender_name, image_url))
     
-    # Xử lý admin message
     if data.get("sender_type") == "admin":
-        # ✅ CẬP NHẬT CACHE NGAY LẬP TỨC để chặn bot reply
         new_time = datetime.now() + timedelta(hours=1)
         
-        # Cập nhật session_data trong cache
         session_data["status"] = "false"
         session_data["current_receiver"] = sender_name
         session_data["previous_receiver"] = session_data.get("current_receiver")
         session_data["time"] = new_time.isoformat()
         
-        # Lưu lại cache với status mới (sử dụng helper)
         cache_session_data(chat_session_id, session_data, ttl=300)
         
-        # ✅ XÓA cache check_reply để force check lại (sử dụng helper)
         clear_check_reply_cache(chat_session_id)
         
         
-        # 🚀 Cập nhật database trong background (không block)
         asyncio.create_task(update_session_admin_background(chat_session_id, sender_name))
         
         response_messages[0] = {
@@ -101,7 +93,6 @@ async def send_message_fast_service(data: dict, user, db):
             "time": new_time.isoformat()
         }
 
-        # 🚀 Gửi tin nhắn đến platform trong background
         name_to_send = session_data["name"][2:]
         asyncio.create_task(send_to_platform_background(
             session_data["channel"], 
@@ -113,16 +104,21 @@ async def send_message_fast_service(data: dict, user, db):
             
         return response_messages
     
-    # 🚀 Xử lý bot reply
-    should_reply = await check_repply_cached(chat_session_id, db)
-    if should_reply:
-        asyncio.create_task(generate_and_send_bot_response_background(
+    # should_reply = await check_repply_cached(chat_session_id, db)
+    # if should_reply:
+    #     asyncio.create_task(generate_and_send_bot_response_background(
+    #         data.get("content"),
+    #         chat_session_id,
+    #         session_data,
+    #         manager
+    #     ))
+        
+    asyncio.create_task(generate_and_send_bot_response_background(
             data.get("content"),
             chat_session_id,
             session_data,
             manager
         ))
-        
     
     return response_messages
 
