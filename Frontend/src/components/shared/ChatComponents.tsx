@@ -68,7 +68,7 @@ export function SessionItem({
 }: SessionItemProps) {
   const isClosed = false; // Bổ sung logic sau
   let displayContent;
-
+  let previewContent = "";
   // 2. Thử phân tích (parse) msg.content
   try {
     const parsed = JSON.parse(session.last_message);
@@ -83,6 +83,13 @@ export function SessionItem({
   } catch (error) {
     // 4. Nếu phân tích lỗi (tức là nó chỉ là text bình thường "hihi")
     displayContent = session.last_message;
+  }
+  if (displayContent) {
+    const lines = displayContent.split("\n").slice(0, 2);
+    previewContent = lines.join("\n");
+    if (displayContent.split("\n").length > 2) {
+      previewContent += "...";
+    }
   }
   return (
     <Button
@@ -107,13 +114,6 @@ export function SessionItem({
             {formatTimeAgo(session.last_updated)}
           </span>
         </div>
-        {/* <p
-          className={`mt-1 truncate text-sm w-full ${
-            isActive ? "text-foreground" : "text-muted-foreground"
-          } ${isClosed && "italic"}`}
-        >
-          {displayContent}
-        </p> */}
         <ReactMarkdown
           // 2. Thêm plugin vào đây
           remarkPlugins={[remarkGfm]}
@@ -132,7 +132,7 @@ export function SessionItem({
             ),
           }}
         >
-          {displayContent}
+          {previewContent}
         </ReactMarkdown>
       </div>
     </Button>
