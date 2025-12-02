@@ -29,14 +29,18 @@ async def search_kb(query: str = Query(...), db: AsyncSession = Depends(get_db))
 @router.post("/upload-files")
 async def create_kb_files(
     category_id: int = Form(...),
-    files: List[UploadFile] = File(...),
+    category_name: str = Form(...),
+    description: str = Form(...),
+    files: UploadFile = File(...),
     user_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
 
     return await knowledge_base_controller.create_kb_with_files_controller(
         category_id=category_id,
-        files=files,
+        category_name=category_name,
+        description=description,
+        files=[files],  # Chuyển thành list để giữ tương thích với service
         user_id=user_id,
         db=db
     )
@@ -50,9 +54,7 @@ async def update_kb_rich_text(
     data: dict = Body(...), 
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Cập nhật một KB Detail dạng Rich Text (sẽ xóa chunk cũ, tạo chunk mới)
-    """
+    
     return await knowledge_base_controller.update_kb_with_rich_text_controller(
         detail_id=detail_id,
         data=data,
@@ -78,7 +80,7 @@ async def add_kb_rich_text(
     )
     
     
-#Categories
+# Categories
 @router.get("/categories")
 async def get_all_categories(db: AsyncSession = Depends(get_db)):
 

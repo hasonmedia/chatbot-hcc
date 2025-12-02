@@ -27,6 +27,7 @@ async def add_kb_rich_text_controller(
         file_name=data.get("file_name"),
         raw_content=data.get("raw_content"),
         category_id=data.get("category_id"),
+        description=data.get("description"),
         db=db
     )
         
@@ -38,6 +39,8 @@ async def add_kb_rich_text_controller(
 async def create_kb_with_files_controller(
     user_id: Optional[int],
     category_id: Optional[int],
+    category_name: str,
+    description: str,
     files: List[UploadFile],
     db: AsyncSession
 ):
@@ -50,6 +53,8 @@ async def create_kb_with_files_controller(
         files=valid_files,
         user_id=user_id,
         category_id=category_id,
+        category_name=category_name,
+        description=description,
         db=db
     )
     return {
@@ -66,12 +71,14 @@ async def update_kb_with_rich_text_controller(
 
     raw_content = data.get("raw_content")
     file_name = data.get("file_name")
+    description = data.get("description")
     
 
     kb = await knowledge_base_service.update_kb_with_rich_text_service(
         detail_id=detail_id,
         file_name=file_name,
         raw_content=raw_content,
+        description=description,
         user_id=data.get("user_id"),
         db=db
     )

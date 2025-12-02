@@ -25,7 +25,7 @@ class KnowledgeCategory(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
+    description = Column(Text, nullable=False)
     knowledge_base_id = Column(Integer, ForeignKey("knowledge_base.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -45,7 +45,7 @@ class KnowledgeBaseDetail(Base):
     file_name = Column(String(255), nullable=True)
     file_type = Column(String(50), nullable=True)  # PDF, DOCX, XLSX
     file_path = Column(String(500), nullable=True)  # Đường dẫn lưu file
-    
+    description = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)

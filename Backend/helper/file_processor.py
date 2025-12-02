@@ -14,8 +14,23 @@ import json
 
 logger = logging.getLogger(__name__)
 
+def normalize_metadata(meta: Dict) -> Dict:
+    normalized = {}
+    for k, v in meta.items():
+        if isinstance(v, (str, int, float, bool)) or v is None:
+            normalized[k] = v
+        else:
+            normalized[k] = json.dumps(v, ensure_ascii=False)
+    return normalized
 
-async def create_chunks_from_procedures(procedures: List[Dict[str, Any]], embedding_key: str) -> List[Dict[str, Any]]:
+
+async def create_chunks_from_procedures(
+    procedures: List[Dict[str, Any]], 
+    embedding_key: str,
+    category_id: str,
+    knowledge_base_detail_id: int,
+    filename: str
+) -> bool:
     
     chunks = []
     procedure_names = [proc["procedure_name"] for proc in procedures]
@@ -30,6 +45,9 @@ async def create_chunks_from_procedures(procedures: List[Dict[str, Any]], embedd
         metadata_raw = proc.get("metadata_json", {})
         metadata = normalize_metadata(metadata_raw) if metadata_raw else {}
         metadata["procedure_name"] = content
+        metadata["category_id"] = str(category_id)
+        metadata["knowledge_id"] = str(knowledge_base_detail_id)
+        metadata["file_name"] = filename
 
         chunks.append({
             "id": chunk_id,
@@ -38,39 +56,88 @@ async def create_chunks_from_procedures(procedures: List[Dict[str, Any]], embedd
             "metadata": metadata
         })
     
-    return chunks
+    await add_chunks_tthc(chunks)
+    return True
 
 
 
 
-def normalize_metadata(meta: Dict) -> Dict:
-    normalized = {}
-    for k, v in meta.items():
-        if isinstance(v, (str, int, float, bool)) or v is None:
-            normalized[k] = v
-        else:
-            normalized[k] = json.dumps(v, ensure_ascii=False)
-    return normalized
-    
-async def process_uploaded_file(
-    category_id : str,
-    file_path: str,
-    filename: str,
+async def create_chunks(
+    embedding_key: str, 
+    embedding_model: str, 
+    content: str,
+    category_id: str,
     knowledge_base_detail_id: int,
-    db,
+    filename: str,
     chunk_size: int = 3000,
     chunk_overlap: int = 500
 ) -> bool:
     
+    
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
+    )
+    all_chunks = text_splitter.split_text(content)
+
+    if not all_chunks:
+        return False
+
+
+    if "gemini" in embedding_model.lower():
+        all_vectors = await get_embedding_gemini(all_chunks, api_key=embedding_key)
+    else:
+        all_vectors = await get_embedding_chatgpt(all_chunks, api_key=embedding_key) 
+        
+    chunks_data = []
+    
+    for idx, (chunk, emb) in enumerate(zip(all_chunks, all_vectors), start=1):
+        chunk_id = str(uuid.uuid4())
+        chunk_meta = {
+            "chunk_index": idx,
+            "category_id": str(category_id),
+            "knowledge_id": str(knowledge_base_detail_id),
+            "file_name": filename
+        }
+        
+        chunks_data.append({
+            "id": chunk_id,
+            "content": chunk,
+            "embedding": emb,
+            "metadata": normalize_metadata(chunk_meta)
+        })
+    
+    
+    
+    await add_chunks(chunks_data)
+
+    return True
+
+    
+async def process_uploaded_file(
+    category_id : str,
+    category_name: str,
+    file_path: str,
+    filename: str, 
+    knowledge_base_detail_id: int,
+    db
+) -> bool:
+    
     try:
         # 1)Extract text từ file
+        
         ext = os.path.splitext(filename)[1].lower()
+        
         if ext == '.pdf':
             content = await extract_text_from_pdf(file_path)
         elif ext in ['.docx', '.doc']:
             content = await extract_text_from_docx(file_path)
         elif ext in ['.xlsx', '.xls']:
-            content = await extract_procedures_from_excel_tthc(file_path)
+            # Kiểm tra nếu là danh mục "Dịch vụ công" thì dùng hàm riêng
+            if "dịch vụ công" in category_name.lower():
+                content = await extract_procedures_from_excel_tthc(file_path)
+            else:
+                content = await extract_text_from_excel(file_path)
         else:
             logger.error(f"Định dạng file không được hỗ trợ: {ext}")
             return False
@@ -78,71 +145,39 @@ async def process_uploaded_file(
         if not content:
             logger.error(f"Không đọc được nội dung từ file {filename}")
             return False
-
-        
-
-        chunks = await create_chunks_from_procedures(procedures = content[:10], embedding_key="your-embedding-key")
-
-
-        await add_chunks_tthc(chunks)
-        
-        
-
-        # # Lấy thông tin model embedding
-        # model = await get_current_model(db_session=db)
-        # embedding_info = model["embedding"]
-        # embedding_key = embedding_info["key"]
-
-        
-        
-        
-        
-
-        # # 2) Chunk nội dung
-        # text_splitter = RecursiveCharacterTextSplitter(
-        #     chunk_size=chunk_size,
-        #     chunk_overlap=chunk_overlap
-        # )
-        # all_chunks = text_splitter.split_text(content)
-        # if not all_chunks:
-        #     logger.error("Không có nội dung để chunk")
-        #     return False
-
-        
-        
-            # # 3) Batch embedding
-            # if "gemini" in embedding_info["name"].lower():
-            #     all_vectors = await get_embedding_gemini(all_chunks, api_key="AIzaSyDAX9ccTaWrfmwMGmFpYojfJpkgqzLIzLM")
-            # else:
-            #     all_vectors = await get_embedding_chatgpt(all_chunks, api_key=embedding_key)
-
-        # all_vectors = await get_embedding_chatgpt(all_chunks, api_key=embedding_key)
-        
-        
-        # # 4) Chuẩn bị data cho ChromaDB
-        # chunks_data = []
-        
-        # for idx, (chunk, emb) in enumerate(zip(all_chunks, all_vectors), start=1):
-        #     chunk_meta = {
-        #         "category_id": str(category_id),  # Lưu dạng string để tương thích với ChromaDB
-        #         "file_name": filename,                               
-        #         "chunk_index": idx,
-        #         "knowledge_id": str(knowledge_base_detail_id)
-        #     }
             
-        #     # Chuẩn bị data cho ChromaDB truyền thống
-        #     chunks_data.append({
-        #         "id": f"{filename}_chunk_{idx}",
-        #         "content": chunk,
-        #         "embedding": list(emb) if hasattr(emb, "__iter__") else [emb],
-        #         "metadata": normalize_metadata(chunk_meta),
-        #         "knowledge_id": knowledge_base_detail_id
-        #     })
-            
+        logger.info(f"Đã extract nội dung từ file {filename}, type: {type(content)}, is_list: {isinstance(content, list)}")
 
-        # # 5) Lưu vào ChromaDB (legacy)
-        # if chunks_data:
-        #     await add_chunks(chunks_data)
+        
+        
+        
+
+        # Lấy thông tin model embedding
+        model = await get_current_model(db_session=db)    
+        embedding_model = model["embedding"]["name"]
+        embedding_key = model["embedding"]["key"]
+
+        
+        # Xử lý file Excel "Dịch vụ công" (trả về list procedures)
+        if ext in ['.xlsx', '.xls'] and isinstance(content, list):
+            chunks = await create_chunks_from_procedures(
+                procedures=content, 
+                embedding_key=embedding_key,
+                category_id=category_id,
+                knowledge_base_detail_id=knowledge_base_detail_id,
+                filename=filename
+            )
+        # Xử lý file PDF, DOCX, hoặc Excel thường (trả về string)
+        else:
+            chunks = await create_chunks(
+                embedding_key=embedding_key, 
+                embedding_model=embedding_model, 
+                content=content,
+                category_id=category_id,
+                knowledge_base_detail_id=knowledge_base_detail_id,
+                filename=filename
+            )
+        
         
         
         return True

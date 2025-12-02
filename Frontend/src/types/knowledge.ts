@@ -3,6 +3,7 @@ export interface KnowledgeBaseItem {
   file_name: string | null;
   file_type: string | null;
   file_path: string | null;
+  description: string | null;
   source_type: "FILE" | "RICH_TEXT" | null;
   raw_content: string | null;
   detail_created_at: string;

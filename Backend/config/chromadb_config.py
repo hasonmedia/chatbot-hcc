@@ -6,10 +6,6 @@ from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Import LlamaIndex helper (lazy import để tránh circular dependency)
-def get_llama_delete():
-    from config.llama_config import delete_from_llama_index
-    return delete_from_llama_index
 
 # Khởi tạo ChromaDB client
 CHROMA_DATA_PATH = os.getenv("CHROMA_DATA_PATH", "./chroma_data")
@@ -17,11 +13,10 @@ CHROMA_DATA_PATH = os.getenv("CHROMA_DATA_PATH", "./chroma_data")
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
 try:
-    # Tắt telemetry hoàn toàn
     chroma_client = chromadb.PersistentClient(
         path=CHROMA_DATA_PATH,
         settings=Settings(
-            anonymized_telemetry=False,  # Tắt telemetry
+            anonymized_telemetry=False,  
             allow_reset=True,
             is_persistent=True
         )
@@ -32,6 +27,8 @@ except Exception as e:
     raise
 
 
+
+# Đang dùng 
 def get_or_create_collection(collection_name: str = "document_chunks"):
 
     try:
@@ -44,7 +41,7 @@ def get_or_create_collection(collection_name: str = "document_chunks"):
         logger.error(f"Error getting/creating collection: {str(e)}")
         raise
 
-
+# Đang dùng 
 async def add_chunks(
     chunks: List[Dict],
     collection_name: str = "document_chunks"
@@ -56,7 +53,7 @@ async def add_chunks(
         documents = [chunk['content'] for chunk in chunks]
         embeddings = [chunk['embedding'] for chunk in chunks]
         # Lưu toàn bộ metadata từ chunks
-        metadatas = [chunk.get('metadata', {'knowledge_id': str(chunk['knowledge_id'])}) for chunk in chunks]
+        metadatas = [chunk.get('metadata', {}) for chunk in chunks]
 
         collection.add(
             ids=ids,
@@ -73,7 +70,7 @@ async def add_chunks(
         raise
 
 
-
+# Đang dùng 
 async def add_chunks_tthc(
     chunks: List[Dict],
     collection_name: str = "document_chunks"
@@ -101,16 +98,17 @@ async def add_chunks_tthc(
         raise
     
     
-    
+# Đang dùng 
 async def delete_chunks(
     knowledge_id: str,
     collection_name: str = "document_chunks"
 ) -> bool:
 
     try:
+        
         collection = get_or_create_collection(collection_name)
 
-        results = collection.get(where={"knowledge_id": knowledge_id})
+        results = collection.get(where={"knowledge_id": str(knowledge_id)})
 
         if results and results['ids']:
             collection.delete(ids=results['ids'])
@@ -124,6 +122,7 @@ async def delete_chunks(
     except Exception as e:
         logger.error(f"❌ Lỗi khi xóa documents từ ChromaDB: {str(e)}")
         return False
+
 
 
 async def update_chunks(
@@ -153,7 +152,7 @@ def list_chunks(collection_name: str = "document_chunks") -> List[Dict]:
         logger.error(f"❌ Lỗi khi liệt kê chunks: {str(e)}")
         raise
 
-
+# Đang dùng 
 async def search_chunks_tthc(
     query_embedding: List[float],
     top_k: int,
@@ -185,20 +184,46 @@ async def search_chunks_tthc(
         raise
 
 
+
+# Đang dùng 
 async def search_chunks_with_metadata(
     query_embedding: List[float],
+    top_k: int,
     metadata_filter: Optional[Dict] = None,
-    top_k: int = 20,
     collection_name: str = "document_chunks"
 ) -> List[Dict]:
     
     try:
         collection = get_or_create_collection(collection_name)
 
+        chroma_filter = None
+
+        if metadata_filter:
+            category_id = metadata_filter.get("category_id")
+            file_names = metadata_filter.get("file_names", [])
+
+            conditions = []
+
+            if category_id is not None:
+                conditions.append({"category_id": str(category_id)})
+
+            if file_names:
+                file_conditions = [{"file_name": fname} for fname in file_names]
+                if len(file_conditions) > 1:
+                    conditions.append({"$or": file_conditions})
+                else:
+                    conditions.append(file_conditions[0])
+
+            if len(conditions) == 1:
+                chroma_filter = conditions[0]
+            elif len(conditions) > 1:
+                chroma_filter = {"$and": conditions}
+
+
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=top_k,
-            where=metadata_filter if metadata_filter else None,
+            where=chroma_filter,
             include=["documents", "distances", "metadatas"]
         )
 
@@ -219,7 +244,7 @@ async def search_chunks_with_metadata(
 
 
 
-
+# Đang dùng 
 async def search_chunks_with_metadata_tthc(
     query_embedding: List[float],
     matched_procedures: List[str],

@@ -1,13 +1,12 @@
-import datetime
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from datetime import datetime, date, time
 from pypdf import PdfReader
 from docx import Document
 import pandas as pd
-from typing import Optional
 import json
+
 logger = logging.getLogger(__name__)
-from datetime import datetime, date, time
 
 
 
@@ -53,26 +52,32 @@ async def extract_text_from_excel(file_path: str) -> Optional[str]:
 
     sheet_jsons = {}
 
-    excel = pd.ExcelFile(file_path)
-    for sheet in excel.sheet_names:
-        try:
-            df = pd.read_excel(file_path, sheet)
-            df = df.applymap(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime, datetime.date, datetime.time)) else x)
-            if df.empty:
-                continue
-            
-            
-            rows_list = []
-            for _, row in df.iterrows():
-                row_dict = {col: val for col, val in row.items() if pd.notna(val)}
-                if row_dict:
-                    rows_list.append(row_dict)
+    try:
+        with pd.ExcelFile(file_path) as excel:
+            for sheet in excel.sheet_names:
+                try:
+                    df = pd.read_excel(excel, sheet_name=sheet)
+                    
+                    # Sử dụng map thay vì applymap (deprecated)
+                    df = df.map(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime, date, time)) else x)
+                    if df.empty:
+                        continue
+                    
+                    rows_list = []
+                    for idx, row in df.iterrows():
+                        row_dict = {col: val for col, val in row.items() if pd.notna(val)}
+                        if row_dict:
+                            rows_list.append(row_dict)
 
-            if rows_list:
-                sheet_jsons[sheet] = rows_list 
+                    if rows_list:
+                        sheet_jsons[sheet] = rows_list
 
-        except:
-            continue
+                except Exception as e:
+                    logger.error(f"Lỗi xử lý sheet '{sheet}': {e}")
+                    continue
+        
+        if not sheet_jsons:
+            return None
         
         final_str = "{\n"
         for sheet_name, rows in sheet_jsons.items():
@@ -90,44 +95,53 @@ async def extract_text_from_excel(file_path: str) -> Optional[str]:
             final_str += "  ],\n"
 
         final_str += "}"
-
+        
         return final_str
+    
+    except Exception as e:
+        logger.error(f"Lỗi đọc file Excel {file_path}: {e}", exc_info=True)
+        return None
 
 
 
 async def extract_procedures_from_excel_tthc(file_path: str) -> List[Dict[str, Any]]:
     results = []
 
-    excel = pd.ExcelFile(file_path)
+    try:
+        with pd.ExcelFile(file_path) as excel:
+            for sheet in excel.sheet_names:
+                try:
+                    df = pd.read_excel(excel, sheet_name=sheet)
 
-    for sheet in excel.sheet_names:
-        try:
-            df = pd.read_excel(file_path, sheet)
+                    if df.empty:
+                        continue
+                        
+                    if "Tên thủ tục" not in df.columns:
+                        continue
 
-            if df.empty:
-                continue
-        except:
-            continue
+                    for _, row in df.iterrows():
+                        if pd.isna(row["Tên thủ tục"]):
+                            continue
 
-        if "Tên thủ tục" not in df.columns:
-            continue
+                        procedure_name = str(row["Tên thủ tục"]).strip()
 
-        for _, row in df.iterrows():
+                        metadata_json = {}
+                        for col, val in row.items():
+                            if pd.notna(val):
+                                metadata_json[col] = val
 
-            if pd.isna(row["Tên thủ tục"]):
-                continue
+                        results.append({
+                            "procedure_name": procedure_name,
+                            "metadata_json": metadata_json
+                        })
+                        
+                except Exception as e:
+                    logger.error(f"Lỗi xử lý sheet '{sheet}': {e}")
+                    continue
 
-            procedure_name = str(row["Tên thủ tục"]).strip()
-
-            metadata_json = {}
-            for col, val in row.items():
-                if pd.notna(val):
-                    metadata_json[col] = val
-
-            results.append({
-                "procedure_name": procedure_name,
-                "metadata_json": metadata_json
-            })
-
-    return results
+        return results
+    
+    except Exception as e:
+        logger.error(f"Lỗi đọc file Excel TTHC {file_path}: {e}", exc_info=True)
+        return []
 

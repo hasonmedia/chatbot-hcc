@@ -55,6 +55,7 @@ interface KnowledgeBaseItemProps {
 const formSchema = z.object({
   raw_content: z.string().min(1, "Nội dung là bắt buộc."),
   file_name: z.string().optional(),
+  description: z.string().min(1, "Mô tả là bắt buộc."),
 });
 
 export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
@@ -67,6 +68,7 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
     defaultValues: {
       raw_content: item.raw_content || "",
       file_name: item.file_name || "",
+      description: item.description || "",
     },
   });
 
@@ -75,9 +77,10 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
       form.reset({
         raw_content: item.raw_content,
         file_name: item.file_name || "",
+        description: item.description || "",
       });
     }
-  }, [item.raw_content, item.file_name, form.reset]);
+  }, [item.raw_content, item.file_name, item.description, form.reset]);
 
   const handleDelete = () => {
     setIsDeleteDialogOpen(true);
@@ -92,6 +95,7 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
     form.reset({
       raw_content: item.raw_content || "",
       file_name: item.file_name || "",
+      description: item.description || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -103,6 +107,7 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
         data: {
           raw_content: values.raw_content,
           file_name: values.file_name || item.file_name || "",
+          description: values.description,
         },
       });
       setIsEditDialogOpen(false);
@@ -135,6 +140,9 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
             </div>
           </div>
           <ItemDescription className="text-xs sm:text-sm">
+            {item.description && (
+              <div className="mb-1 text-muted-foreground">{item.description}</div>
+            )}
             Tạo lúc: {formatDateTime(item.detail_created_at)}
             {item.username && <span className="ml-2">• {item.username}</span>}
           </ItemDescription>
@@ -197,6 +205,24 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
                       <FormControl>
                         <Input
                           placeholder="Nhập tên file..."
+                          {...field}
+                          disabled={isUpdating}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mô tả</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Nhập mô tả..."
+                          className="min-h-20 resize-none"
                           {...field}
                           disabled={isUpdating}
                         />

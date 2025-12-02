@@ -59,6 +59,7 @@ async def get_all_kbs_service(
             kbd.file_name,
             kbd.file_type,
             kbd.file_path,
+            kbd.description,
             kbd.source_type,
             kbd.raw_content,
             kbd.created_at AS detail_created_at,
@@ -90,6 +91,7 @@ async def get_all_kbs_service(
                 'file_name', file_name,
                 'file_type', file_type,
                 'file_path', file_path,
+                'description', description,
                 'source_type', source_type,
                 'raw_content', raw_content,
                 'detail_created_at', detail_created_at,
@@ -128,6 +130,8 @@ async def get_all_kbs_service(
 async def create_kb_with_files_service(
     user_id: int,
     category_id: int,
+    category_name: str,
+    description: str,
     files: List[UploadFile],
     db: AsyncSession
 ):
@@ -149,6 +153,7 @@ async def create_kb_with_files_service(
                     source_type="FILE", 
                     file_type=os.path.splitext(file.filename)[1].upper().replace('.', ''),
                     file_path=file_path,
+                    description=description,
                     is_active=True,
                     user_id=user_id
                 )
@@ -160,6 +165,7 @@ async def create_kb_with_files_service(
                 
                 success  = await process_uploaded_file(
                     category_id,
+                    category_name,
                     file_path, 
                     file.filename,
                     knowledge_base_detail_id=detail.id,
@@ -171,29 +177,36 @@ async def create_kb_with_files_service(
                 else:
                     logger.error(f"❌ Lỗi xử lý file: {file.filename}")
                     # Xóa chunks (nếu có)
-                    await delete_chunks(detail.id)
+                    try:
+                        await delete_chunks(detail.id)
+                    except:
+                        pass
                     
+                    # Refresh detail trước khi xóa để tránh lỗi
+                    await db.refresh(detail)
                     # Xóa detail DB
                     await db.delete(detail)
                     await db.commit()
                     # Xóa file
                     if os.path.exists(file_path):
-                        os.remove(file_path)
+                        try:
+                            os.remove(file_path)
+                        except Exception as e:
+                            logger.error(f"Không thể xóa file: {str(e)}")
                         
             except Exception as e:
                 logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
+                await db.rollback()
                 if detail and detail.id:
-                    await delete_chunks(detail.id)
                     try:
-                        await db.delete(detail)
-                        await db.commit()
+                        await delete_chunks(detail.id)
                     except:
                         pass
                 if file_path and os.path.exists(file_path):
                     try:
                         os.remove(file_path)
-                    except:
-                        pass
+                    except Exception as rm_e:
+                        logger.error(f"Không thể xóa file sau lỗi: {str(rm_e)}")
                 continue
         
         
@@ -211,6 +224,7 @@ async def add_kb_rich_text_service(
     user_id: int,
     raw_content: str,
     category_id: int,
+    description: str,
     db: AsyncSession
 ):
     try:
@@ -221,6 +235,7 @@ async def add_kb_rich_text_service(
             file_type = "TEXT",
             file_name=file_name,
             raw_content=raw_content,
+            description=description,
             is_active=True,
             user_id=user_id
         )
@@ -258,6 +273,7 @@ async def update_kb_with_rich_text_service(
     user_id: Optional[int],
     raw_content: str, 
     file_name: str,
+    description: Optional[str],
     db: AsyncSession
 ):
     
@@ -290,6 +306,8 @@ async def update_kb_with_rich_text_service(
         detail.raw_content = raw_content
         detail.user_id = user_id
         detail.file_name = file_name
+        if description is not None:
+            detail.description = description
         
         logger.info(f"Đã cập nhật thuộc tính cho detail_id={detail_id} (chưa commit).")
 
@@ -398,7 +416,8 @@ def _convert_kb_to_dict(kb: KnowledgeBase, category_ids: Optional[List[int]] = N
 
 async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
     try:
-        await delete_chunks(detail_id)
+        
+        await delete_chunks(knowledge_id = detail_id)
         detail = await db.get(KnowledgeBaseDetail, detail_id)
         await db.delete(detail)
         await db.commit()
@@ -473,17 +492,7 @@ async def get_all_categories_service(db: AsyncSession):
         raise Exception(f"Lỗi khi lấy danh sách categories: {str(e)}")
 
 async def create_category_service(name: str, description: Optional[str], db: AsyncSession):
-    """
-    Tạo category mới với knowledge_base_id = 1
-    
-    Args:
-        name: Tên category (bắt buộc)
-        description: Mô tả category (có thể null)
-        db: Database session
-    
-    Returns:
-        dict: Category mới được tạo
-    """
+
     try:
         category = KnowledgeCategory(
             name=name,
@@ -511,18 +520,7 @@ async def create_category_service(name: str, description: Optional[str], db: Asy
         raise Exception(f"Lỗi khi tạo category: {str(e)}")
 
 async def update_category_service(category_id: int, name: str, description: Optional[str], db: AsyncSession):
-    """
-    Cập nhật category
-    
-    Args:
-        category_id: ID của category cần cập nhật
-        name: Tên mới
-        description: Mô tả mới
-        db: Database session
-    
-    Returns:
-        dict: Category đã cập nhật hoặc None nếu không tìm thấy
-    """
+   
     try:
         result = await db.execute(
             select(KnowledgeCategory).filter(KnowledgeCategory.id == category_id)
@@ -555,16 +553,7 @@ async def update_category_service(category_id: int, name: str, description: Opti
         raise Exception(f"Lỗi khi cập nhật category: {str(e)}")
 
 async def delete_category_service(category_id: int, db: AsyncSession):
-    """
-    Xóa category (cascade sẽ xóa tất cả details của category)
     
-    Args:
-        category_id: ID của category cần xóa
-        db: Database session
-    
-    Returns:
-        bool: True nếu xóa thành công, False nếu không tìm thấy
-    """
     try:
         result = await db.execute(
             select(KnowledgeCategory).filter(KnowledgeCategory.id == category_id)

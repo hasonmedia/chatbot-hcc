@@ -38,7 +38,6 @@ async def save_message_to_db_background(data: dict, sender_name: str, image_url:
 
 
 async def update_session_admin_background(chat_session_id: int, sender_name: str):
-    """Background task: Tạo DB session riêng để cập nhật session"""
     async with AsyncSessionLocal() as new_db:
         try:
             result = await new_db.execute(select(ChatSession).filter(ChatSession.id == chat_session_id))
@@ -72,7 +71,6 @@ async def update_session_admin_background(chat_session_id: int, sender_name: str
 
 
 async def send_to_platform_background(channel: str, page_id: str, recipient_id: str, message_data: dict, images=None):
-    """Background task: Gửi tin nhắn đến platform tương ứng"""
     try:
         # Import các hàm send platform từ helper
         from helper.help_send_social import send_fb, send_telegram, send_zalo

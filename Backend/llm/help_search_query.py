@@ -11,43 +11,78 @@ from models.knowledge_base import KnowledgeBase, KnowledgeBaseDetail, KnowledgeC
 
 
 
+# Đang dùng
+async def get_all_categories_service_for_chunk():
+    async with AsyncSessionLocal() as session:
+        
+        result = await session.execute(
+            select(
+                KnowledgeCategory.id,
+                KnowledgeCategory.name,
+                KnowledgeCategory.description,
+                KnowledgeBaseDetail.file_name,
+                KnowledgeBaseDetail.description
+            ).outerjoin(KnowledgeBaseDetail, KnowledgeCategory.id == KnowledgeBaseDetail.category_id)
+        )
+        rows = result.all()
 
+        category_dict = defaultdict(lambda: {"file_list": [], "category_description": None})
 
+        for cat_id, cat_name, cat_desc, file_name, file_desc in rows:
+            key = (cat_id, cat_name)
+            category_dict[key]["category_description"] = cat_desc
+
+            if file_name:
+                category_dict[key]["file_list"].append({
+                    "file_name": file_name,
+                    "summary": file_desc
+                })
+
+        formatted_categories = []
+        for (cat_id, cat_name), data in category_dict.items():
+            if not data["file_list"]:
+                continue 
+
+            formatted_categories.append({
+                "category_id": cat_id,
+                "category_name": cat_name,
+                "category_description": data["category_description"],
+                "file_list": data["file_list"]
+            })
+
+        return formatted_categories
+    
+    
+# Đang dùng
 async def search_metadata(query: str, model_name: str, api_key: str) -> Dict[str, any]:
     
     categories = await get_all_categories_service_for_chunk()
-    
-    category_text = ""
-    for cat in categories:
-        category_text += f"- Category {cat['id']} - {cat['name']}:\n"
-        for f in cat["files"]:
-            category_text += f"    • {f}\n"
-            
+         
     
     prompt = f"""
-You are a classifier for a RAG system.
+Bạn là hệ thống phân loại tri thức cho chatbot.
 
-Dựa trên câu hỏi và danh sách category + file dưới đây,
-hãy xác định câu hỏi thuộc category nào và file nào có chứa thông tin phù hợp.
+Nhiệm vụ:
+- Dựa vào câu hỏi của người dùng.
+- Và dữ liệu categories bên dưới.
+- Hãy xác định category phù hợp nhất và danh sách file cần thiết.
 
-### Categories:
-{category_text}
+Dữ liệu categories:
+{json.dumps(categories, ensure_ascii=False)}
 
-### User Question:
-{query}
-
-### Yêu cầu output:
-Chỉ trả về JSON với đúng 2 trường:
-- category_id: ID của category có liên quan nhất
-- file_names: danh sách 1 hoặc nhiều file phù hợp trong category đó
-
-### Example:
+Yêu cầu trả về đúng JSON theo format:
 {{
-  "category_id": 2,
-  "file_names": ["thutuc_cap_giay_chung_nhan.pdf"]
+  "category_id": <int hoặc null>,
+  "file_names": [<danh sách tên file hoặc rỗng>]
 }}
 
-Return ONLY JSON, no explanation.
+Quy tắc:
+1. Chỉ chọn category nếu nội dung câu hỏi phù hợp với category_description hoặc summary của file.
+2. Nếu không phù hợp với category nào → trả về file_names rỗng và category_id = null.
+3. Luôn trả về JSON hợp lệ.
+
+Câu hỏi người dùng:
+"{query}"
 """
         
     
@@ -71,32 +106,7 @@ Return ONLY JSON, no explanation.
             "file_names": []
         }
     
-async def get_all_categories_service_for_chunk():
-    async with AsyncSessionLocal() as session:
-        
-        result = await session.execute(
-            select(
-                KnowledgeCategory.id,
-                KnowledgeCategory.name,
-                KnowledgeBaseDetail.file_name
-            ).outerjoin(KnowledgeBaseDetail, KnowledgeCategory.id == KnowledgeBaseDetail.category_id)
-        )
-        rows = result.all()
 
-        category_dict = defaultdict(list)
-        for cat_id, cat_name, file_name in rows:
-            if file_name:
-                category_dict[(cat_id, cat_name)].append(file_name)
-
-        categories = []
-        for (cat_id, cat_name), files in category_dict.items():
-            categories.append({
-                "id": cat_id,
-                "name": cat_name,
-                "files": files
-            })
-            
-        return categories
     
 
 
@@ -134,6 +144,7 @@ Hãy trả về danh sách các thủ tục phù hợp với câu hỏi này, **
     return data
         
 
+# Đang dùng
 async def search_data(
     query: str, 
     embedding_key: str,
@@ -141,6 +152,7 @@ async def search_data(
     top_k: int,
     metadata_filter: Optional[Dict] = None
 ) -> List[Dict]:
+
 
     if not query:
         return []
@@ -154,54 +166,17 @@ async def search_data(
 
 
 
-    # normalized = None
-
-    # if metadata_filter:
-    #     # Nếu có cả category_id và file_names
-    #     if ("category_id" in metadata_filter and metadata_filter["category_id"] is not None 
-    #         and "file_names" in metadata_filter and metadata_filter["file_names"]):
-    #         # Sử dụng $and để kết hợp
-    #         normalized = {
-    #             "$and": [
-    #                 {"category_id": {"$eq": str(metadata_filter["category_id"])}},
-    #                 {"file_name": {"$in": metadata_filter["file_names"]}}
-    #             ]
-    #         }
-    #     # Chỉ có category_id
-    #     elif "category_id" in metadata_filter and metadata_filter["category_id"] is not None:
-    #         normalized = {"category_id": {"$eq": str(metadata_filter["category_id"])}}
-    #     # Chỉ có file_names
-    #     elif "file_names" in metadata_filter and metadata_filter["file_names"]:
-    #         normalized = {"file_name": {"$in": metadata_filter["file_names"]}}
-
-    
-    
-    candidates = await search_chunks_tthc(
+    result = await search_chunks_with_metadata(
         query_embedding=q_emb,
-        top_k=top_k
+        top_k=top_k,
+        metadata_filter=metadata_filter,
     )
     
-    data = await search_metadata_tthc(
-        query=query,
-        procedure_names=candidates,
-        model_name=embedding_model_name,
-        api_key=embedding_key)
     
     
-    #Để ý để làm gọn chổ này
-    if isinstance(data, str):
-        import json
-        try:
-            matched_procedures = json.loads(data)
-        except json.JSONDecodeError:
-            matched_procedures = [data] if data else []
-    else:
-        matched_procedures = data if isinstance(data, list) else [data]
-    
-    result = await search_chunks_with_metadata_tthc(query_embedding=q_emb, matched_procedures=matched_procedures)
-
-
     return result
+    
+    
     
     
 
