@@ -2,7 +2,6 @@ from typing import List, Dict, Tuple, Optional, Any
 from sqlalchemy import text, select, desc
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from config.get_embedding import get_embedding_chatgpt, get_embedding_gemini
 from models.chat import Message
 from models.llm import LLM, LLMKey
 from config.redis_cache import async_cache_get, async_cache_set
