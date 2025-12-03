@@ -27,6 +27,7 @@ def normalize_metadata(meta: Dict) -> Dict:
 async def create_chunks_from_procedures(
     procedures: List[Dict[str, Any]], 
     embedding_key: str,
+    embedding_model: str,
     category_id: str,
     knowledge_base_detail_id: int,
     filename: str
@@ -34,8 +35,11 @@ async def create_chunks_from_procedures(
     
     chunks = []
     procedure_names = [proc["procedure_name"] for proc in procedures]
-
-    all_vectors = await get_embedding_chatgpt(procedure_names, api_key=embedding_key)
+    
+    if "gemini" in embedding_model.lower():
+        all_vectors = await get_embedding_gemini(procedure_names, api_key=embedding_key)
+    else:
+        all_vectors = await get_embedding_chatgpt(procedure_names, api_key=embedding_key) 
     
     for i, proc in enumerate(procedures):
         chunk_id = str(uuid.uuid4())
@@ -157,6 +161,7 @@ async def process_uploaded_file(
         if ext in ['.xlsx', '.xls'] and isinstance(content, list):
             chunks = await create_chunks_from_procedures(
                 procedures=content, 
+                embedding_model=embedding_model,
                 embedding_key=embedding_key,
                 category_id=category_id,
                 knowledge_base_detail_id=knowledge_base_detail_id,
