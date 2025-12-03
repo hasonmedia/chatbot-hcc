@@ -46,7 +46,7 @@ async def get_embedding_chatgpt(
     api_key: str
 ) -> Union[List[float], List[List[float]]]:
 
-  
+    
     try:
         client = AsyncOpenAI(api_key=api_key)
 

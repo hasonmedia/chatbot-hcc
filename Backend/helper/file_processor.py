@@ -124,8 +124,6 @@ async def process_uploaded_file(
 ) -> bool:
     
     try:
-        # 1)Extract text từ file
-        
         ext = os.path.splitext(filename)[1].lower()
         
         if ext == '.pdf':
@@ -133,7 +131,6 @@ async def process_uploaded_file(
         elif ext in ['.docx', '.doc']:
             content = await extract_text_from_docx(file_path)
         elif ext in ['.xlsx', '.xls']:
-            # Kiểm tra nếu là danh mục "Dịch vụ công" thì dùng hàm riêng
             if "dịch vụ công" in category_name.lower():
                 content = await extract_procedures_from_excel_tthc(file_path)
             else:
@@ -152,13 +149,11 @@ async def process_uploaded_file(
         
         
 
-        # Lấy thông tin model embedding
         model = await get_current_model(db_session=db)    
         embedding_model = model["embedding"]["name"]
         embedding_key = model["embedding"]["key"]
 
         
-        # Xử lý file Excel "Dịch vụ công" (trả về list procedures)
         if ext in ['.xlsx', '.xls'] and isinstance(content, list):
             chunks = await create_chunks_from_procedures(
                 procedures=content, 
@@ -167,7 +162,7 @@ async def process_uploaded_file(
                 knowledge_base_detail_id=knowledge_base_detail_id,
                 filename=filename
             )
-        # Xử lý file PDF, DOCX, hoặc Excel thường (trả về string)
+        
         else:
             chunks = await create_chunks(
                 embedding_key=embedding_key, 

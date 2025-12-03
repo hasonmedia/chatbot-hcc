@@ -256,16 +256,12 @@ async def search_similar_documents(
     
     try:
         
-        # 1) Lấy metadata filter từ query
+        
         metadata = await search_metadata(
             query=query,
             model_name=bot_model_name,
             api_key=bot_key
         )
-        
-        
-        print("🔍 Metadata from LLM:", metadata)
-        
         
     
         

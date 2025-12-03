@@ -199,6 +199,7 @@ async def generate_and_send_bot_response_background(
                 user_content, chat_session_id, new_db
             )
             
+            
             # Tạo bot message để gửi qua websocket
             bot_message = {
                 **bot_message_data,
