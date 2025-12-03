@@ -6,6 +6,7 @@ export interface MessageData {
   content: string;
   created_at: string;
   image?: string | null; // Hoặc string[] nếu là mảng ảnh
+  session_status?: string; // Thêm thuộc tính để kiểm tra trạng thái session
   // Bổ sung các trường khác nếu cần
 }
 export interface SendMessagePayload {

@@ -21,26 +21,22 @@ async def customer_chat(websocket: WebSocket, session_id: int):
         while True:
             data = await websocket.receive_json()
             
-
+            print(data)
             
-            # ✅ Tạo db session MỚI cho mỗi message
             from config.database import AsyncSessionLocal
             async with AsyncSessionLocal() as db:
-                res_messages = await send_message_fast_service(data, None, db)
-
-                # Gửi tin nhắn đến người dùng ngay lập tức
-                for msg in res_messages:
-                    await manager.broadcast_to_admins(msg)
-                    await manager.send_to_customer(session_id, msg)
+                await send_message_fast_service(data, None, db) 
                 
-
+                
+                
     except WebSocketDisconnect:
         manager.disconnect_customer(websocket, session_id)
     except Exception as e:
-        print(f"❌ [ERROR] Lỗi trong customer_chat: session {session_id}")
+        print(f"[ERROR] Lỗi trong customer_chat: session {session_id}")
         import traceback
         traceback.print_exc()
         manager.disconnect_customer(websocket, session_id)
+
 
 async def admin_chat(websocket: WebSocket, user: dict):
     await manager.connect_admin(websocket)
@@ -52,12 +48,7 @@ async def admin_chat(websocket: WebSocket, user: dict):
             from config.database import AsyncSessionLocal
             async with AsyncSessionLocal() as db:
                             
-                res_messages = await send_message_fast_service(data, user, db)
-                
-                # Gửi đến tất cả customer đang kết nối
-                for msg in res_messages:
-                    await manager.send_to_customer(msg["chat_session_id"], msg)
-                    await manager.broadcast_to_other_admins(websocket, msg)
+                await send_message_fast_service(data, user, db)
             
                     
     except WebSocketDisconnect:

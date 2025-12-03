@@ -12,6 +12,9 @@ import random
 import json
 import traceback
 from config.redis_cache import cache_delete
+from helper.task import (
+    send_socket_message
+)
 
 async def create_session_service(url_channel: str, db):
     try:
@@ -197,8 +200,18 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
         await db.commit()
         await db.refresh(chatSession)
         
-        # Clear cache sau khi update
         clear_session_cache(id)
+        
+        # Gửi thông báo cập nhật qua socket cho tất cả admin và customer
+        socket_data = {
+            "type": "session_update",  # Đánh dấu đây là sự kiện cập nhật session
+            "chat_session_id": chatSession.id,
+            "session_status": chatSession.status,
+            "current_receiver": chatSession.current_receiver,
+            "previous_receiver": chatSession.previous_receiver,
+            "time": chatSession.time.isoformat() if chatSession.time else None
+        }
+        await send_socket_message(id, socket_data)
         
         return {
             "chat_session_id": chatSession.id,

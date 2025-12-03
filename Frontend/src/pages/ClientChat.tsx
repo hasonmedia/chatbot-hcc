@@ -23,7 +23,8 @@ const ChatUI = () => {
     sessionId,
     isLoading,
     isConnecting,
-    isBotTyping,
+    isBotActive,
+    isWaitingBot,
     setNewMessage,
     handleSendMessage,
     handleKeyDown,
@@ -55,7 +56,7 @@ const ChatUI = () => {
                 <MessageItem key={msg.id || index} msg={msg} />
               ))}
               {/* Hiển thị typing indicator khi bot đang trả lời */}
-              <TypingIndicator isVisible={isBotTyping} />
+              <TypingIndicator isVisible={isBotActive} />
             </>
           )}
           <div ref={messagesEndRef} />
@@ -70,7 +71,7 @@ const ChatUI = () => {
         handleSendMessage={handleSendMessage}
         handleKeyDown={handleKeyDown}
         isConnecting={isConnecting}
-        isBotTyping={isBotTyping}
+        isWaitingBot={isWaitingBot}
         sessionId={sessionId}
       />
 

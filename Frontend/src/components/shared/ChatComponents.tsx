@@ -104,7 +104,7 @@ export function SessionItem({
               isClosed ? "text-muted-foreground" : "text-primary"
             }`}
           >
-            {session.customer_name || session.chat_session_id.slice(0, 8)}
+            {session.customer_name || session.chat_session_id}
           </span>
           <span
             className={`text-xs ${

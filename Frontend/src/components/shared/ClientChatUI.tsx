@@ -426,7 +426,7 @@ type ChatInputProps = {
   handleSendMessage: () => void;
   handleKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   isConnecting: boolean;
-  isBotTyping: boolean;
+  isWaitingBot: boolean;
   sessionId: string | null;
 };
 
@@ -436,7 +436,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   handleSendMessage,
   handleKeyDown,
   isConnecting,
-  isBotTyping,
+  isWaitingBot,
   sessionId,
 }) => {
   return (
@@ -446,22 +446,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           placeholder={
             isConnecting
               ? "Đang kết nối..."
-              : isBotTyping
-              ? "Bot đang trả lời..."
+              : isWaitingBot
+              ? "Đang chờ phản hồi..."
               : "Nhập câu hỏi của bạn..."
           }
           className="pr-28 min-h-[60px]"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={isConnecting || !sessionId || isBotTyping}
+          disabled={isConnecting || !sessionId || isWaitingBot}
         />
         <div className="absolute right-3 top-3 flex gap-2">
           <Button
             size="icon"
             onClick={handleSendMessage}
             disabled={
-              !newMessage.trim() || isConnecting || !sessionId || isBotTyping
+              !newMessage.trim() || isConnecting || !sessionId || isWaitingBot
             }
           >
             <SendHorizontal className="h-4 w-4" />

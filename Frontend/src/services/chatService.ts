@@ -299,7 +299,7 @@ export const getAllChatHistory = async (): Promise<any[]> => {
     const response = await axiosClient.get(API_ENDPOINT.CHAT.GET_ADMIN_HISTORY);
     // Map dữ liệu từ backend sang frontend format
     const sessions = response.data.map((item: any) => ({
-      chat_session_id: String(item.session_id), // Convert number to string
+      chat_session_id: Number(item.session_id), // Keep as number
       customer_name: item.name || `Session-${item.session_id}`,
       last_message:
         typeof item.content === "string"

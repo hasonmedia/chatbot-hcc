@@ -56,11 +56,11 @@ export default function ChatPage() {
   const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
   const [isBlockBotSheetOpen, setIsBlockBotSheetOpen] = useState(false);
   const [selectedBlockOption, setSelectedBlockOption] = useState<string>("");
-  const handleSelectSessionResponsive = (sessionId: string) => {
+  const handleSelectSessionResponsive = (sessionId: number) => {
     handleSelectSession(sessionId);
   };
   const handleBackToSessions = () => {
-    handleSelectSession(null as unknown as string);
+    handleSelectSession(null);
   };
   const InfoColumnContent = () => (
     <div className="flex flex-col gap-4 p-4 lg:p-0">
@@ -180,7 +180,7 @@ export default function ChatPage() {
                   {currentSessionInfo
                     ? `Phiên: ${
                         currentSessionInfo.customer_name ||
-                        currentSessionInfo.chat_session_id.slice(0, 8)
+                        currentSessionInfo.chat_session_id
                       }`
                     : "Chọn một phiên chat"}
                 </h3>

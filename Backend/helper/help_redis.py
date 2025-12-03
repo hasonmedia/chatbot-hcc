@@ -59,57 +59,24 @@ def get_session_by_name_cache_key(session_name: str) -> str:
 
 
 def get_check_reply_cache_key(session_id: int) -> str:
-    """
-    Tạo cache key cho check reply
-    
-    Args:
-        session_id: ID của chat session
-        
-    Returns:
-        str: Cache key (format: "check_repply:{id}")
-    """
+ 
     return f"check_repply:{session_id}"
 
 
 def get_page_active_cache_key(platform: str, page_id: str) -> str:
-    """
-    Tạo cache key cho trạng thái active của page/bot
     
-    Args:
-        platform: Tên platform (facebook, telegram, zalo)
-        page_id: ID của page/bot
-        
-    Returns:
-        str: Cache key (format: "page_active:{platform}:{page_id}")
-    """
     return f"page_active:{platform}:{page_id}"
 
 
-# ==================== Session Cache Operations ====================
 
 def cache_session_data(session_id: int, session_data: dict, ttl: int = 300) -> None:
-    """
-    Cache session data theo ID
     
-    Args:
-        session_id: ID của chat session
-        session_data: Session data dạng dictionary
-        ttl: Time to live (seconds), default 300s
-    """
     cache_key = get_session_cache_key(session_id)
     cache_set(cache_key, session_data, ttl=ttl)
 
 
 def get_cached_session_data(session_id: int) -> dict:
-    """
-    Lấy session data từ cache theo ID
     
-    Args:
-        session_id: ID của chat session
-        
-    Returns:
-        dict: Session data hoặc None nếu không có trong cache
-    """
     cache_key = get_session_cache_key(session_id)
     return cache_get(cache_key)
 
@@ -184,15 +151,7 @@ def cache_check_reply_result(session_id: int, can_reply: bool, ttl: int = 300) -
 
 
 def get_cached_check_reply_result(session_id: int) -> dict:
-    """
-    Lấy kết quả check reply từ cache
-    
-    Args:
-        session_id: ID của chat session
-        
-    Returns:
-        dict: {'can_reply': bool} hoặc None nếu không có trong cache
-    """
+  
     cache_key = get_check_reply_cache_key(session_id)
     return cache_get(cache_key)
 

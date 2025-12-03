@@ -25,30 +25,18 @@ from helper.help_redis import (
 
 
 async def get_session_by_id_cached(session_id: int, db) -> dict:
-    """
-    Lấy session từ cache hoặc database theo ID
-    
-    Args:
-        session_id: ID của chat session
-        db: Database session
-        
-    Returns:
-        dict: Session data hoặc None nếu không tìm thấy
-    """
-    # Kiểm tra cache trước (sử dụng helper)
+
     cached_session = get_cached_session_data(session_id)
     
     if cached_session:
         return cached_session
     
-    # Nếu không có trong cache, query từ database
     result = await db.execute(select(ChatSession).filter(ChatSession.id == session_id))
     session = result.scalar_one_or_none()
     
     if not session:
         return None
     
-    # Convert sang dict và cache (sử dụng helper)
     session_data = session_to_dict(session)
     cache_session_data(session_id, session_data, ttl=300)
     
@@ -56,20 +44,7 @@ async def get_session_by_id_cached(session_id: int, db) -> dict:
 
 
 async def get_or_create_session_by_name_cached(session_name: str, platform: str, page_id: str, db) -> dict:
-    """
-    Lấy hoặc tạo mới session từ cache/database theo name
-    Dùng cho webhook từ các platform (Facebook, Telegram, Zalo)
-    
-    Args:
-        session_name: Tên session (format: "F-123", "T-456", "Z-789")
-        platform: Platform name (facebook, telegram, zalo)
-        page_id: ID của page/bot
-        db: Database session
-        
-    Returns:
-        dict: Session data
-    """
-    # Kiểm tra cache trước (sử dụng helper)
+  
     cached_session_id = get_cached_session_id_by_name(session_name)
     
     if cached_session_id:
@@ -124,39 +99,19 @@ def get_platform_prefix(platform: str) -> str:
 
 
 def build_session_name(platform: str, sender_id: str) -> str:
-    """
-    Tạo session name từ platform và sender_id
-    
-    Args:
-        platform: Tên platform
-        sender_id: ID của người gửi
-        
-    Returns:
-        str: Session name (format: "F-123456")
-    """
+   
     prefix = get_platform_prefix(platform)
     return f"{prefix}-{sender_id}"
 
 
 async def check_repply_cached(id: int, db):
-    """
-    Check repply với Redis cache
-    
-    Args:
-        id: ID của chat session
-        db: Database session
-        
-    Returns:
-        bool: True nếu bot có thể reply, False nếu không
-    """
+
     try:
-        # Kiểm tra cache trước (sử dụng helper)
         cached_result = get_cached_check_reply_result(id)
         
         if cached_result is not None:
             return cached_result['can_reply']
         
-        # Lấy session từ cache hoặc database (sử dụng helper)
         session_data = await get_session_by_id_cached(id, db)
         
         if not session_data:
@@ -200,25 +155,13 @@ async def check_repply_cached(id: int, db):
 
 
 async def check_page_active_status(platform: str, page_id: str, db) -> bool:
-    """
-    Kiểm tra trạng thái is_active của page/bot theo platform với Redis cache
-    
-    Args:
-        platform: Tên platform (facebook, telegram, zalo)
-        page_id: ID của page/bot
-        db: Database session
-        
-    Returns:
-        bool: True nếu page/bot đang active, False nếu không
-    """
+
     try:
-        # Kiểm tra cache trước (sử dụng helper)
         cached_result = get_cached_page_active_status(platform, page_id)
         
         if cached_result is not None:
             return cached_result['is_active']
         
-        # Nếu không có trong cache, query từ database
         is_active = False
         
         if platform == "facebook":
@@ -242,7 +185,6 @@ async def check_page_active_status(platform: str, page_id: str, db) -> bool:
             bot = result.scalar_one_or_none()
             is_active = bot.is_active if bot else False
         
-        # Cache kết quả trong 10 phút (600 giây) - đủ lâu để giảm query nhưng vẫn update nhanh
         cache_page_active_status(platform, page_id, is_active, ttl=600)
         
         return is_active

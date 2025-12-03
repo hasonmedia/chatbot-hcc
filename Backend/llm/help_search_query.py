@@ -144,7 +144,7 @@ Hãy trả về danh sách các thủ tục phù hợp với câu hỏi này, **
     return data
         
 
-# Đang dùng
+
 async def search_data(
     query: str, 
     embedding_key: str,

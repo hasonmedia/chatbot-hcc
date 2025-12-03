@@ -262,7 +262,12 @@ async def search_similar_documents(
             api_key=bot_key
         )
         
-    
+        print("metadata found:", metadata)
+        
+        # Kiểm tra nếu metadata rỗng hoặc không có dữ liệu hợp lệ
+        if metadata.get('category_id') is None and not metadata.get('file_names'):
+            print("⚠️ Metadata rỗng, không tìm kiếm search_data")
+            return []
         
         candidates = await search_data(
             query=query,
