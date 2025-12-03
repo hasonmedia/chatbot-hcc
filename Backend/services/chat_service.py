@@ -302,16 +302,13 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
                 SELECT 
                     cs.channel,
                     DATE_TRUNC('month', m.created_at) AS month,
-                    COUNT(DISTINCT ci.id) AS customers,
                     COUNT(m.id) AS messages
                 FROM messages m
                 JOIN chat_sessions cs ON cs.id = m.chat_session_id
-                LEFT JOIN customer_info ci ON cs.id = ci.chat_session_id
                 GROUP BY cs.channel, DATE_TRUNC('month', m.created_at)  
             )
             SELECT 
                 curr.channel,
-                curr.customers,
                 curr.messages,
                 ROUND(((curr.messages - prev.messages)::numeric / NULLIF(prev.messages, 0)) * 100, 2) AS change
             FROM month_stats curr
@@ -325,7 +322,6 @@ async def get_dashboard_summary(db: Session) -> Dict[str, Any]:
         table_data = [
             {
                 "channel": r.channel,
-                "customers": r.customers,
                 "messages": r.messages,
                 "change": float(r.change or 0),
             }

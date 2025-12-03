@@ -57,10 +57,8 @@ export const useLLM = () => {
         let updatedLLM: LLMData;
 
         if (llmConfig) {
-          // Update existing configuration
           updatedLLM = await updateLLM(llmConfig.id, llmData);
         } else {
-          // Create new configuration
           updatedLLM = await createLLM(llmData);
         }
         // Reload with keys

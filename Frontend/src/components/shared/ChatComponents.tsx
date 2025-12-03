@@ -262,13 +262,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
       </Avatar>
       <div className="rounded-lg bg-primary text-primary-foreground p-3 max-w-[75%]">
         {" "}
-        {/* <-- Đổi sang bg-primary */}
-        {/* Không hiển thị tên cho customer */}
-        {/* <p className="text-sm whitespace-pre-wrap">{displayContent}</p> */}
         <ReactMarkdown
-          // 2. Thêm plugin vào đây
           remarkPlugins={[remarkGfm]}
-          // Đoạn code tùy chỉnh link của bạn vẫn giữ nguyên
           components={{
             a: ({ href, children, ...props }) => (
               <a

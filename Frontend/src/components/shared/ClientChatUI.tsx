@@ -367,12 +367,14 @@ export const SupportPanel: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <FileText className="h-3 w-3 text-muted-foreground" />
-              <span className="text-muted-foreground">Hotline: 1900-1234</span>
+              <span className="text-muted-foreground">
+                Hotline: 0236 3 507 507
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <FileText className="h-3 w-3 text-muted-foreground" />
               <span className="text-muted-foreground">
-                Email: hotro@hcc.gov.vn
+                Email: lienhe@hasontech.com
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -424,6 +426,7 @@ type ChatInputProps = {
   handleSendMessage: () => void;
   handleKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   isConnecting: boolean;
+  isBotTyping: boolean;
   sessionId: string | null;
 };
 
@@ -433,6 +436,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   handleSendMessage,
   handleKeyDown,
   isConnecting,
+  isBotTyping,
   sessionId,
 }) => {
   return (
@@ -440,19 +444,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       <div className="relative w-full">
         <Textarea
           placeholder={
-            isConnecting ? "Đang kết nối..." : "Nhập câu hỏi của bạn..."
+            isConnecting
+              ? "Đang kết nối..."
+              : isBotTyping
+              ? "Bot đang trả lời..."
+              : "Nhập câu hỏi của bạn..."
           }
           className="pr-28 min-h-[60px]"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={isConnecting || !sessionId}
+          disabled={isConnecting || !sessionId || isBotTyping}
         />
         <div className="absolute right-3 top-3 flex gap-2">
           <Button
             size="icon"
             onClick={handleSendMessage}
-            disabled={!newMessage.trim() || isConnecting || !sessionId}
+            disabled={
+              !newMessage.trim() || isConnecting || !sessionId || isBotTyping
+            }
           >
             <SendHorizontal className="h-4 w-4" />
             <span className="sr-only">Gửi</span>

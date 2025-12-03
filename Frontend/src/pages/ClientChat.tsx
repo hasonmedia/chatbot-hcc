@@ -9,6 +9,7 @@ import { useClientChat } from "@/hooks/useClientChat";
 import { useLLM } from "@/hooks/useLLM";
 import { useFeedbackTimer } from "@/hooks/useFeedbackTimer";
 import FeedbackModal from "@/components/shared/FeedbackModal";
+import TypingIndicator from "@/components/TypingIndicator";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Separator } from "@radix-ui/react-separator";
 import { Loader2 } from "lucide-react";
@@ -22,6 +23,7 @@ const ChatUI = () => {
     sessionId,
     isLoading,
     isConnecting,
+    isBotTyping,
     setNewMessage,
     handleSendMessage,
     handleKeyDown,
@@ -48,9 +50,13 @@ const ChatUI = () => {
               </span>
             </div>
           ) : (
-            messages.map((msg, index) => (
-              <MessageItem key={msg.id || index} msg={msg} />
-            ))
+            <>
+              {messages.map((msg, index) => (
+                <MessageItem key={msg.id || index} msg={msg} />
+              ))}
+              {/* Hiển thị typing indicator khi bot đang trả lời */}
+              <TypingIndicator isVisible={isBotTyping} />
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -64,6 +70,7 @@ const ChatUI = () => {
         handleSendMessage={handleSendMessage}
         handleKeyDown={handleKeyDown}
         isConnecting={isConnecting}
+        isBotTyping={isBotTyping}
         sessionId={sessionId}
       />
 

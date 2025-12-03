@@ -4,7 +4,6 @@ import google.generativeai as genai
 from typing import List, Union
 from openai import AsyncOpenAI
 import numpy as np
-from google import genai
 
 async def get_embedding_gemini(
     text_input: Union[str, List[str]], 

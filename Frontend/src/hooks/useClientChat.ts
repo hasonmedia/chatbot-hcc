@@ -15,11 +15,13 @@ export const useClientChat = () => {
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Loading lịch sử
+  const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(true); // Đang kết nối/khởi tạo session
+  const [isBotTyping, setIsBotTyping] = useState(false); // Bot đang trả lời
   const [llms, setLlms] = useState<LLMData>();
   // --- Ref ---
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const botTypingTimeoutRef = useRef<number | null>(null);
 
   // --- Helper ---
   const scrollToBottom = useCallback(() => {
@@ -33,22 +35,25 @@ export const useClientChat = () => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
   useEffect(() => {
-    const fetchLLMs = async () => {
-      try {
-        const llms = await getAllLLMs();
-        setLlms(llms); // Giả định chỉ có một LLM được sử dụng
-      } catch (error) {
-        console.error("Error fetching LLMs:", error);
-      }
-    };
-    fetchLLMs();
-  }, []);
-  useEffect(() => {
     const initializeChat = async () => {
       setIsConnecting(true);
-      let currentSessionId = localStorage.getItem("chatSessionId");
-      let isNewSession = false;
+
       try {
+        // Đầu tiên, load LLMs nếu chưa có
+        let currentLlms = llms;
+        if (!currentLlms) {
+          try {
+            currentLlms = await getAllLLMs();
+            setLlms(currentLlms);
+          } catch (error) {
+            console.error("Error fetching LLMs:", error);
+            // Tiếp tục với giá trị mặc định nếu không load được LLMs
+          }
+        }
+
+        let currentSessionId = localStorage.getItem("chatSessionId");
+        let isNewSession = false;
+
         if (currentSessionId) {
           const isValid = await checkSession();
           if (!isValid) {
@@ -67,19 +72,20 @@ export const useClientChat = () => {
         setIsLoading(true);
 
         const history = await getChatHistory(currentSessionId);
-        if (isNewSession) {
+        if (isNewSession && currentLlms?.system_greeting) {
           const welcomeMessage: MessageData = {
             id: `welcome-${Date.now()}`, // ID tạm thời, chỉ dùng ở UI
             chat_session_id: currentSessionId,
             sender_type: "bot", // Tin nhắn từ bot
-            content: llms?.system_greeting as string, // Nội dung tin nhắn
+            content: currentLlms.system_greeting, // Nội dung tin nhắn
             created_at: new Date().toISOString(), // Thời gian hiện tại
             image: null,
           };
+
           // Thêm tin nhắn chào mừng vào đầu mảng (lịch sử lúc này sẽ rỗng)
           setMessages([welcomeMessage, ...history]);
         } else {
-          // Session cũ, chỉ cần tải lịch sử
+          // Session cũ hoặc không có system_greeting, chỉ cần tải lịch sử
           setMessages(history);
         }
 
@@ -87,6 +93,16 @@ export const useClientChat = () => {
 
         // Định nghĩa hàm callback khi có tin nhắn mới
         const handleNewMessage = (data: MessageData) => {
+          // Tắt trạng thái bot đang typing khi nhận được phản hồi
+          if (data.sender_type === "bot") {
+            setIsBotTyping(false);
+            // Clear timeout nếu có
+            if (botTypingTimeoutRef.current) {
+              clearTimeout(botTypingTimeoutRef.current);
+              botTypingTimeoutRef.current = null;
+            }
+          }
+
           // Normalize dữ liệu - đảm bảo created_at luôn có giá trị hợp lệ
           const normalizedMessage: MessageData = {
             ...data,
@@ -113,18 +129,33 @@ export const useClientChat = () => {
     // Hàm cleanup: Ngắt kết nối khi component unmount
     return () => {
       disconnectCustomer();
+      // Clear timeout nếu có
+      if (botTypingTimeoutRef.current) {
+        clearTimeout(botTypingTimeoutRef.current);
+      }
     };
-  }, [llms]); // Chỉ chạy 1 lần khi component mount
+  }, []); // Chỉ chạy 1 lần khi component mount
 
   // Xử lý gửi tin nhắn
   const handleSendMessage = useCallback(() => {
     const trimmedMessage = newMessage.trim();
-    if (trimmedMessage && sessionId && !isConnecting) {
+    if (trimmedMessage && sessionId && !isConnecting && !isBotTyping) {
+      // Hiển thị trạng thái bot đang typing
+      setIsBotTyping(true);
+
+      // Tự động tắt typing indicator sau 30 giây nếu không có phản hồi
+      if (botTypingTimeoutRef.current) {
+        clearTimeout(botTypingTimeoutRef.current);
+      }
+      botTypingTimeoutRef.current = setTimeout(() => {
+        setIsBotTyping(false);
+      }, 30000);
+
       // Gửi tin nhắn
       sendMessage(sessionId, "customer", trimmedMessage, false, null);
       setNewMessage(""); // Xóa nội dung trong ô input
     }
-  }, [newMessage, sessionId, isConnecting]);
+  }, [newMessage, sessionId, isConnecting, isBotTyping]);
 
   // Xử lý nhấn Enter để gửi
   const handleKeyDown = useCallback(
@@ -145,6 +176,7 @@ export const useClientChat = () => {
     sessionId,
     isLoading,
     isConnecting,
+    isBotTyping,
 
     // State Setters
     setNewMessage,
