@@ -39,13 +39,14 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     return "?";
   };
   let displayContent;
-
+  let links: string[] = [];
   try {
     const parsed = JSON.parse(msg.content);
     if (parsed && parsed.message) {
       displayContent = parsed.message;
-    } else {
-      displayContent = msg.content;
+    }
+    if (parsed && parsed.links && Array.isArray(parsed.links)) {
+      links = parsed.links || [];
     }
   } catch (error) {
     displayContent = msg.content;
@@ -55,7 +56,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     if (isAdmin) return `Cán bộ: ${msg.sender_type || "Hỗ trợ viên"}`;
     return null;
   };
-
   if (isCustomer) {
     return (
       <div className="flex items-start gap-3 justify-end">
@@ -81,6 +81,25 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
           >
             {displayContent}
           </ReactMarkdown>
+          {links.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-primary-foreground/20">
+              <ul className="list-none p-0 m-0 space-y-1">
+                {links.map((link, index) => (
+                  <li key={index} className="text-sm">
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 underline hover:text-blue-600 block truncate"
+                      title={link}
+                    >
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <span className="text-xs text-primary-foreground/80 block text-right mt-1">
             {formatTime(msg.created_at)}
           </span>
@@ -91,7 +110,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
       </div>
     );
   }
-  console.log("Rendering message from", displayContent);
   return (
     <div className="flex items-start gap-3">
       <Avatar className="h-8 w-8">
@@ -120,6 +138,25 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
         >
           {displayContent}
         </ReactMarkdown>
+        {links.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-primary-foreground/20">
+            <ul className="list-none p-0 m-0 space-y-1">
+              {links.map((link, index) => (
+                <li key={index} className="text-sm">
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-700 underline hover:text-blue-600 block truncate"
+                    title={link}
+                  >
+                    {link}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
           <img
             src={msg.image[0]}
