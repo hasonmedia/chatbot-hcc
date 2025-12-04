@@ -73,7 +73,7 @@ export const useClientChat = () => {
         const history = await getChatHistory(currentSessionId);
         if (isNewSession && currentLlms?.system_greeting) {
           const welcomeMessage: MessageData = {
-            id: `welcome-${Date.now()}`, // ID tạm thời, chỉ dùng ở UI
+            id: Date.now(),
             chat_session_id: currentSessionId,
             sender_type: "bot", // Tin nhắn từ bot
             content: currentLlms.system_greeting, // Nội dung tin nhắn
@@ -138,7 +138,7 @@ export const useClientChat = () => {
           const normalizedMessage: MessageData = {
             ...data,
             created_at: data.created_at || new Date().toISOString(),
-            id: data.id || `msg-${Date.now()}`,
+            id: data.id || Date.now(),
           };
           setMessages((prevMessages) => [...prevMessages, normalizedMessage]);
         };
