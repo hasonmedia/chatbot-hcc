@@ -63,7 +63,27 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh; /* Hoặc dùng 100svh nếu muốn */
+  overflow-x: hidden; /* Ngăn scroll ngang */
   /* Xóa 'display: flex' và 'place-items: center' đi */
+}
+
+/* Responsive font sizes */
+@media (max-width: 640px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  :root {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1025px) {
+  :root {
+    font-size: 16px;
+  }
 }
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -156,20 +176,32 @@ body {
   }
 }
 
-/* Typing indicator animation */
+/* Typing indicator animation - responsive */
 @layer components {
   .typing-animation {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
   }
 
   .typing-animation .dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background-color: #9ca3af;
     animation: typing-bounce 1.4s infinite ease-in-out both;
+  }
+
+  /* Larger dots on desktop */
+  @media (min-width: 768px) {
+    .typing-animation {
+      gap: 4px;
+    }
+
+    .typing-animation .dot {
+      width: 8px;
+      height: 8px;
+    }
   }
 
   .typing-animation .dot:nth-child(1) {
@@ -190,6 +222,37 @@ body {
     40% {
       transform: scale(1);
       opacity: 1;
+    }
+  }
+
+  /* Responsive utilities */
+  .mobile-hidden {
+    @media (max-width: 767px) {
+      display: none !important;
+    }
+  }
+
+  .tablet-hidden {
+    @media (min-width: 768px) and (max-width: 1023px) {
+      display: none !important;
+    }
+  }
+
+  .desktop-hidden {
+    @media (min-width: 1024px) {
+      display: none !important;
+    }
+  }
+
+  .mobile-only {
+    @media (min-width: 768px) {
+      display: none !important;
+    }
+  }
+
+  .desktop-only {
+    @media (max-width: 1023px) {
+      display: none !important;
     }
   }
 }

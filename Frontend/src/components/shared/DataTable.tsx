@@ -87,7 +87,6 @@ export function DataTable() {
     if (!selectedUser) return;
 
     try {
-      toast.warn(`Đang xóa người dùng ${selectedUser.fullName}...`);
       await deleteUser(selectedUser.id);
       toast.success(`Đã xóa thành công ${selectedUser.fullName}`);
       refetchUsers();

@@ -38,15 +38,15 @@ const ChatUI = () => {
   });
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       <ChatHeader isConnecting={isConnecting} botName={llmConfig?.botName} />
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="mx-auto max-w-3xl flex flex-col gap-4">
+      <ScrollArea className="flex-1 p-2 sm:p-4">
+        <div className="mx-auto max-w-2xl lg:max-w-3xl xl:max-w-4xl flex flex-col gap-3 sm:gap-4">
           {isLoading ? (
-            <div className="flex justify-center items-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">
+            <div className="flex justify-center items-center p-6 sm:p-8">
+              <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm sm:text-base text-muted-foreground">
                 Đang tải lịch sử...
               </span>
             </div>
@@ -92,37 +92,40 @@ const ClientChat = () => {
     navigate("/login");
   };
   return (
-    <div className="flex h-screen w-full bg-background flex-col">
-      {/* Navbar */}
-      <Navbar01
-        signInText="Đăng nhập"
-        logo={<Logo />}
-        ctaText="Bắt đầu Chat"
-        onSignInClick={handleLoginClick}
-      />
-
-      {/* Navigation */}
-      {/* <GuestNavigation /> */}
-
-      {/* Main content area */}
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-64 border-r hidden lg:block">
-          <Sidebar />
-        </div>
-        {/* Main content */}
-        <div className="flex-1 overflow-auto">
-          <ChatUI />
-        </div>
-
-        {/* Support panel - moved to bottom on mobile, side on desktop */}
-        <div className="w-80 border-l hidden lg:block">
-          <SupportPanel />
-        </div>
+    <div className="flex h-screen w-full bg-background flex-col overflow-hidden">
+      {/* Navbar - responsive */}
+      <div className="shrink-0">
+        <Navbar01
+          signInText="Đăng nhập"
+          logo={<Logo />}
+          ctaText="Bắt đầu Chat"
+          onSignInClick={handleLoginClick}
+        />
       </div>
 
-      {/* Mobile support panel */}
-      <div className="lg:hidden border-t">
-        <div className="h-40 overflow-auto">
+      {/* Main content area - responsive layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar - hidden on mobile and tablet */}
+        <div className="w-56 lg:w-64 xl:w-72 border-r hidden lg:block shrink-0">
+          <Sidebar />
+        </div>
+
+        {/* Main chat content - responsive */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-auto">
+            <ChatUI />
+          </div>
+
+          {/* Mobile support panel - bottom sheet style */}
+          <div className="lg:hidden border-t bg-background">
+            <div className="h-32 sm:h-36 md:h-40 overflow-auto">
+              <SupportPanel />
+            </div>
+          </div>
+        </div>
+
+        {/* Right support panel - desktop only */}
+        <div className="w-72 lg:w-80 xl:w-96 border-l hidden lg:block shrink-0">
           <SupportPanel />
         </div>
       </div>

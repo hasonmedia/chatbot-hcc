@@ -1,13 +1,11 @@
-from typing import List, Dict, Tuple, Optional, Any
-from sqlalchemy import text, select, desc
-from sqlalchemy.orm import selectinload
+from typing import List, Dict
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.chat import Message
 from models.llm import LLM, LLMKey
-from config.redis_cache import async_cache_get, async_cache_set
+from config.redis_cache import async_cache_get, async_cache_set, async_cache_delete, async_cache_delete_pattern
 from llm.prompt import prompt_builder
 from llm.help_search_query import search_data, search_metadata
-
 
 async def get_all_key(db_session: AsyncSession, llm_detail_id: int) -> list:
     
@@ -346,39 +344,16 @@ async def generate_response_prompt(
     except Exception as e:
         return f"Xin lỗi, đã có lỗi xảy ra khi xử lý câu hỏi của bạn: {str(e)}"
 
-
-
-async def clear_llm_keys_cache(llm_detail_id: int = None, key_type: str = None) -> bool:
-    
-    from config.redis_cache import async_cache_delete
-    
+async def clear_llm_keys_cache() -> bool:
     try:
-        # 1. Luôn xóa cache danh sách keys
-        await async_cache_delete("list_keys")
-        print(f"🗑️ Đã xóa cache 'list_keys'")
-        
-        # 2. Luôn xóa cache model info
+        # Xóa key cố định
         await async_cache_delete("model_info")
-        print(f"🗑️ Đã xóa cache 'model_info'")
-        
-        # 3. Reset counters cho round-robin nếu cần
-        if key_type:
-            counter_key = f"llm_key_global_counter:type_{key_type}"
-            await async_cache_delete(counter_key)
-            print(f"🗑️ Đã xóa counter '{counter_key}'")
-        else:
-            # Xóa tất cả counters
-            for ktype in ["bot", "embedding"]:
-                counter_key = f"llm_key_global_counter:type_{ktype}"
-                await async_cache_delete(counter_key)
-                print(f"🗑️ Đã xóa counter '{counter_key}'")
-        
-        print(f"✅ Đã xóa cache LLM keys thành công")
+
+        # Xóa tất cả key bắt đầu bằng 'llm_key'
+        await async_cache_delete_pattern("llm_key*")
+        await async_cache_delete_pattern("list_keys*")
+        print("✅ Đã xóa cache LLM keys thành công")
         return True
-        
     except Exception as e:
         print(f"❌ Lỗi khi xóa cache keys: {e}")
         return False
-
-
-

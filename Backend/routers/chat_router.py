@@ -1,6 +1,6 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, Response, HTTPException, BackgroundTasks
-import json
+from fastapi import APIRouter, Depends, Query
+from fastapi import Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import get_db
 import asyncio
@@ -85,15 +85,11 @@ async def count_messages_by_channel(db: AsyncSession = Depends(get_db)):
     return await get_dashboard_summary_controller(db)
 
 @router.delete("/chat_sessions")
-async def delete_chat_sessions(request: Request, db: AsyncSession = Depends(get_db)):
-    body = await request.json()   # nhận JSON từ client
-    ids = body.get("ids", [])     # lấy danh sách ids
+async def delete_chat_sessions(ids: list[int] = Body(...), db: AsyncSession = Depends(get_db)):  
     return await delete_chat_session_controller(ids, db)
 
 @router.delete("/messages/{chatId}")
-async def delete_messages(chatId: int, request: Request, db: AsyncSession = Depends(get_db)):
-    body = await request.json()        # lấy JSON từ body
-    ids = body.get("ids", [])          # danh sách id messages
+async def delete_messages(chatId: int, ids: list[int] = Body(...), db: AsyncSession = Depends(get_db)):       
     return await delete_message_controller(chatId, ids, db)
 
 

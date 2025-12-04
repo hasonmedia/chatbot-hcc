@@ -252,10 +252,10 @@ export const updateStatus = async (id: string, data: any): Promise<any> => {
 };
 
 // Xóa phiên chat
-export const deleteSessionChat = async (ids: string[]): Promise<any> => {
+export const deleteSessionChat = async (ids: number[]): Promise<any> => {
   try {
     const res = await axiosClient.delete(`/chat/chat_sessions`, {
-      data: { ids },
+      data: ids,
     });
     return res;
   } catch (error) {
@@ -265,12 +265,12 @@ export const deleteSessionChat = async (ids: string[]): Promise<any> => {
 
 // Xóa tin nhắn
 export const deleteMess = async (
-  ids: string[],
-  chatId: string
+  ids: number[],
+  chatId: number
 ): Promise<any> => {
   try {
     const res = await axiosClient.delete(`/chat/messages/${chatId}`, {
-      data: { ids },
+      data: ids,
     });
     return res;
   } catch (error) {

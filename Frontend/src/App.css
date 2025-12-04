@@ -5,6 +5,33 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow-x: hidden; /* Ngăn scroll ngang không mong muốn */
+}
+
+/* Responsive base styles */
+body {
+  font-size: 16px;
+}
+
+/* Mobile first - điện thoại */
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  body {
+    font-size: 15px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+  body {
+    font-size: 16px;
+  }
 }
 
 .logo {
@@ -48,8 +75,16 @@ body,
 
 /* Toàn bộ thanh cuộn */
 ::-webkit-scrollbar {
-  width: 8px; /* Độ rộng thanh cuộn (cho cuộn dọc) */
-  height: 8px; /* Chiều cao thanh cuộn (cho cuộn ngang) */
+  width: 6px; /* Độ rộng thanh cuộn mobile */
+  height: 6px; /* Chiều cao thanh cuộn mobile */
+}
+
+/* Desktop scrollbar */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 }
 
 /* Rãnh cuộn (nền của thanh cuộn) */

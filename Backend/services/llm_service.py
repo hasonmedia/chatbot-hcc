@@ -33,13 +33,10 @@ async def update_llm_service(llm_id: int, data: dict, db: AsyncSession):
     llm_instance.system_greeting = data.get('system_greeting', llm_instance.system_greeting)
     llm_instance.botName = data.get('botName', llm_instance.botName)
     
-    # Cập nhật model được chọn cho bot và embedding
     if 'bot_model_detail_id' in data:
-        # Dùng int() thay vì .parse_int()
         llm_instance.bot_model_detail_id = int(data.get('bot_model_detail_id'))
 
     if 'embedding_model_detail_id' in data:
-        # Dùng int() thay vì .parse_int()
         llm_instance.embedding_model_detail_id = int(data.get('embedding_model_detail_id'))
     
     await db.commit()
@@ -122,16 +119,14 @@ async def update_llm_key_service(key_id: int, data: dict, db: AsyncSession):
     if not llm_key:
         return None
     
-    # Nếu cập nhật tên, kiểm tra tên trùng
     new_name = data.get('name')
     if new_name and new_name != llm_key.name:
-        # Kiểm tra tên key trùng trong cùng llm_detail và cùng type
         check_result = await db.execute(
             select(LLMKey).filter(
                 LLMKey.llm_detail_id == llm_key.llm_detail_id,
                 LLMKey.type == llm_key.type,
                 LLMKey.name == new_name,
-                LLMKey.id != key_id  # Loại trừ key hiện tại
+                LLMKey.id != key_id  
             )
         )
         existing_key = check_result.scalar_one_or_none()

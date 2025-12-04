@@ -181,9 +181,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     return null; // Không hiển thị tên cho customer
   };
 
-  // --- Logic hiển thị (ĐÃ ĐẢO NGƯỢC) ---
-
-  // 1. Tin nhắn của Bot hoặc Admin (HIỂN THỊ BÊN PHẢI)
   if (isBot || isAdmin) {
     return (
       <div className="flex items-start gap-3 justify-end">

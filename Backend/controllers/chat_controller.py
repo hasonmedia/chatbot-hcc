@@ -58,14 +58,14 @@ async def update_chat_session_controller(id: int, data: dict, user, db: AsyncSes
     return chatSession
 
 async def delete_chat_session_controller(ids: list[int], db: AsyncSession):
-    deleted_count = await delete_chat_session(ids, db)   # gọi xuống service
+    deleted_count = await delete_chat_session(ids, db)   
     return {
         "deleted": deleted_count,
         "ids": ids
     }
 
 async def delete_message_controller(chatId: int, ids: list[int], db: AsyncSession):
-    deleted_count = await delete_message(chatId, ids, db)   # gọi xuống service
+    deleted_count = await delete_message(chatId, ids, db)
     return {
         "deleted": deleted_count,
         "ids": ids

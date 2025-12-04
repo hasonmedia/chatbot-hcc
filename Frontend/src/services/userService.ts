@@ -9,6 +9,7 @@ export const getMe = async (): Promise<UserCreateRequest> => {
       withCredentials: true,
     }
   );
+
   return response.data;
 };
 export const login = async (
@@ -60,8 +61,8 @@ export const getCustomers = async (): Promise<User[]> => {
   return response.data;
 };
 export const refreshToken = async (): Promise<string> => {
-  const response = await axiosClient.post<{ token: string }>(
+  const response = await axiosClient.post<{ access_token: string }>(
     API_ENDPOINT.USER.REFRESH_TOKEN
   );
-  return response.data.token;
+  return response.data.access_token;
 };

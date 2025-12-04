@@ -111,13 +111,15 @@ export function AppSidebar() {
 
   return (
     <TooltipProvider>
-      <Sidebar collapsible="icon" variant="sidebar">
-        <SidebarHeader className="border-b-2 flex items-center p-3">
-          <Logo />
+      <Sidebar collapsible="icon" variant="sidebar" className="border-r">
+        <SidebarHeader className="border-b-2 flex items-center p-2 sm:p-3">
+          <div className="shrink-0">
+            <Logo />
+          </div>
 
           <span
             className={cn(
-              "font-semibold text-lg ml-3 whitespace-nowrap transition-opacity duration-200",
+              "font-semibold text-sm sm:text-base lg:text-lg ml-2 sm:ml-3 whitespace-nowrap transition-opacity duration-200 min-w-0 truncate",
               "group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:hidden",
               "group-data-[state=collapsed]:opacity-0 group-data-[state=collapsed]:hidden"
             )}
@@ -125,17 +127,20 @@ export function AppSidebar() {
             Chatbot Hành Chính Công
           </span>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="px-2 py-3">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               {filteredItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center gap-3">
-                      <item.icon />
+                  <SidebarMenuButton asChild className="h-9 sm:h-10">
+                    <a
+                      href={item.url}
+                      className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3"
+                    >
+                      <item.icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                       <span
                         className={cn(
-                          "whitespace-nowrap transition-opacity duration-200",
+                          "whitespace-nowrap transition-opacity duration-200 text-sm sm:text-base min-w-0 truncate",
                           "group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:hidden",
                           "group-data-[state=collapsed]:opacity-0 group-data-[state=collapsed]:hidden"
                         )}
@@ -149,18 +154,18 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="p-2">
           <Dialog
             open={isLogoutDialogOpen}
             onOpenChange={setIsLogoutDialogOpen}
           >
             <DialogTrigger asChild>
-              <SidebarMenuButton className="w-full">
-                <div className="flex items-center gap-3">
-                  <LogOut className="h-5 w-5" />
+              <SidebarMenuButton className="w-full h-9 sm:h-10">
+                <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3">
+                  <LogOut className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                   <span
                     className={cn(
-                      "whitespace-nowrap transition-opacity duration-200",
+                      "whitespace-nowrap transition-opacity duration-200 text-sm sm:text-base min-w-0 truncate",
                       "group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:hidden",
                       "group-data-[state=collapsed]:opacity-0 group-data-[state=collapsed]:hidden"
                     )}
@@ -170,21 +175,28 @@ export function AppSidebar() {
                 </div>
               </SidebarMenuButton>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="w-[90vw] max-w-md">
               <DialogHeader>
-                <DialogTitle>Xác nhận đăng xuất</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-base sm:text-lg">
+                  Xác nhận đăng xuất
+                </DialogTitle>
+                <DialogDescription className="text-sm sm:text-base">
                   Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setIsLogoutDialogOpen(false)}
                 >
                   Hủy
                 </Button>
-                <Button variant="destructive" onClick={handleLogout}>
+                <Button
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                  onClick={handleLogout}
+                >
                   Đăng xuất
                 </Button>
               </DialogFooter>

@@ -1,0 +1,632 @@
+/* ============================================
+   RESPONSIVE UTILITIES AND OVERRIDES
+   ============================================ */
+
+/* Base responsive classes */
+.container-responsive {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding: 0 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container-responsive {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding: 0 2rem;
+    max-width: 1200px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container-responsive {
+    max-width: 1280px;
+  }
+}
+
+/* Text responsive utilities */
+.text-responsive {
+  font-size: 0.875rem; /* 14px */
+}
+
+@media (min-width: 640px) {
+  .text-responsive {
+    font-size: 0.9375rem; /* 15px */
+  }
+}
+
+@media (min-width: 768px) {
+  .text-responsive {
+    font-size: 1rem; /* 16px */
+  }
+}
+
+.text-responsive-lg {
+  font-size: 1rem; /* 16px */
+}
+
+@media (min-width: 640px) {
+  .text-responsive-lg {
+    font-size: 1.125rem; /* 18px */
+  }
+}
+
+@media (min-width: 768px) {
+  .text-responsive-lg {
+    font-size: 1.25rem; /* 20px */
+  }
+}
+
+/* Gap utilities for different screen sizes */
+.gap-responsive {
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .gap-responsive {
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .gap-responsive {
+    gap: 1rem;
+  }
+}
+
+/* Padding utilities */
+.p-responsive {
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .p-responsive {
+    padding: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .p-responsive {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .p-responsive {
+    padding: 1.5rem;
+  }
+}
+
+/* Margin utilities */
+.m-responsive {
+  margin: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .m-responsive {
+    margin: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .m-responsive {
+    margin: 1rem;
+  }
+}
+
+/* Button responsive sizes */
+.btn-responsive {
+  height: 2rem; /* 32px */
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .btn-responsive {
+    height: 2.25rem; /* 36px */
+    padding: 0.375rem 0.875rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .btn-responsive {
+    height: 2.5rem; /* 40px */
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Avatar responsive sizes */
+.avatar-responsive {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
+@media (min-width: 640px) {
+  .avatar-responsive {
+    height: 2rem;
+    width: 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .avatar-responsive {
+    height: 2.25rem;
+    width: 2.25rem;
+  }
+}
+
+/* Card responsive padding */
+.card-responsive {
+  padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .card-responsive {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .card-responsive {
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-responsive {
+    padding: 1.5rem;
+  }
+}
+
+/* Layout utilities */
+.layout-responsive {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar-responsive {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .layout-responsive {
+    flex-direction: row;
+  }
+
+  .sidebar-responsive {
+    display: flex;
+    width: 16rem;
+    flex-shrink: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar-responsive {
+    width: 18rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .sidebar-responsive {
+    width: 20rem;
+  }
+}
+
+/* Main content area responsive */
+.main-content-responsive {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Chat area responsive */
+.chat-area-responsive {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100vh;
+}
+
+.chat-messages-responsive {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .chat-messages-responsive {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .chat-messages-responsive {
+    padding: 1.5rem;
+  }
+}
+
+.chat-input-responsive {
+  flex-shrink: 0;
+  padding: 0.5rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+@media (min-width: 640px) {
+  .chat-input-responsive {
+    padding: 1rem;
+  }
+}
+
+/* Chat selection and floating elements */
+.chat-selection-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.chat-floating-action {
+  position: fixed;
+  bottom: 5rem;
+  right: 1rem;
+  z-index: 30;
+  background-color: hsl(var(--background));
+  border-radius: 9999px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid hsl(var(--border));
+}
+
+@media (min-width: 640px) {
+  .chat-floating-action {
+    bottom: 6rem;
+    right: 1.5rem;
+  }
+}
+
+.chat-message-selected {
+  background-color: hsl(var(--accent));
+  border: 1px solid hsl(var(--primary));
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.chat-message-hover:hover {
+  background-color: hsl(var(--muted) / 0.5);
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.chat-message-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border-radius: 9999px;
+  padding: 0.25rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid hsl(var(--border));
+}
+
+/* Default scrollbar for messages - keep native scrolling */
+.chat-messages-container {
+  /* Use default browser scrollbar */
+  scrollbar-width: auto;
+}
+
+/* Selection mode animations */
+.selection-mode-enter {
+  animation: fadeInUp 0.2s ease-out;
+}
+
+.selection-mode-exit {
+  animation: fadeOutDown 0.2s ease-in;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOutDown {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Message bubble responsive */
+.message-bubble-responsive {
+  max-width: 90%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  .message-bubble-responsive {
+    max-width: 85%;
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .message-bubble-responsive {
+    max-width: 75%;
+  }
+}
+
+/* Support panel responsive */
+.support-panel-responsive {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .support-panel-responsive {
+    display: flex;
+    width: 18rem;
+    flex-shrink: 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .support-panel-responsive {
+    width: 20rem;
+  }
+}
+
+.support-panel-mobile {
+  display: block;
+  height: 8rem;
+  border-top: 1px solid hsl(var(--border));
+  overflow-y: auto;
+}
+
+@media (min-width: 640px) {
+  .support-panel-mobile {
+    height: 9rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .support-panel-mobile {
+    height: 10rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .support-panel-mobile {
+    display: none;
+  }
+}
+
+/* Form responsive utilities */
+.form-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .form-group-responsive {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+/* Table responsive */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 600px;
+  width: 100%;
+}
+
+/* Navigation responsive */
+.nav-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .nav-responsive {
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+
+/* Grid responsive utilities */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Focus states for accessibility */
+.focus-responsive:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-visible {
+    display: block !important;
+  }
+
+  .sidebar-responsive,
+  .support-panel-responsive,
+  .support-panel-mobile {
+    display: none !important;
+  }
+
+  .main-content-responsive {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .message-bubble-responsive {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode responsive adjustments */
+@media (prefers-color-scheme: dark) {
+  .chat-messages-responsive {
+    background-color: hsl(var(--background));
+  }
+
+  .message-bubble-responsive {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .chat-selection-sticky {
+    background-color: hsl(var(--background));
+    border-color: hsl(var(--border));
+  }
+
+  .chat-floating-action {
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--border));
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  }
+
+  .chat-message-checkbox {
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .btn-responsive {
+    min-height: 44px; /* iOS recommended touch target size */
+    min-width: 44px;
+  }
+
+  .sidebar-responsive button {
+    min-height: 44px;
+  }
+
+  .chat-input-responsive textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Larger touch targets for chat selection */
+  .chat-message-checkbox {
+    padding: 0.5rem;
+  }
+
+  .chat-floating-action {
+    bottom: 4rem;
+    right: 1rem;
+  }
+
+  /* Make message selection easier on touch */
+  .chat-message-selectable {
+    min-height: 44px;
+    padding: 0.75rem 0.5rem;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (orientation: landscape) and (max-height: 500px) {
+  .chat-messages-responsive {
+    padding: 0.5rem;
+  }
+
+  .chat-input-responsive {
+    padding: 0.5rem;
+  }
+
+  .support-panel-mobile {
+    height: 6rem;
+  }
+}

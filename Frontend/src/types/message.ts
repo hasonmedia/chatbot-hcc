@@ -1,6 +1,6 @@
 // @/types/message.ts
 export interface MessageData {
-  id?: string; // Giả sử có ID
+  id?: number; // Giả sử có ID
   chat_session_id?: string;
   sender_type: "customer" | "admin" | "bot";
   content: string;

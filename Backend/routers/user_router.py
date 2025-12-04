@@ -2,7 +2,7 @@ from services.role_service import get_global_abilities_for_user
 from models.user import User
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from controllers import user_controller
-from services import user_service # Cần cho /refresh
+from services import user_service 
 from middleware.jwt import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     IS_PRODUCTION,
@@ -11,7 +11,7 @@ from middleware.jwt import (
     SECRET_KEY,
     ALGORITHM
 )
-from jose import jwt, JWTError 
+from jose import jwt 
 router = APIRouter(prefix="/users", tags=["Users"])
 from controllers import role_controller
 from config.database import get_db
@@ -68,8 +68,15 @@ async def logout_user(response: Response):
 async def create_user(
     request: Request, 
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
+    current_user: User = Depends(get_current_user) 
 ):
+    abilities = get_global_abilities_for_user(current_user)
+    allowed_roles = abilities["users"]["avalilable_roles"]
+    if current_user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=403, 
+            detail="Bạn không có quyền tạo người dùng"
+        )
     data = await request.json()
     return await user_controller.create_user_controller(data, db)
 
@@ -80,9 +87,8 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
 ):
-    # Kiểm tra quyền: root, superadmin, admin có thể update bất kỳ user nào
-    # User thường chỉ có thể update chính mình
-    allowed_roles = ["root", "superadmin", "admin"]
+    abilities = get_global_abilities_for_user(current_user)
+    allowed_roles = abilities["users"]["avalilable_roles"]
     if current_user.role not in allowed_roles and current_user.id != user_id:
         raise HTTPException(
             status_code=403, 
@@ -92,6 +98,20 @@ async def update_user(
     data = await request.json()
     return await user_controller.update_user_controller(user_id, data, db)
 
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: int, 
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user) 
+): 
+    abilities = get_global_abilities_for_user(current_user)
+    allowed_roles = abilities["users"]["avalilable_roles"]
+    if current_user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=403, 
+            detail="Bạn không có quyền xóa người dùng"
+        )
+    return await user_controller.delete_user_controller(user_id, db)
 @router.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
@@ -107,7 +127,6 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         
-        # Kiểm tra xem user còn tồn tại không
         result = await db.execute(select(User).filter(User.id == user_id))
         user = result.scalar_one_or_none()
         if not user:

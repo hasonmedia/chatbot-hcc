@@ -217,3 +217,24 @@ async def async_cache_delete(key: str) -> bool:
 
 async def async_cache_exists(key: str) -> bool:
     return await redis_cache.async_exists(key)
+
+async def async_cache_delete_pattern(pattern: str) -> bool:
+    """
+    Xóa tất cả key match pattern (dùng scan để không block Redis)
+    """
+    try:
+        client = await redis_cache.get_async_client()
+        if client is None:
+            return False
+
+        cursor = b"0"
+        while cursor:
+            cursor, keys = await client.scan(cursor=cursor, match=pattern, count=100)
+            if keys:
+                await client.delete(*keys)
+            cursor = cursor if cursor != b"0" else None
+
+        return True
+    except Exception as e:
+        print(f"❌ Lỗi khi xóa cache theo pattern {pattern}: {e}")
+        return False
