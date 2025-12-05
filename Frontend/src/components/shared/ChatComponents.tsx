@@ -238,28 +238,56 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               {Array.isArray(msg.image) ? (
                 <div className="flex flex-wrap gap-2">
                   {msg.image.map((imgUrl, index) => (
-                    <img
-                      key={index}
-                      src={imgUrl}
-                      alt={`Hình ảnh ${index + 1}`}
-                      className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => onImageClick?.(imgUrl)}
-                      title="Click để xem ảnh lớn"
-                      onError={(e) => {
-                        // Xử lý lỗi load ảnh (có thể là optimistic URL)
-                        (e.target as HTMLImageElement).style.opacity = "0.5";
-                      }}
-                    />
+                    <div key={index} className="relative">
+                      <img
+                        src={imgUrl}
+                        alt={`Hình ảnh ${index + 1}`}
+                        className={`rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity ${
+                          msg.isOptimistic ? "opacity-75" : ""
+                        }`}
+                        onClick={() => onImageClick?.(imgUrl)}
+                        title="Click để xem ảnh lớn"
+                        onError={(e) => {
+                          // Xử lý lỗi load ảnh (có thể là optimistic URL)
+                          const target = e.target as HTMLImageElement;
+                          target.style.opacity = "0.5";
+                          target.style.filter = "grayscale(100%)";
+                        }}
+                      />
+                      {msg.isOptimistic && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-md">
+                          <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                            Đang tải...
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : (
-                <img
-                  src={msg.image}
-                  alt="Hình ảnh nhận được"
-                  className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => onImageClick?.(msg.image as string)}
-                  title="Click để xem ảnh lớn"
-                />
+                <div className="relative">
+                  <img
+                    src={msg.image}
+                    alt="Hình ảnh nhận được"
+                    className={`rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity ${
+                      msg.isOptimistic ? "opacity-75" : ""
+                    }`}
+                    onClick={() => onImageClick?.(msg.image as string)}
+                    title="Click để xem ảnh lớn"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.opacity = "0.5";
+                      target.style.filter = "grayscale(100%)";
+                    }}
+                  />
+                  {msg.isOptimistic && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-md">
+                      <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                        Đang tải...
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -334,24 +362,55 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             {Array.isArray(msg.image) ? (
               <div className="flex flex-wrap gap-2">
                 {msg.image.map((imgUrl, index) => (
-                  <img
-                    key={index}
-                    src={imgUrl}
-                    alt={`Hình ảnh ${index + 1}`}
-                    className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => onImageClick?.(imgUrl)}
-                    title="Click để xem ảnh lớn"
-                  />
+                  <div key={index} className="relative">
+                    <img
+                      src={imgUrl}
+                      alt={`Hình ảnh ${index + 1}`}
+                      className={`rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity ${
+                        msg.isOptimistic ? "opacity-75" : ""
+                      }`}
+                      onClick={() => onImageClick?.(imgUrl)}
+                      title="Click để xem ảnh lớn"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.opacity = "0.5";
+                        target.style.filter = "grayscale(100%)";
+                      }}
+                    />
+                    {msg.isOptimistic && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-md">
+                        <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                          Đang tải...
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (
-              <img
-                src={msg.image}
-                alt="Hình ảnh nhận được"
-                className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => onImageClick?.(msg.image as string)}
-                title="Click để xem ảnh lớn"
-              />
+              <div className="relative">
+                <img
+                  src={msg.image}
+                  alt="Hình ảnh nhận được"
+                  className={`rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity ${
+                    msg.isOptimistic ? "opacity-75" : ""
+                  }`}
+                  onClick={() => onImageClick?.(msg.image as string)}
+                  title="Click để xem ảnh lớn"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.opacity = "0.5";
+                    target.style.filter = "grayscale(100%)";
+                  }}
+                />
+                {msg.isOptimistic && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-md">
+                    <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                      Đang tải...
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

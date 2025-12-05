@@ -154,33 +154,70 @@ export const useAdminChat = () => {
             sender_type: data.sender_type,
             content: data.content || "",
             created_at: data.created_at || new Date().toISOString(),
-            image: data.image && data.image.length > 0 ? data.image[0] : null,
+            image:
+              data.image && Array.isArray(data.image) && data.image.length > 0
+                ? data.image
+                : null,
           };
 
-          // Kiểm tra tin nhắn đã tồn tại chưa để tránh duplicate
           setMessages((prevMessages) => {
-            const exists = prevMessages.some(
+            const isOwnMessage =
+              messageData.sender_type === "admin" &&
+              (window as any).lastSentMessageTimestamp &&
+              Math.abs(
+                new Date(messageData.created_at).getTime() -
+                  (window as any).lastSentMessageTimestamp
+              ) < 5000;
+
+            let removedOptimistic = false;
+            const withoutOptimistic = prevMessages.filter((msg) => {
+              if (!msg.isOptimistic) return true;
+
+              if (
+                isOwnMessage &&
+                msg.optimisticId === (window as any).lastOptimisticId
+              ) {
+                console.log("🗑️ Removing optimistic message by ID:", msg);
+                removedOptimistic = true;
+                delete (window as any).lastSentMessageTimestamp;
+                delete (window as any).lastOptimisticId;
+                return false;
+              }
+
+              const isMatch =
+                msg.content === messageData.content &&
+                msg.sender_type === messageData.sender_type;
+
+              if (isMatch) {
+                removedOptimistic = true;
+                return false;
+              }
+
+              return true;
+            });
+
+            const exists = withoutOptimistic.some(
               (msg) =>
-                msg.id === messageData.id ||
-                (msg.content === messageData.content &&
-                  msg.sender_type === messageData.sender_type &&
-                  Math.abs(
-                    new Date(msg.created_at).getTime() -
-                      new Date(messageData.created_at).getTime()
-                  ) < 1000)
+                !msg.isOptimistic &&
+                (msg.id === messageData.id ||
+                  (msg.content === messageData.content &&
+                    msg.sender_type === messageData.sender_type &&
+                    Math.abs(
+                      new Date(msg.created_at).getTime() -
+                        new Date(messageData.created_at).getTime()
+                    ) < 2000))
             );
 
             if (!exists) {
-              console.log("Đã thêm tin nhắn vào UI:", messageData);
-              return [...prevMessages, messageData];
+              console.log("✅ Adding real message:", messageData);
+              return [...withoutOptimistic, messageData];
             }
 
-            return prevMessages;
+            console.log("⚠️ Message already exists, skipping");
+            return withoutOptimistic;
           });
         }
-      }
-      // Xử lý format cũ: data có session_id (từ getAllHistory format)
-      else if (data.session_id !== undefined) {
+      } else if (data.session_id !== undefined) {
         setChatSessions((prevSessions) => {
           const sessionId = Number(data.session_id);
           const sessionIndex = prevSessions.findIndex(
@@ -233,36 +270,6 @@ export const useAdminChat = () => {
                 ? data.image
                 : null,
           };
-
-          // Cập nhật messages: xóa optimistic message và thêm message thật
-          setMessages((prevMessages) => {
-            // Xóa optimistic message nếu có (cùng content và sender_type)
-            const withoutOptimistic = prevMessages.filter(
-              (msg) =>
-                !(
-                  msg.isOptimistic &&
-                  msg.content === messageData.content &&
-                  msg.sender_type === messageData.sender_type
-                )
-            );
-
-            // Kiểm tra tin nhắn thật đã tồn tại chưa để tránh duplicate
-            const exists = withoutOptimistic.some(
-              (msg) =>
-                msg.content === messageData.content &&
-                msg.sender_type === messageData.sender_type &&
-                Math.abs(
-                  new Date(msg.created_at).getTime() -
-                    new Date(messageData.created_at).getTime()
-                ) < 1000
-            );
-
-            if (!exists) {
-              return [...withoutOptimistic, messageData];
-            }
-
-            return withoutOptimistic;
-          });
         }
       }
     };
@@ -370,6 +377,7 @@ export const useAdminChat = () => {
       }
 
       // Tạo optimistic message để hiển thị ngay lập tức
+      const optimisticId = `optimistic_${Date.now()}_${Math.random()}`;
       const optimisticMessage = {
         id: Date.now(),
         chat_session_id: String(currentSessionId),
@@ -378,13 +386,21 @@ export const useAdminChat = () => {
         created_at: new Date().toISOString(),
         image: imageUrls.length > 0 ? imageUrls : null,
         isOptimistic: true, // Flag để đánh dấu tin nhắn tạm thời
+        optimisticId, // Unique ID để match với real message
       };
+
+      console.log("🚀 Creating optimistic message:", optimisticMessage);
 
       // Thêm tin nhắn tạm thời vào danh sách
       setMessages((prev) => [...prev, optimisticMessage]);
 
       // Scroll xuống để thấy tin nhắn mới
       setTimeout(() => scrollToBottom(), 100);
+
+      // Lưu timestamp để match với response
+      const sendTimestamp = Date.now();
+      (window as any).lastSentMessageTimestamp = sendTimestamp;
+      (window as any).lastOptimisticId = optimisticId;
 
       // Gửi tin nhắn qua WebSocket
       sendMessage(
@@ -419,8 +435,8 @@ export const useAdminChat = () => {
         resetImages(); // Reset ảnh đã chọn
       }
 
-      // Cleanup URL objects sau một thời gian để tránh memory leak
-      setTimeout(() => {
+      // Cleanup URL objects sau khi server response hoặc sau một thời gian để tránh memory leak
+      const cleanupUrls = () => {
         imageUrls.forEach((url) => {
           try {
             URL.revokeObjectURL(url);
@@ -428,7 +444,22 @@ export const useAdminChat = () => {
             // Ignore cleanup errors
           }
         });
-      }, 30000); // 30 giây
+      };
+
+      // Cleanup sau 10 giây (server thường response nhanh)
+      setTimeout(cleanupUrls, 10000);
+
+      // Timeout để remove optimistic message nếu server không response
+      setTimeout(() => {
+        if ((window as any).lastOptimisticId === optimisticId) {
+          console.log("⏰ Timeout - removing stuck optimistic message");
+          setMessages((prev) =>
+            prev.filter((msg) => msg.optimisticId !== optimisticId)
+          );
+          delete (window as any).lastSentMessageTimestamp;
+          delete (window as any).lastOptimisticId;
+        }
+      }, 15000); // 15 giây timeout
     },
     [newMessage, currentSessionId]
   ); // Phụ thuộc 2 giá trị này

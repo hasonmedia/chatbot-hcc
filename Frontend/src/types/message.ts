@@ -8,6 +8,7 @@ export interface MessageData {
   image?: string[] | string | null; // Hỗ trợ cả mảng và single image
   session_status?: string; // Thêm thuộc tính để kiểm tra trạng thái session
   isOptimistic?: boolean; // Flag để đánh dấu tin nhắn tạm thời
+  optimisticId?: string; // Unique ID để match optimistic message với real message
   // Bổ sung các trường khác nếu cần
 }
 export interface SendMessagePayload {

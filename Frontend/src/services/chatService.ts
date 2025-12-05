@@ -3,7 +3,9 @@ import { API_ENDPOINT } from "@/constants/apiEndpoint";
 
 import type { MessageData } from "@/types/message";
 
-const VITE_URL_WS = import.meta.env.VITE_URL_WS || "ws://localhost:8000";
+const VITE_URL_WS =
+  import.meta.env.VITE_URL_WS ||
+  "wss://ardis-nondistracting-cogitatively.ngrok-free.dev";
 
 type OnMessageCallback = (data: any) => void;
 

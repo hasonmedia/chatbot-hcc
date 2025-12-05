@@ -128,7 +128,6 @@ def parse_zalo(body: dict):
 
 async def chat_platform(channel, body: dict, db: AsyncSession):
     
-    
     data = None
     
     if channel == "tele":
@@ -142,11 +141,12 @@ async def chat_platform(channel, body: dict, db: AsyncSession):
         data = parse_zalo(body)
         
         
-     
+    
     message = await send_message_page_service(data, db)   
     
-    for msg in message:
+    # for msg in message:
+    #     await manager.broadcast_to_admins(msg)
+    for msg in (message or []): 
         await manager.broadcast_to_admins(msg)
-    
 
 

@@ -29,6 +29,7 @@ export function LoginForm({
       toast.success(`Xin chào, ${user?.full_name || username}!`);
       navigate("/trang-chu"); // ✅ chuyển về trang chính
     } catch (err: any) {
+      console.error("Lỗi đăng nhập:", err);
       toast.error(err.response?.data?.detail || "Đăng nhập thất bại");
     }
   };

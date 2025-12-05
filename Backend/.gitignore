@@ -16,8 +16,4 @@ config_sheet.json
 chroma_data/
 *.sqlite3
 
-
-upload/knowledge_files/
-
-
-upload/knowledge_files/
+upload/

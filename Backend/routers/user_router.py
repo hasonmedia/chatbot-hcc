@@ -5,7 +5,6 @@ from controllers import user_controller
 from services import user_service 
 from middleware.jwt import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    IS_PRODUCTION,
     get_current_user,  
     create_access_token,
     SECRET_KEY,
@@ -43,7 +42,7 @@ class LoginRequest(BaseModel):
 
 @router.post("/login")
 async def login_user(
-    data: LoginRequest,  # 👈 body model
+    data: LoginRequest, 
     response: Response,
     db: AsyncSession = Depends(get_db)
 ):
@@ -60,8 +59,8 @@ async def get_all_users(
 @router.post("/logout")
 async def logout_user(response: Response):
     # SỬA: Xóa cookie một cách an toàn hơn
-    response.delete_cookie("access_token", httponly=True, secure=IS_PRODUCTION, samesite="lax")
-    response.delete_cookie("refresh_token", httponly=True, secure=IS_PRODUCTION, samesite="lax")
+    response.delete_cookie("access_token", httponly=True,samesite="lax")
+    response.delete_cookie("refresh_token", httponly=True,  samesite="lax")
     return {"message": "Logged out successfully"}
 
 @router.post("/")
@@ -160,7 +159,6 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
             value=access_token,
             httponly=True,
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            secure=IS_PRODUCTION,
             samesite="lax"
         )
         return {"message": "Token refreshed successfully", "access_token": access_token}

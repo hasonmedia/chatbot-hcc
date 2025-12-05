@@ -17,7 +17,6 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
-IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -39,16 +38,18 @@ def set_cookie(response: Response, access_token: str, refresh_token: str):
         value=access_token,
         httponly=True,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=IS_PRODUCTION,  
-        samesite="lax"
+        samesite="none",
+        secure=True,
+        path="/"
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        secure=IS_PRODUCTION, 
-        samesite="lax"
+        samesite="none",
+        secure=True,
+        path="/"
     )
 
 def decode_token(token: str):
@@ -68,7 +69,6 @@ async def get_user_from_token(token: str) -> User | None:
     if user_id is None:
         return None
 
-    # Tự tạo DB session mới
     from config.database import AsyncSessionLocal
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).filter(User.id == user_id))
@@ -80,7 +80,6 @@ async def get_current_user(
     request: Request, db: AsyncSession = Depends(get_db)
 ) -> User:
     token = request.cookies.get("access_token")
-    
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
 

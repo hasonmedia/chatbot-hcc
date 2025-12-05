@@ -110,7 +110,16 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
+            <Route
+              path="/admin/facebook_page"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["root", "superadmin", "admin", "user"]}
+                >
+                  <ChannelManagementPage />
+                </ProtectedRoute>
+              }
+            />
             {/* Quản lý Facebook Pages - root, superadmin, admin */}
             <Route
               path="/quan-ly-facebook"

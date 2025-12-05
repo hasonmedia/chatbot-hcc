@@ -27,22 +27,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
 
-      // Kiểm tra localStorage flag trước - nếu không có thì skip
       if (!getAuthFlag()) {
         setUser(null);
         return;
       }
 
-      const me = await getMe(); // tự động gửi cookie
+      const me = await getMe();
       setUser(me);
-      setAuthFlag(true); // Refresh flag
+      setAuthFlag(true);
     } catch (error: any) {
-      // Chỉ log error nếu không phải 401 (unauthorized)
       if (error.response?.status !== 401) {
         console.error("Fetch user error:", error);
       }
       setUser(null);
-      setAuthFlag(false); // Clear flag khi lỗi
+      setAuthFlag(false);
     } finally {
       setLoading(false);
     }

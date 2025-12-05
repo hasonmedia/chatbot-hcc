@@ -41,44 +41,15 @@ async def delete_page(page_id: int, db: AsyncSession = Depends(get_db)):
 async def toggle_page_status(page_id: int, db: AsyncSession = Depends(get_db)):
     return await facebook_page_controller.toggle_page_status_controller(page_id, db)
 
-
-# FB_CLIENT_ID = "4238615406374117"
-# FB_CLIENT_SECRET = "47d60fe20efd7ce023c35380683ba6ef"
-
-FB_CLIENT_ID = "1130979465654370"
-FB_CLIENT_SECRET = "dda15803ebe7785219a19f1a2823d777"
+FB_CLIENT_ID = "864035886072571"
+FB_CLIENT_SECRET = "72759ebacd1a8c50821678a0ca4eb3f3"
 
 REDIRECT_URI = f"{URL}/facebook-pages/callback"
 
 @router.get("/callback")
 async def facebook_callback(code: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     if code is None:
-        # Trường hợp Meta hoặc người khác vào link callback không có code
         return {"message": "Facebook callback endpoint - waiting for code"}
-    
-    # token_url = "https://graph.facebook.com/v21.0/oauth/access_token"
-    # params = {
-    #     "client_id": FB_CLIENT_ID,
-    #     "redirect_uri": REDIRECT_URI,
-    #     "client_secret": FB_CLIENT_SECRET,
-    #     "code": code
-    # }
-
-    # response = requests.get(token_url, params=params)
-    # if response.status_code != 200:
-    #     raise HTTPException(status_code=400, detail="Failed to get access token")
-
-    # data = response.json()
-    # access_token = data.get("access_token")
-
-    # # 2. Lấy thông tin page
-    # get_pages = "https://graph.facebook.com/me/accounts"
-    # page_params = {
-    #     "access_token": access_token
-    # }
-    # pages = requests.get(get_pages, params=page_params).json()
-
-    # return pages
     
     await facebook_page_controller.facebook_callback_controller(code, db)
 

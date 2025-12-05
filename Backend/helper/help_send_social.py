@@ -7,6 +7,7 @@ Helper functions để gửi tin nhắn qua các nền tảng social media:
 
 import asyncio
 import base64
+import inspect
 import io
 import json
 import requests
@@ -131,16 +132,6 @@ def convert_file_to_facebook_attachment_id(file_data, access_token):
 
 
 async def send_fb(page_id: str, sender_id, data, images=None):
-    """
-    Gửi tin nhắn qua Facebook Messenger - BẤT ĐỒNG BỘ (async)
-    ✅ Sử dụng AsyncSession với context manager
-    
-    Args:
-        page_id: ID của Facebook Page
-        sender_id: ID của người nhận
-        data: Dữ liệu tin nhắn (có thể là dict hoặc Message object)
-        images: List các đường dẫn file ảnh (URL hoặc base64) - tham số tùy chọn
-    """
     async with AsyncSessionLocal() as db:
         try:
             # Async query
@@ -177,7 +168,6 @@ async def send_fb(page_id: str, sender_id, data, images=None):
                     if images and len(images) > 0:
                         print(f"📤 Đang xử lý {len(images)} ảnh để gửi qua Facebook")
                         
-                        # Chuyển đổi mỗi file/base64 thành attachment_id
                         for image_data in images:
                             attachment_id = convert_file_to_facebook_attachment_id(image_data, PAGE_ACCESS_TOKEN)
                             
@@ -201,8 +191,6 @@ async def send_fb(page_id: str, sender_id, data, images=None):
                                 
                                 try:
                                     response = requests.post(url_image, json=image_payload)
-                                    print(f"📊 Images response: {response.status_code}")
-                                    print(f"📄 Response body: {response.text}")
                                    
                                     if response.status_code == 200:
                                         response_data = response.json()
@@ -233,33 +221,53 @@ async def send_fb(page_id: str, sender_id, data, images=None):
                
             # Gửi tin nhắn text
             if content_data:
-                print(f"💬 Sending text message: {content_data}")
-                text_payload = {
-                    "recipient": {
-                        "id": sender_id
-                    },
-                    "message": {
-                        "text": content_data
-                    }
-                }
-               
-                print(f"📋 Text payload for Facebook: {json.dumps(text_payload, indent=2)}")
-               
+                print(f"Sending text message: {content_data}")
+
                 try:
-                    response = requests.post(url_text, json=text_payload, timeout=15)
-                    print(f"📊 Text message response: {response.status_code}")
-                    print(f"📄 Response body: {response.text}")
-                   
-                    if response.status_code == 200:
-                        print("✅ Successfully sent text message")
+                    if isinstance(content_data, str):
+                        try:
+                            parsed_content = json.loads(content_data)
+                            message_text = parsed_content.get("message", "")
+                            if parsed_content.get("links"):
+                                links_text = "\n".join(parsed_content["links"])
+                                message_text += "\n" + links_text
+                        except json.JSONDecodeError:
+                            # Nếu không phải JSON, sử dụng trực tiếp
+                            print("Content is not JSON, using as plain text")
+                            message_text = content_data
                     else:
-                        print(f"❌ Failed to send text: {response.text}")
+                        message_text = str(content_data)
+
+                    if message_text.strip():  # Chỉ gửi nếu có nội dung
+                        text_payload = {
+                            "recipient": {
+                                "id": sender_id
+                            },
+                            "message": {
+                                "text": message_text
+                            }
+                        }
+                    
+                        print(f"📋 Text payload for Facebook: {json.dumps(text_payload, indent=2)}")
+                    
+                        response = requests.post(url_text, json=text_payload, timeout=15)
+                    
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            print(f"Successfully sent text message")
+                        else:
+                            print(f"Failed to send text: {response.status_code} - {response.text}")
+                    else:
+                        print("Empty message text, skipping send")
+                        
                 except Exception as text_error:
-                    print(f"❌ Error sending text message: {text_error}")
+                    print(f"Error sending text message: {text_error}")
+                    traceback.print_exc()
             else:
-                print("ℹ️ No text content to send")
+                print("No text content to send")
+                
         except Exception as e:
-            print(f"❌ Error in send_fb: {e}")
+            print(f"Error in send_fb: {e}")
             traceback.print_exc()
 
 

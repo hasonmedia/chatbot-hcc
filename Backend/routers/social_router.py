@@ -81,8 +81,9 @@ async def process_message(platform: str, body: dict):
     để đảm bảo mỗi task có DB session riêng.
     """
     try:
-        # Tạo session CSDL mới chỉ cho task này
         async with AsyncSessionLocal() as db:
+            print(f"Processing message for platform: {platform}")
+            print(f"Message body: {json.dumps(body)}")
             await chat_platform(platform, body, db)
     except Exception as e:
         print(f"❌ Lỗi xử lý tin nhắn {platform}: {e}")
@@ -95,7 +96,7 @@ async def verify_fb_webhook(request: Request): # Đổi tên hàm
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
  
-    VERIFY_TOKEN = "YOUR_VERIFY_TOKEN" # Bạn nên lấy từ .env
+    VERIFY_TOKEN = "httthttt" 
      
     if mode == "subscribe" and token == VERIFY_TOKEN:
         print("✅ WEBHOOK_VERIFIED")

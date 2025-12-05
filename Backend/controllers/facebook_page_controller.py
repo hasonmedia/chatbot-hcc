@@ -11,12 +11,9 @@ URL_BE = os.getenv("URL_BE")
 # FB_CLIENT_ID = "4238615406374117"
 # FB_CLIENT_SECRET = "47d60fe20efd7ce023c35380683ba6ef"
 
-FB_CLIENT_ID = "1130979465654370"
-FB_CLIENT_SECRET = "dda15803ebe7785219a19f1a2823d777"
+FB_CLIENT_ID = "864035886072571"
+FB_CLIENT_SECRET = "72759ebacd1a8c50821678a0ca4eb3f3"
 REDIRECT_URI = f"{URL_BE}/facebook-pages/callback"
-
-print("URL_BE:", REDIRECT_URI)
-
 
 async def get_all_pages_controller(db: AsyncSession):
     return await facebook_page_service.get_all_pages_service(db)
@@ -74,14 +71,31 @@ async def facebook_callback_controller(code: str, db: AsyncSession):
 
     data = response.json()
     access_token = data.get("access_token")
-
     # 2. Lấy thông tin page
     get_pages = "https://graph.facebook.com/me/accounts"
     page_params = {
         "access_token": access_token
     }
-    pages = requests.get(get_pages, params=page_params).json()
+    pages_raw = requests.get(get_pages, params=page_params).json()
+    pages = pages_raw.get("data", [])
+    for page in pages:
+        page_id = page["id"]
+        page_token = page["access_token"]
+
+        webhook_url = f"https://graph.facebook.com/v21.0/{page_id}/subscribed_apps"
+
+        subscribe_params = {
+            "subscribed_fields": "messages",
+            "access_token": page_token
+        }
+
+        webhook_res = requests.post(webhook_url, data=subscribe_params)
+
+        if webhook_res.status_code != 200:
+            print(f"Lỗi subscribe webhook Page {page_id}: {webhook_res.text}")
+        else:
+            print(f"Đã đăng ký webhook cho Page {page_id}")
+
     
-    
-    return await facebook_page_service.facebook_callback_service(pages, db)
+    return await facebook_page_service.facebook_callback_service(pages_raw, db)
 
