@@ -1,4 +1,4 @@
-from services.role_service import get_global_abilities_for_user
+from services.role_service import get_global_abilities_for_user, get_user_id, get_users_with_permission
 from models.user import User
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from controllers import user_controller
@@ -87,14 +87,20 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # SỬA: Thêm bảo mật
 ):
-    abilities = get_global_abilities_for_user(current_user)
-    allowed_roles = abilities["users"]["avalilable_roles"]
-    if current_user.role not in allowed_roles and current_user.id != user_id:
+    abilities = await get_users_with_permission(db, current_user)
+    current_ability = next(
+        (item for item in abilities if get_user_id(item["user"]) == user_id),
+        None
+    )
+    
+    if current_ability is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy quyền của user")
+    if current_ability["permission"]["can_edit"] is False:
         raise HTTPException(
-            status_code=403, 
+            status_code=403,
             detail="Bạn không có quyền cập nhật thông tin người dùng này"
         )
-    
+
     data = await request.json()
     return await user_controller.update_user_controller(user_id, data, db)
 
@@ -104,9 +110,15 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) 
 ): 
-    abilities = get_global_abilities_for_user(current_user)
-    allowed_roles = abilities["users"]["avalilable_roles"]
-    if current_user.role not in allowed_roles:
+    abilities = await get_users_with_permission(db, current_user)
+    current_ability = next(
+        (item for item in abilities if get_user_id(item["user"]) == user_id),
+        None
+    )
+    
+    if current_ability is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy quyền của user")
+    if current_ability["permission"]["can_edit"] is False:
         raise HTTPException(
             status_code=403, 
             detail="Bạn không có quyền xóa người dùng"

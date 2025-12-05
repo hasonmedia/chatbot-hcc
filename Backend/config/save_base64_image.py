@@ -45,6 +45,6 @@ def save_base64_image(base64_list):
                 os.remove(file_path)
             raise ValueError("Invalid image data") from e
 
-        image_urls.append(f"{URL_IMAGE}/app/upload/{filename}")
+        image_urls.append(f"{URL_IMAGE}/upload/{filename}")
 
     return image_urls

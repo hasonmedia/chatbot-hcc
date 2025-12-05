@@ -41,8 +41,8 @@ const ChatUI = () => {
     <div className="flex h-full flex-col overflow-hidden">
       <ChatHeader isConnecting={isConnecting} botName={llmConfig?.botName} />
 
-      <ScrollArea className="flex-1 p-2 sm:p-4">
-        <div className="mx-auto max-w-2xl lg:max-w-3xl xl:max-w-4xl flex flex-col gap-3 sm:gap-4">
+      <ScrollArea className="flex-1 p-2 sm:p-4 h-full max-h-screen overflow-y-auto">
+        <div className="p-2 sm:p-4 shrink-0">
           {isLoading ? (
             <div className="flex justify-center items-center p-6 sm:p-8">
               <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-muted-foreground" />
@@ -51,13 +51,13 @@ const ChatUI = () => {
               </span>
             </div>
           ) : (
-            <>
+            <div className="space-y-2 sm:space-y-3">
               {messages.map((msg, index) => (
                 <MessageItem key={msg.id || index} msg={msg} />
               ))}
-              {/* Hiển thị typing indicator khi bot đang trả lời */}
+
               <TypingIndicator isVisible={isBotActive} />
-            </>
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>

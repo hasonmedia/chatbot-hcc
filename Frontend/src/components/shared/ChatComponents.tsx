@@ -142,9 +142,13 @@ export function SessionItem({
 // --- COMPONENT CON: MESSAGE ITEM ---
 type MessageItemProps = {
   msg: MessageData;
+  onImageClick?: (imageUrl: string) => void;
 };
 
-export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
+export const MessageItem: React.FC<MessageItemProps> = ({
+  msg,
+  onImageClick,
+}) => {
   const isCustomer = msg.sender_type === "customer";
   const isBot = msg.sender_type === "bot";
   const isAdmin = msg.sender_type === "admin";
@@ -229,16 +233,44 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
               </ul>
             </div>
           )}
-          {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
-            <img
-              src={msg.image[0]}
-              alt="Hình ảnh nhận được"
-              className="mt-2 rounded-md max-w-xs"
-            />
+          {msg.image && (
+            <div className="mt-2">
+              {Array.isArray(msg.image) ? (
+                <div className="flex flex-wrap gap-2">
+                  {msg.image.map((imgUrl, index) => (
+                    <img
+                      key={index}
+                      src={imgUrl}
+                      alt={`Hình ảnh ${index + 1}`}
+                      className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => onImageClick?.(imgUrl)}
+                      title="Click để xem ảnh lớn"
+                      onError={(e) => {
+                        // Xử lý lỗi load ảnh (có thể là optimistic URL)
+                        (e.target as HTMLImageElement).style.opacity = "0.5";
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <img
+                  src={msg.image}
+                  alt="Hình ảnh nhận được"
+                  className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => onImageClick?.(msg.image as string)}
+                  title="Click để xem ảnh lớn"
+                />
+              )}
+            </div>
           )}
-          <span className="text-xs text-muted-foreground block text-right mt-1">
-            {" "}
-            {/* <-- Đổi sang text-right */}
+          <span
+            className={`text-xs block text-right mt-1 ${
+              msg.isOptimistic
+                ? "text-muted-foreground/50"
+                : "text-muted-foreground"
+            }`}
+          >
+            {/* {msg.isOptimistic ? "" : formatTime(msg.created_at)} */}
             {formatTime(msg.created_at)}
           </span>
         </div>
@@ -297,16 +329,33 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
             </ul>
           </div>
         )}
-        {msg.image && Array.isArray(msg.image) && msg.image.length > 0 && (
-          <img
-            src={msg.image[0]}
-            alt="Hình ảnh nhận được"
-            className="mt-2 rounded-md max-w-xs"
-          />
+        {msg.image && (
+          <div className="mt-2">
+            {Array.isArray(msg.image) ? (
+              <div className="flex flex-wrap gap-2">
+                {msg.image.map((imgUrl, index) => (
+                  <img
+                    key={index}
+                    src={imgUrl}
+                    alt={`Hình ảnh ${index + 1}`}
+                    className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => onImageClick?.(imgUrl)}
+                    title="Click để xem ảnh lớn"
+                  />
+                ))}
+              </div>
+            ) : (
+              <img
+                src={msg.image}
+                alt="Hình ảnh nhận được"
+                className="rounded-md max-w-xs max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => onImageClick?.(msg.image as string)}
+                title="Click để xem ảnh lớn"
+              />
+            )}
+          </div>
         )}
         <span className="text-xs text-primary-foreground/80 block text-left mt-1">
-          {" "}
-          {/* <-- Đổi sang text-left */}
           {formatTime(msg.created_at)}
         </span>
       </div>

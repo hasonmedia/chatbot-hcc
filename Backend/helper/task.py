@@ -10,7 +10,6 @@ from helper.help_redis import (
     clear_check_reply_cache
 )
 from config.database import AsyncSessionLocal
-import gspread
 from sqlalchemy.ext.asyncio import AsyncSession
 from llm.help_llm import generate_response_prompt, get_current_model
 

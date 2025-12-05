@@ -12,7 +12,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   return (
     <div className="typing-indicator-container flex items-start space-x-2 mb-4">
       {/* Avatar bot */}
-      <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+      <div className="shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
         <svg
           className="w-5 h-5 text-primary-foreground"
           fill="currentColor"

@@ -49,7 +49,9 @@ interface FileWithDescription {
 export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
   const [activeTab, setActiveTab] = useState<"text" | "file">("text");
   const [selectedFiles, setSelectedFiles] = useState<FileWithDescription[]>([]);
-  const [fileDescriptionErrors, setFileDescriptionErrors] = useState<{ [key: number]: string }>({});
+  const [fileDescriptionErrors, setFileDescriptionErrors] = useState<{
+    [key: number]: string;
+  }>({});
   const {
     createRichText,
     isCreatingRichText,
@@ -75,20 +77,20 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
 
   const handleFileChange = (files: FileList | null) => {
     if (files) {
-      const newFiles = Array.from(files).map(file => ({
+      const newFiles = Array.from(files).map((file) => ({
         file,
-        description: ""
+        description: "",
       }));
-      setSelectedFiles(prev => [...prev, ...newFiles]);
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
   const handleRemoveFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     // Xóa lỗi của file bị xóa và cập nhật lại index
-    setFileDescriptionErrors(prev => {
+    setFileDescriptionErrors((prev) => {
       const newErrors: { [key: number]: string } = {};
-      Object.keys(prev).forEach(key => {
+      Object.keys(prev).forEach((key) => {
         const idx = parseInt(key);
         if (idx < index) {
           newErrors[idx] = prev[idx];
@@ -102,13 +104,11 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
 
   const handleDescriptionChange = (index: number, description: string) => {
     setSelectedFiles((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, description } : item
-      )
+      prev.map((item, i) => (i === index ? { ...item, description } : item))
     );
     // Xóa lỗi khi người dùng bắt đầu nhập
     if (description.trim()) {
-      setFileDescriptionErrors(prev => {
+      setFileDescriptionErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[index];
         return newErrors;
@@ -172,7 +172,7 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
 
       if (activeTab === "file") {
         console.log("Validating files...", selectedFiles);
-        
+
         if (selectedFiles.length === 0) {
           form.setError("files", { message: "Vui lòng chọn ít nhất 1 file." });
           return;
@@ -190,11 +190,13 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
 
         if (Object.keys(errors).length > 0) {
           setFileDescriptionErrors(errors);
-          form.setError("files", { 
-            message: `Vui lòng nhập mô tả cho ${Object.keys(errors).length} file chưa có mô tả.` 
+          form.setError("files", {
+            message: `Vui lòng nhập mô tả cho ${
+              Object.keys(errors).length
+            } file chưa có mô tả.`,
           });
           // Scroll to top để người dùng thấy thông báo lỗi
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          window.scrollTo({ top: 0, behavior: "smooth" });
           return;
         }
 
@@ -202,7 +204,9 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
         setFileDescriptionErrors({});
 
         // Tìm tên danh mục từ category_id
-        const selectedCategory = categories?.find(cat => cat.id === parseInt(values.category_id));
+        const selectedCategory = categories?.find(
+          (cat) => cat.id === parseInt(values.category_id)
+        );
         const categoryName = selectedCategory?.name || "";
 
         // Gửi từng file với mô tả riêng
@@ -351,7 +355,7 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
                         field.onChange(e.target.files);
                         handleFileChange(e.target.files);
                         // Reset input để có thể chọn lại cùng file
-                        e.target.value = '';
+                        e.target.value = "";
                       }}
                     />
                   </FormControl>
@@ -366,7 +370,8 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
                 {Object.keys(fileDescriptionErrors).length > 0 && (
                   <div className="p-3 rounded-md bg-red-50 border border-red-200">
                     <p className="text-sm text-red-600 font-medium">
-                      ⚠️ Vui lòng nhập mô tả cho {Object.keys(fileDescriptionErrors).length} file bên dưới
+                      ⚠️ Vui lòng nhập mô tả cho{" "}
+                      {Object.keys(fileDescriptionErrors).length} file bên dưới
                     </p>
                   </div>
                 )}
@@ -410,10 +415,14 @@ export function KnowledgeBaseForm({ onFinished }: KnowledgeBaseFormProps) {
                         <Textarea
                           placeholder="Nhập mô tả cho file này..."
                           className={`mt-1 min-h-16 text-sm ${
-                            fileDescriptionErrors[index] ? "border-red-500 focus-visible:ring-red-500" : ""
+                            fileDescriptionErrors[index]
+                              ? "border-red-500 focus-visible:ring-red-500"
+                              : ""
                           }`}
                           value={fileItem.description}
-                          onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                          onChange={(e) =>
+                            handleDescriptionChange(index, e.target.value)
+                          }
                         />
                         {fileDescriptionErrors[index] && (
                           <p className="text-xs text-red-500 mt-1">

@@ -141,6 +141,8 @@ async def create_kb_with_files_service(
         for file in files:
             detail = None
             file_path = None
+            successful_files = []
+            failed_files = []
             try:
                 file_path = os.path.join(UPLOAD_DIR, file.filename)
                 async with aiofiles.open(file_path, 'wb') as f:
@@ -171,23 +173,20 @@ async def create_kb_with_files_service(
                     knowledge_base_detail_id=detail.id,
                     db=db
                 )
-                
                 if success:
                     logger.info(f"✅ Đã xử lý thành công file: {file.filename}")
+                    successful_files.append(file.filename)
                 else:
                     logger.error(f"❌ Lỗi xử lý file: {file.filename}")
-                    # Xóa chunks (nếu có)
+                    failed_files.append(file.filename)
                     try:
                         await delete_chunks(detail.id)
                     except:
                         pass
                     
-                    # Refresh detail trước khi xóa để tránh lỗi
                     await db.refresh(detail)
-                    # Xóa detail DB
                     await db.delete(detail)
                     await db.commit()
-                    # Xóa file
                     if os.path.exists(file_path):
                         try:
                             os.remove(file_path)
@@ -196,6 +195,7 @@ async def create_kb_with_files_service(
                         
             except Exception as e:
                 logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
+                failed_files.append(file.filename)
                 await db.rollback()
                 if detail and detail.id:
                     try:
@@ -209,8 +209,12 @@ async def create_kb_with_files_service(
                         logger.error(f"Không thể xóa file sau lỗi: {str(rm_e)}")
                 continue
         
-        
-        return True
+        return {
+        "status": "partial_success" if successful_files and failed_files else "success" if successful_files else "error",
+        "message": "Hoàn tất xử lý file." if successful_files else "Tất cả file đều bị lỗi.",
+        "successful": successful_files,
+        "failed": failed_files
+        }
         
     except Exception as e:
         logger.error(f"Lỗi khi tạo knowledge base: {str(e)}")

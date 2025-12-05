@@ -94,4 +94,9 @@ def get_global_abilities_for_user(current_user: User):
         abilities["users"]["avalilable_roles"] = ["user"]
 
     return abilities
-    
+
+
+def get_user_id(user_obj):
+    if isinstance(user_obj, dict):
+        return user_obj.get("id")
+    return getattr(user_obj, "id", None)

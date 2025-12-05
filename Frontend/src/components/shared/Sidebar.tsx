@@ -99,10 +99,17 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
-  const handleLogout = () => {
-    logoutUser();
-    setIsLogoutDialogOpen(false);
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setIsLogoutDialogOpen(false);
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Vẫn navigate về login page ngay cả khi logout API thất bại
+      setIsLogoutDialogOpen(false);
+      navigate("/");
+    }
   };
 
   const filteredItems = items.filter(

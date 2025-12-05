@@ -48,12 +48,23 @@ axiosClient.interceptors.response.use(
 
       try {
         await refreshToken();
-
         processQueue(null);
-
         return axiosClient(originalRequest);
       } catch (err) {
         processQueue(err, null);
+
+        // Nếu refresh token thất bại, clear auth state
+        if (typeof window !== "undefined") {
+          // Import dynamically để tránh circular dependency
+          import("../utils/auth").then(({ setAuthFlag, clearAuthCookies }) => {
+            setAuthFlag(false);
+            clearAuthCookies();
+          });
+
+          // Dispatch custom event để AuthContext có thể listen
+          window.dispatchEvent(new CustomEvent("auth-failed"));
+        }
+
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

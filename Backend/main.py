@@ -58,7 +58,7 @@ app.add_middleware(
     allow_headers=["*"],           # Cho phép tất cả headers
 )
 
-app.mount("/app/upload", StaticFiles(directory="upload"), name="upload")
+# app.mount("/app/upload/", StaticFiles(directory="upload"), name="upload")
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

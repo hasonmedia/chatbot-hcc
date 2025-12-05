@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Search,
-  Paperclip,
   SendHorizontal,
   Archive,
   Loader2,
@@ -44,6 +43,8 @@ import {
   PanelRight,
   Trash2,
   MoreHorizontal,
+  ImageIcon,
+  X,
 } from "lucide-react";
 
 import { useAdminChat } from "@/hooks/useAdminChat";
@@ -67,7 +68,6 @@ export default function ChatPage() {
     setSearchTerm,
     handleSelectSession,
     handleSendMessage,
-    handleKeyDown,
     deleteChatSessions,
     deleteMessages,
     messagesEndRef,
@@ -84,6 +84,11 @@ export default function ChatPage() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedSessions, setSelectedSessions] = useState<number[]>([]);
   const [isSessionSelectionMode, setIsSessionSelectionMode] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const handleSelectSessionResponsive = (sessionId: number) => {
     handleSelectSession(sessionId);
   };
@@ -192,6 +197,123 @@ export default function ChatPage() {
     { id: 3, value: "8am", label: "8h sáng mai" },
     { id: 4, value: "forever", label: "Chặn vĩnh viễn" },
   ];
+
+  // Xử lý chọn ảnh
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Lọc chỉ các file ảnh
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    if (imageFiles.length === 0) {
+      toast.error("Vui lòng chỉ chọn các file ảnh!");
+      return;
+    }
+
+    // Kiểm tra kích thước file - giới hạn 5MB cho mỗi ảnh
+    const maxSizeInKB = 500;
+    const maxSizeInBytes = maxSizeInKB * 1024;
+    const oversizedFiles = imageFiles.filter(
+      (file) => file.size > maxSizeInBytes
+    );
+
+    if (oversizedFiles.length > 0) {
+      const oversizedNames = oversizedFiles.map(
+        (file) => `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`
+      );
+      toast.error(
+        `Các file sau vượt quá giới hạn ${maxSizeInKB}KB:\n${oversizedNames.join(
+          "\n"
+        )}`
+      );
+      return;
+    }
+
+    // Giới hạn tối đa 5 ảnh
+    const totalImages = selectedImages.length + imageFiles.length;
+    if (totalImages > 5) {
+      toast.error("Chỉ được gửi tối đa 5 ảnh!");
+      return;
+    }
+
+    // Tạo preview cho các ảnh mới
+    const newPreviews: string[] = [];
+    imageFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newPreviews.push(e.target?.result as string);
+        if (newPreviews.length === imageFiles.length) {
+          setImagePreviews((prev) => [...prev, ...newPreviews]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setSelectedImages((prev) => [...prev, ...imageFiles]);
+  };
+
+  // Xóa ảnh đã chọn
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Xử lý click ảnh để preview
+  const handleImageClick = (imageUrl: string) => {
+    setPreviewImage(imageUrl);
+    setIsPreviewOpen(true);
+  };
+
+  // Đóng modal preview
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewImage(null);
+  };
+
+  // Xử lý phím ESC để đóng preview
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isPreviewOpen) {
+        handleClosePreview();
+      }
+    };
+
+    if (isPreviewOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [isPreviewOpen]);
+
+  // Reset ảnh khi gửi tin nhắn
+  const resetImages = () => {
+    setSelectedImages([]);
+    setImagePreviews([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Wrapper function để gửi tin nhắn với ảnh
+  const handleSendMessageWithImages = () => {
+    handleSendMessage(selectedImages, resetImages);
+  };
+
+  // Xử lý phím Enter
+  const handleKeyDownWithImages = (
+    event: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleSendMessageWithImages();
+    }
+  };
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
@@ -577,7 +699,10 @@ export default function ChatPage() {
                             : ""
                         } rounded-lg transition-colors min-w-0 overflow-hidden`}
                       >
-                        <MessageItem msg={msg} />
+                        <MessageItem
+                          msg={msg}
+                          onImageClick={handleImageClick}
+                        />
                       </div>
                     </div>
                   ))
@@ -588,6 +713,41 @@ export default function ChatPage() {
 
             {/* Fixed Input Area */}
             <div className="shrink-0 border-t bg-white">
+              {/* Image Preview Area */}
+              {imagePreviews.length > 0 && (
+                <div className="px-3 sm:px-4 pt-3 sm:pt-4">
+                  <div className="flex gap-2 flex-wrap">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => handleImageClick(preview)}
+                          title="Click để xem ảnh lớn"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveImage(index);
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors z-10"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1 rounded">
+                          {Math.round(selectedImages[index]?.size / 1024)}KB
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    📝 Giới hạn: Tối đa 5 ảnh, mỗi ảnh không quá 500KB. Click
+                    vào ảnh để xem lớn.
+                  </p>
+                </div>
+              )}
+
               <div className="p-3 sm:p-4">
                 <div className="relative">
                   <Textarea
@@ -599,23 +759,38 @@ export default function ChatPage() {
                     className="pr-20 sm:pr-28 min-h-[50px] sm:min-h-[60px] text-sm sm:text-base resize-none"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={handleKeyDownWithImages}
                     disabled={!currentSessionId || isLoadingMessages}
                   />
                   <div className="absolute right-2 sm:right-3 top-2 sm:top-3 flex gap-1 sm:gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
-                      disabled
+                      disabled={!currentSessionId || selectedImages.length >= 5}
+                      onClick={() => fileInputRef.current?.click()}
                       className="h-8 w-8 sm:h-9 sm:w-9"
+                      title={`Chọn ảnh (tối đa 500KB/ảnh, ${
+                        5 - selectedImages.length
+                      } ảnh còn lại)`}
                     >
-                      <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="sr-only">Đính kèm</span>
+                      <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="sr-only">Chọn ảnh</span>
                     </Button>
                     <Button
                       size="icon"
-                      onClick={handleSendMessage}
-                      disabled={!newMessage.trim() || !currentSessionId}
+                      onClick={handleSendMessageWithImages}
+                      disabled={
+                        (!newMessage.trim() && selectedImages.length === 0) ||
+                        !currentSessionId
+                      }
                       className="h-8 w-8 sm:h-9 sm:w-9"
                     >
                       <SendHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -626,6 +801,35 @@ export default function ChatPage() {
               </div>
             </div>
           </div>
+
+          {/* Image Preview Modal */}
+          {isPreviewOpen && (
+            <div
+              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+              onClick={handleClosePreview}
+            >
+              <div className="relative max-w-4xl max-h-full">
+                <button
+                  onClick={handleClosePreview}
+                  className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-8 h-8" />
+                  <span className="sr-only">Đóng</span>
+                </button>
+                <img
+                  src={previewImage || ""}
+                  alt="Preview ảnh lớn"
+                  className="max-w-full max-h-[80vh] object-contain rounded-lg"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 rounded-b-lg">
+                  <p className="text-sm text-center">
+                    Nhấn ESC hoặc click bên ngoài để đóng
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Alert Dialog for Delete Session */}
           <AlertDialog

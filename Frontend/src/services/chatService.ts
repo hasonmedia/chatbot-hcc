@@ -90,7 +90,7 @@ export const sendMessage = (
   senderType: MessageData["sender_type"], // Dùng type từ MessageData
   content: string,
   isAdmin: boolean = false,
-  image: string | null = null
+  image: string[] | string | null = null
 ): void => {
   const targetSocket = isAdmin ? socketAdmin : socketCustomer;
 

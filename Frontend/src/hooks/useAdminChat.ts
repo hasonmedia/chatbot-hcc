@@ -228,12 +228,26 @@ export const useAdminChat = () => {
                 ? JSON.parse(data.content).message || ""
                 : "",
             created_at: data.created_at,
-            image: data.image && data.image.length > 0 ? data.image[0] : null,
+            image:
+              data.image && Array.isArray(data.image) && data.image.length > 0
+                ? data.image
+                : null,
           };
 
-          // Kiểm tra tin nhắn đã tồn tại chưa để tránh duplicate
+          // Cập nhật messages: xóa optimistic message và thêm message thật
           setMessages((prevMessages) => {
-            const exists = prevMessages.some(
+            // Xóa optimistic message nếu có (cùng content và sender_type)
+            const withoutOptimistic = prevMessages.filter(
+              (msg) =>
+                !(
+                  msg.isOptimistic &&
+                  msg.content === messageData.content &&
+                  msg.sender_type === messageData.sender_type
+                )
+            );
+
+            // Kiểm tra tin nhắn thật đã tồn tại chưa để tránh duplicate
+            const exists = withoutOptimistic.some(
               (msg) =>
                 msg.content === messageData.content &&
                 msg.sender_type === messageData.sender_type &&
@@ -244,10 +258,10 @@ export const useAdminChat = () => {
             );
 
             if (!exists) {
-              return [...prevMessages, messageData];
+              return [...withoutOptimistic, messageData];
             }
 
-            return prevMessages;
+            return withoutOptimistic;
           });
         }
       }
@@ -314,17 +328,71 @@ export const useAdminChat = () => {
   );
 
   // Xử lý gửi tin nhắn (Admin gửi)
-  const handleSendMessage = useCallback(() => {
-    const trimmedMessage = newMessage.trim();
-    if (trimmedMessage && currentSessionId) {
-      // Gửi tin nhắn qua WebSocket - không thêm Optimistic UI
-      // để tránh duplicate message
+  const handleSendMessage = useCallback(
+    async (images?: File[], resetImages?: () => void) => {
+      const trimmedMessage = newMessage.trim();
+      if (
+        (!trimmedMessage && (!images || images.length === 0)) ||
+        !currentSessionId
+      ) {
+        return;
+      }
+
+      let imageBase64: string[] = [];
+
+      // Chuyển đổi ảnh thành base64 nếu có và tạo URL preview cho optimistic UI
+      let imageUrls: string[] = [];
+      if (images && images.length > 0) {
+        try {
+          // Tạo URL preview cho optimistic UI
+          imageUrls = images.map((file) => URL.createObjectURL(file));
+
+          // Chuyển đổi thành base64 để gửi
+          imageBase64 = await Promise.all(
+            images.map((file) => {
+              return new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const result = reader.result as string;
+                  // Loại bỏ prefix "data:image/...;base64," để chỉ giữ lại phần base64
+                  const base64Data = result.split(",")[1];
+                  resolve(base64Data);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+              });
+            })
+          );
+        } catch (error) {
+          console.error("Error converting images to base64:", error);
+          return;
+        }
+      }
+
+      // Tạo optimistic message để hiển thị ngay lập tức
+      const optimisticMessage = {
+        id: Date.now(),
+        chat_session_id: String(currentSessionId),
+        sender_type: "admin" as const,
+        content: trimmedMessage,
+        created_at: new Date().toISOString(),
+        image: imageUrls.length > 0 ? imageUrls : null,
+        isOptimistic: true, // Flag để đánh dấu tin nhắn tạm thời
+      };
+
+      // Thêm tin nhắn tạm thời vào danh sách
+      setMessages((prev) => [...prev, optimisticMessage]);
+
+      // Scroll xuống để thấy tin nhắn mới
+      setTimeout(() => scrollToBottom(), 100);
+
+      // Gửi tin nhắn qua WebSocket
       sendMessage(
         String(currentSessionId),
         "admin",
         trimmedMessage,
         true,
-        null
+        imageBase64.length > 0 ? imageBase64 : null
       );
 
       // Cập nhật session list với tin nhắn mới
@@ -336,7 +404,7 @@ export const useAdminChat = () => {
         if (sessionIndex > -1) {
           const updatedSession = {
             ...prevSessions[sessionIndex],
-            last_message: trimmedMessage,
+            last_message: trimmedMessage || "Đã gửi ảnh",
             last_updated: new Date().toISOString(),
           };
           const newSessionsList = [...prevSessions];
@@ -347,8 +415,23 @@ export const useAdminChat = () => {
       });
 
       setNewMessage(""); // Xóa nội dung trong ô input
-    }
-  }, [newMessage, currentSessionId]); // Phụ thuộc 2 giá trị này
+      if (resetImages) {
+        resetImages(); // Reset ảnh đã chọn
+      }
+
+      // Cleanup URL objects sau một thời gian để tránh memory leak
+      setTimeout(() => {
+        imageUrls.forEach((url) => {
+          try {
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        });
+      }, 30000); // 30 giây
+    },
+    [newMessage, currentSessionId]
+  ); // Phụ thuộc 2 giá trị này
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
