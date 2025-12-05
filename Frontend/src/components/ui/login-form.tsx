@@ -16,7 +16,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
-  const { loginUser, loading, error, user } = useAuth(); // ✅ lấy đúng tên từ context
+  const { loginUser, loading, error, user } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
@@ -24,7 +24,8 @@ export function LoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await loginUser(username, password);
+      const res = await loginUser(username, password);
+      console.log("Đăng nhập thành công:", res);
       toast.success(`Xin chào, ${user?.full_name || username}!`);
       navigate("/trang-chu"); // ✅ chuyển về trang chính
     } catch (err: any) {

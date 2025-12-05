@@ -60,18 +60,21 @@ export const useKnowledgeBase = (
   const createFilesMutation = useMutation({
     mutationFn: createFilesKnowledgeBaseEndpoint,
     onSuccess: (data: any) => {
-      if (data.status === "success") {
+      if (data.knowledge_base.status === "success") {
         toast.success("Tải file lên thành công!");
-      } else if (data.status === "partial_success") {
+      } else if (data.knowledge_base.status === "partial_success") {
         toast.warning(
-          `Hoàn tất. Có ${data.successful.length} file thành công và ${data.failed.length} file thất bại.`
+          `Hoàn tất. Có ${data.knowledge_base.successful.length} file thành công và ${data.knowledge_base.failed.length} file thất bại.`
         );
-        console.error("Các file thất bại:", data.failed);
-      } else if (data.status === "error" && data.failed.length > 0) {
+        console.error("Các file thất bại:", data.knowledge_base.failed);
+      } else if (
+        data.knowledge_base.status === "error" &&
+        data.failed.length > 0
+      ) {
         toast.error(
-          `Toàn bộ ${data.failed.length} file đã tải lên đều bị lỗi.`
+          `Toàn bộ ${data.knowledge_base.failed.length} file đã tải lên đều bị lỗi.`
         );
-        console.error("Các file thất bại:", data.failed);
+        console.error("Các file thất bại:", data.knowledge_base.failed);
       } else {
         toast.error("Đã xảy ra lỗi khi tải file.");
       }
