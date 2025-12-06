@@ -89,16 +89,24 @@ async def update_kb_with_rich_text_controller(
         "knowledge_base": kb
     }
 
-async def delete_kb_detail_controller(detail_id: int, db: AsyncSession):
-
-    success = await knowledge_base_service.delete_kb_detail_service(detail_id, db)
-    if success:
-        return {
-            "message": "File/Detail deleted successfully",
-            "success": True
-        }
-    else:
-        raise HTTPException(status_code=404, detail="File/Detail not found")
+async def delete_multiple_kb_details_controller(data: dict, db: AsyncSession):
+    """
+    Controller xóa nhiều file cùng lúc
+    """
+    detail_ids = data.get("detail_ids", [])
+    
+    if not detail_ids or not isinstance(detail_ids, list):
+        raise HTTPException(status_code=400, detail="detail_ids phải là một danh sách không rỗng")
+    
+    result = await knowledge_base_service.delete_multiple_kb_details_service(detail_ids, db)
+    
+    return {
+        "message": f"Xóa thành công {result['deleted_count']}/{result['total_count']} file",
+        "deleted_count": result['deleted_count'],
+        "failed_count": result['failed_count'],
+        "failed_ids": result['failed_ids'],
+        "success": True
+    }
 
 async def search_kb_controller(query: str, db: AsyncSession):
     return await knowledge_base_service.search_kb_service(query, db)
@@ -116,14 +124,23 @@ async def create_category_controller(data: dict, db: AsyncSession):
     name = data.get("name")
     description = data.get("description")
     
-    if not name:
+    if not name or not name.strip():
         raise HTTPException(status_code=400, detail="Tên danh mục không được để trống")
     
-    category = await knowledge_base_service.create_category_service(name, description, db)
-    return {
-        "message": "Tạo danh mục thành công",
-        "category": category
-    }
+    if not description or not description.strip():
+        raise HTTPException(status_code=400, detail="Mô tả danh mục không được để trống")
+    
+    try:
+        category = await knowledge_base_service.create_category_service(name, description, db)
+        return {
+            "message": "Tạo danh mục thành công",
+            "category": category
+        }
+    except Exception as e:
+        error_msg = str(e)
+        if "Tên danh mục đã tồn tại" in error_msg:
+            raise HTTPException(status_code=400, detail="Tên danh mục đã tồn tại")
+        raise HTTPException(status_code=500, detail=f"Lỗi khi tạo danh mục: {error_msg}")
 
 async def update_category_controller(category_id: int, data: dict, db: AsyncSession):
     """
@@ -132,17 +149,28 @@ async def update_category_controller(category_id: int, data: dict, db: AsyncSess
     name = data.get("name")
     description = data.get("description")
     
-    if not name:
+    if not name or not name.strip():
         raise HTTPException(status_code=400, detail="Tên danh mục không được để trống")
     
-    category = await knowledge_base_service.update_category_service(category_id, name, description, db)
-    if not category:
-        raise HTTPException(status_code=404, detail="Không tìm thấy danh mục")
+    if not description or not description.strip():
+        raise HTTPException(status_code=400, detail="Mô tả danh mục không được để trống")
     
-    return {
-        "message": "Cập nhật danh mục thành công",
-        "category": category
-    }
+    try:
+        category = await knowledge_base_service.update_category_service(category_id, name, description, db)
+        if not category:
+            raise HTTPException(status_code=404, detail="Không tìm thấy danh mục")
+        
+        return {
+            "message": "Cập nhật danh mục thành công",
+            "category": category
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        if "Tên danh mục đã tồn tại" in error_msg:
+            raise HTTPException(status_code=400, detail="Tên danh mục đã tồn tại")
+        raise HTTPException(status_code=500, detail=f"Lỗi khi cập nhật danh mục: {error_msg}")
 
 async def delete_category_controller(category_id: int, db: AsyncSession):
     """

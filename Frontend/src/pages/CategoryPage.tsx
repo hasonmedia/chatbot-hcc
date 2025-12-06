@@ -41,8 +41,25 @@ export default function CategoryPage() {
     };
 
     const handleDelete = (category: KnowledgeCategory) => {
-        setCategoryToDelete(category);
-        setIsDeleteDialogOpen(true);
+        if (category.file_count && category.file_count >= 1) {
+            // Có file, hiển thị dialog xác nhận
+            setCategoryToDelete(category);
+            setIsDeleteDialogOpen(true);
+        } else {
+            // Không có file, xóa luôn
+            handleDirectDelete(category);
+        }
+    };
+
+    const handleDirectDelete = async (category: KnowledgeCategory) => {
+        setIsSubmitting(true);
+        try {
+            await deleteCategory.mutateAsync(category.id);
+        } catch (error) {
+            console.error("Error deleting category:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleSubmit = async (data: CategoryFormData) => {
@@ -154,9 +171,14 @@ export default function CategoryPage() {
                     <div className="py-4">
                         <p className="text-sm text-gray-600">
                             Bạn có chắc chắn muốn xóa danh mục "
-                            {categoryToDelete?.name}"? Hành động này không thể hoàn
-                            tác.
+                            {categoryToDelete?.name}"?
                         </p>
+                        {categoryToDelete?.file_count && categoryToDelete.file_count > 0 && (
+                            <p className="text-sm text-red-600 mt-2 font-semibold">
+                                Cảnh báo: Danh mục này có {categoryToDelete.file_count} file. 
+                                Tất cả các file này sẽ bị xóa và không thể khôi phục!
+                            </p>
+                        )}
                     </div>
                     <DialogFooter className="flex gap-2">
                         <Button

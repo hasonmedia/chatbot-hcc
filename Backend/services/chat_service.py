@@ -183,6 +183,9 @@ def get_expire_time(option: str):
 
 async def update_chat_session(id: int, data: dict, user, db: Session):
     try:
+        
+        print(f"Updating chat session {id} with data: {data}")
+        
         result = await db.execute(select(ChatSession).filter(ChatSession.id == id))
         chatSession = result.scalar_one_or_none()
         if not chatSession:
@@ -190,7 +193,17 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
 
         new_status = data.get("status")
         new_time = data.get("time")
-        if not (chatSession.status == "true" and new_status == "true"):
+        
+        
+        if new_time == "null" and new_status == "true":
+            receiver_name = chatSession.current_receiver
+            chatSession.current_receiver = "Bot"
+            chatSession.previous_receiver = receiver_name
+            chatSession.status = "true"
+            chatSession.time = None
+        
+        # Xử lý chặn bot hoặc các trường hợp khác
+        elif not (chatSession.status == "true" and new_status == "true"):
             receiver_name = chatSession.current_receiver
             chatSession.current_receiver = "Bot" if new_status == "true" else user.full_name
             chatSession.previous_receiver = receiver_name
@@ -204,13 +217,15 @@ async def update_chat_session(id: int, data: dict, user, db: Session):
         
         # Gửi thông báo cập nhật qua socket cho tất cả admin và customer
         socket_data = {
-            "type": "session_update",  # Đánh dấu đây là sự kiện cập nhật session
+            "type": "session_update",
             "chat_session_id": chatSession.id,
             "session_status": chatSession.status,
             "current_receiver": chatSession.current_receiver,
             "previous_receiver": chatSession.previous_receiver,
             "time": chatSession.time.isoformat() if chatSession.time else None
         }
+        
+        print("Sending socket message:", socket_data)
         await send_socket_message(id, socket_data)
         
         return {
@@ -238,6 +253,16 @@ async def delete_chat_session(ids: list[int], db):
             clear_session_cache(s.id)
             await db.delete(s)
         await db.commit()
+        
+        # Gửi socket event cho tất cả admin về việc xóa sessions
+        for session_id in ids:
+            socket_data = {
+                "type": "session_deleted",
+                "chat_session_id": session_id,
+                "deleted_ids": ids
+            }
+            await send_socket_message(session_id, socket_data)
+        
         return len(sessions)
     except Exception as e:
         print(e)
@@ -261,6 +286,15 @@ async def delete_message(chatId: int, ids: list[int], db):
         for m in messages:
             await db.delete(m)
         await db.commit()
+        
+        # Gửi socket event cho tất cả admin về việc xóa messages
+        socket_data = {
+            "type": "messages_deleted_from_session",
+            "chat_session_id": chatId,
+            "deleted_message_ids": ids
+        }
+        await send_socket_message(chatId, socket_data)
+        
         return len(messages)
     except Exception as e:
         print(e)

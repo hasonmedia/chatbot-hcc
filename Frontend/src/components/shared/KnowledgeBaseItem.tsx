@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import {
   Item,
-  ItemActions,
   ItemContent,
   ItemDescription,
   ItemTitle,
@@ -9,17 +8,8 @@ import {
 import type { KnowledgeBaseItem as TKnowledgeBaseItem } from "@/types/knowledge";
 import {
   FileText,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
   Loader2,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -59,9 +49,8 @@ const formSchema = z.object({
 });
 
 export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
-  const { deleteItem, isDeleting, updateItem, isUpdating } = useKnowledgeBase();
+  const { updateItem, isUpdating } = useKnowledgeBase();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -81,15 +70,6 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
       });
     }
   }, [item.raw_content, item.file_name, item.description, form.reset]);
-
-  const handleDelete = () => {
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    await deleteItem(item.detail_id);
-    setIsDeleteDialogOpen(false);
-  };
 
   const handleEditClick = () => {
     form.reset({
@@ -147,41 +127,6 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
             {item.username && <span className="ml-2">• {item.username}</span>}
           </ItemDescription>
         </ItemContent>
-        <ItemActions className="shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={isDeleting}
-                className="h-8 w-8 sm:h-10 sm:w-10"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {item.file_type === null && (
-                <DropdownMenuItem onClick={handleEditClick}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Chỉnh sửa
-                </DropdownMenuItem>
-              )}
-
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-red-600"
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                {isDeleting ? "Đang xóa..." : "Xóa"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ItemActions>
       </Item>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -275,44 +220,6 @@ export function KnowledgeBaseItem({ item }: KnowledgeBaseItemProps) {
               </DialogFooter>
             </form>
           </Form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="max-w-sm sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Xác nhận xóa</DialogTitle>
-            <DialogDescription className="text-sm">
-              Bạn có chắc chắn muốn xóa "{item.file_name}"? Hành động này không
-              thể hoàn tác.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-            <DialogClose asChild>
-              <Button
-                variant="outline"
-                disabled={isDeleting}
-                className="w-full sm:w-auto"
-              >
-                Hủy
-              </Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              disabled={isDeleting}
-              className="w-full sm:w-auto"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang xóa...
-                </>
-              ) : (
-                "Xóa"
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

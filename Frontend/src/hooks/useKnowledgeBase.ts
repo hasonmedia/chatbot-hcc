@@ -5,7 +5,7 @@ import {
   getAllKnowledgeBaseEndpoint,
   getAllCategoriesEndpoint,
   createFilesKnowledgeBaseEndpoint,
-  deleteKnowledgeBaseDetailEndpoint,
+  deleteMultipleKnowledgeBaseDetailsEndpoint,
   addRichTextToKnowledgeBaseEndpoint,
   updateRichTextKnowledgeBaseEndpoint,
 } from "@/services/knowledgeService";
@@ -60,39 +60,62 @@ export const useKnowledgeBase = (
   const createFilesMutation = useMutation({
     mutationFn: createFilesKnowledgeBaseEndpoint,
     onSuccess: (data: any) => {
-      if (data.knowledge_base.status === "success") {
-        toast.success("Tải file lên thành công!");
-      } else if (data.knowledge_base.status === "partial_success") {
+      const result = data.knowledge_base;
+      
+      if (result.status === "success") {
+        toast.success(`✅ Tải lên thành công ${result.successful_count} file!`);
+      } else if (result.status === "partial_success") {
         toast.warning(
-          `Hoàn tất. Có ${data.knowledge_base.successful.length} file thành công và ${data.knowledge_base.failed.length} file thất bại.`
+          `⚠️ Hoàn tất xử lý: ${result.successful_count}/${result.total} file thành công`
         );
-        console.error("Các file thất bại:", data.knowledge_base.failed);
-      } else if (
-        data.knowledge_base.status === "error" &&
-        data.failed.length > 0
-      ) {
+        
+        // Log chi tiết các file thất bại
+        if (result.failed && result.failed.length > 0) {
+          console.group("❌ Các file thất bại:");
+          result.failed.forEach((item: any) => {
+            console.error(`- ${item.filename}: ${item.error}`);
+          });
+          console.groupEnd();
+        }
+      } else if (result.status === "error") {
         toast.error(
-          `Toàn bộ ${data.knowledge_base.failed.length} file đã tải lên đều bị lỗi.`
+          `❌ Tất cả ${result.failed_count} file đều bị lỗi!`
         );
-        console.error("Các file thất bại:", data.knowledge_base.failed);
+        
+        // Log chi tiết các file thất bại
+        if (result.failed && result.failed.length > 0) {
+          console.group("❌ Lỗi chi tiết:");
+          result.failed.forEach((item: any) => {
+            console.error(`- ${item.filename}: ${item.error}`);
+          });
+          console.groupEnd();
+        }
       } else {
-        toast.error("Đã xảy ra lỗi khi tải file.");
+        toast.error("Đã xảy ra lỗi không xác định khi tải file.");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["knowledgeBase"] });
+    },
+    onError: (error: any) => {
+      console.error("Upload error:", error);
+      toast.error(`Đã xảy ra lỗi khi tải file: ${error?.message || 'Lỗi không xác định'}`);
+    },
+  });
+
+  const deleteMultipleMutation = useMutation({
+    mutationFn: deleteMultipleKnowledgeBaseDetailsEndpoint,
+    onSuccess: (data) => {
+      if (data.failed_count > 0) {
+        toast.warning(
+          `Xóa thành công ${data.deleted_count}/${data.deleted_count + data.failed_count} file`
+        );
+      } else {
+        toast.success(`Xóa thành công ${data.deleted_count} file!`);
       }
       queryClient.invalidateQueries({ queryKey: ["knowledgeBase"] });
     },
     onError: () => {
-      toast.error("Đã xảy ra lỗi khi tải file.");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteKnowledgeBaseDetailEndpoint,
-    onSuccess: () => {
-      toast.success("Xóa dữ liệu thành công!");
-      queryClient.invalidateQueries({ queryKey: ["knowledgeBase"] });
-    },
-    onError: () => {
-      toast.error("Đã xảy ra lỗi khi xóa.");
+      toast.error("Đã xảy ra lỗi khi xóa nhiều file.");
     },
   });
   interface UpdateItemVariables {
@@ -137,7 +160,7 @@ export const useKnowledgeBase = (
     isCreatingRichText: createRichTextMutation.isPending,
     createFiles: createFilesMutation.mutateAsync,
     isCreatingFiles: createFilesMutation.isPending,
-    deleteItem: deleteMutation.mutateAsync,
-    isDeleting: deleteMutation.isPending,
+    deleteMultiple: deleteMultipleMutation.mutateAsync,
+    isDeletingMultiple: deleteMultipleMutation.isPending,
   };
 };

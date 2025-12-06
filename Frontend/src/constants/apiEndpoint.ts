@@ -76,9 +76,7 @@ export const API_ENDPOINT = {
     UPDATE_RICH_TEXT(detail_id: number) {
       return `/knowledge-base/rich-text/${detail_id}`;
     },
-    DELETE_DETAIL(detail_id: number) {
-      return `/knowledge-base/detail/${detail_id}`;
-    },
+    DELETE_MULTIPLE: "/knowledge-base/details",
     ADD_RICH_TEXT(kb_id: number) {
       return `/knowledge-base/rich-text/${kb_id}`;
     },

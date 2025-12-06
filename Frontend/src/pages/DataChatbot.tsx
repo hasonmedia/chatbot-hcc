@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import {
     Popover,
@@ -14,7 +15,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Search, Filter, X } from "lucide-react";
+import { PlusCircle, Search, Filter, X, Trash2, Loader2, Check } from "lucide-react";
 import { useKnowledgeBase } from "@/hooks/useKnowledgeBase";
 import {
     KnowledgeBaseItem,
@@ -30,8 +31,11 @@ export const DataChatbot = () => {
     const [selectedFileTypes, setSelectedFileTypes] = useState<string[]>([]);
     const [openFilter, setOpenFilter] = useState(false);
     const [openFileTypeFilter, setOpenFileTypeFilter] = useState(false);
+    const [selectedItems, setSelectedItems] = useState<number[]>([]);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeleteMode, setIsDeleteMode] = useState(false);
     
-    const { data, isLoadingData, categories, isLoadingCategories } = useKnowledgeBase(
+    const { data, isLoadingData, categories, isLoadingCategories, deleteMultiple, isDeletingMultiple } = useKnowledgeBase(
         selectedCategories.length > 0 ? selectedCategories : undefined,
         selectedFileTypes.length > 0 ? selectedFileTypes : undefined
     );
@@ -77,6 +81,45 @@ export const DataChatbot = () => {
         setSelectedFileTypes([]);
     };
 
+    const handleSelectItem = (detailId: number) => {
+        setSelectedItems(prev =>
+            prev.includes(detailId)
+                ? prev.filter(id => id !== detailId)
+                : [...prev, detailId]
+        );
+    };
+
+    const handleSelectAll = () => {
+        if (selectedItems.length === filteredData.length) {
+            setSelectedItems([]);
+        } else {
+            setSelectedItems(filteredData.map(item => item.detail_id));
+        }
+    };
+
+    const handleToggleDeleteMode = () => {
+        setIsDeleteMode(!isDeleteMode);
+        if (isDeleteMode) {
+            setSelectedItems([]);
+        }
+    };
+
+    const handleDeleteSelected = () => {
+        if (selectedItems.length > 0) {
+            setIsDeleteDialogOpen(true);
+        }
+    };
+
+    const confirmDeleteMultiple = async () => {
+        try {
+            await deleteMultiple(selectedItems);
+            setSelectedItems([]);
+            setIsDeleteDialogOpen(false);
+        } catch (error) {
+            console.error("Error deleting multiple items:", error);
+        }
+    };
+
     const selectedCategoryNames = categories?.filter(cat => 
         selectedCategories.includes(cat.id)
     ).map(cat => cat.name) || [];
@@ -107,6 +150,47 @@ export const DataChatbot = () => {
                     </div>
 
                     <div className="flex gap-2">
+                        {!isDeleteMode ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleToggleDeleteMode}
+                                    size="sm"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Xóa
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleSelectAll}
+                                    size="sm"
+                                >
+                                    <Check className="mr-2 h-4 w-4" />
+                                    {selectedItems.length === filteredData.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleToggleDeleteMode}
+                                    size="sm"
+                                >
+                                    <X className="mr-2 h-4 w-4" />
+                                    Hủy
+                                </Button>
+                                {selectedItems.length > 0 && (
+                                    <Button
+                                        variant="destructive"
+                                        onClick={handleDeleteSelected}
+                                        size="sm"
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Xóa ({selectedItems.length})
+                                    </Button>
+                                )}
+                            </>
+                        )}
                         <Popover open={openFilter} onOpenChange={setOpenFilter}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" className="relative">
@@ -276,6 +360,48 @@ export const DataChatbot = () => {
                 )}
             </div>
 
+            {/* Dialog xác nhận xóa nhiều */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Xác nhận xóa</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-sm text-gray-600">
+                            Bạn có chắc chắn muốn xóa {selectedItems.length} file đã chọn?
+                        </p>
+                        <p className="text-sm text-red-600 mt-2 font-semibold">
+                            Cảnh báo: Hành động này không thể hoàn tác!
+                        </p>
+                    </div>
+                    <DialogFooter className="flex gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                            disabled={isDeletingMultiple}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={confirmDeleteMultiple}
+                            disabled={isDeletingMultiple}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            {isDeletingMultiple ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Đang xóa...
+                                </>
+                            ) : (
+                                "Xóa"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <div className="flex w-full flex-col gap-3 sm:gap-4">
                 {isLoadingData && (
                     <>
@@ -289,7 +415,21 @@ export const DataChatbot = () => {
                     filteredData &&
                     filteredData.length > 0 &&
                     filteredData.map((item) => (
-                        <KnowledgeBaseItem key={item.detail_id} item={item} />
+                        <div key={item.detail_id} className="flex items-center gap-2">
+                            <div className="flex-1">
+                                <KnowledgeBaseItem 
+                                    item={item}
+                                />
+                            </div>
+                            {isDeleteMode && (
+                                <input
+                                    type="checkbox"
+                                    checked={selectedItems.includes(item.detail_id)}
+                                    onChange={() => handleSelectItem(item.detail_id)}
+                                    className="h-4 w-4 rounded border-gray-300 cursor-pointer shrink-0"
+                                />
+                            )}
+                        </div>
                     ))}
 
                 {!isLoadingData && (!filteredData || filteredData.length === 0) && (

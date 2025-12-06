@@ -271,7 +271,7 @@ async def search_similar_documents(
             query=query,
             embedding_key=embedding_key,
             embedding_model_name=embedding_model_name,
-            top_k=5,
+            top_k=top_k,
             metadata_filter=metadata
         )
         
@@ -306,7 +306,7 @@ async def generate_response_prompt(
         # Tìm kiếm tài liệu
         knowledge = await search_similar_documents(
             query, 
-            top_k=10,
+            top_k=1,
             embedding_key=embedding_key,
             embedding_model_name=embedding_model_name,
             bot_key=bot_key,
@@ -321,7 +321,6 @@ async def generate_response_prompt(
             history=history,
             query=query
         )
-        
         
         
         if "gemini" in bot_model_name.lower():

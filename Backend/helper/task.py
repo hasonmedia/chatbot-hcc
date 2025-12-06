@@ -75,6 +75,17 @@ async def update_session_admin_background(chat_session_id: int, sender_name: str
                 cache_session_data(chat_session_id, session_data, ttl=300)
                 clear_check_reply_cache(chat_session_id)
                 
+                # Gửi sự kiện socket để cập nhật realtime cho tất cả admin
+                socket_data = {
+                    "type": "session_update",
+                    "chat_session_id": db_session.id,
+                    "session_status": db_session.status,
+                    "current_receiver": db_session.current_receiver,
+                    "previous_receiver": db_session.previous_receiver,
+                    "time": db_session.time.isoformat() if db_session.time else None
+                }
+                await send_socket_message(chat_session_id, socket_data)
+                
         except Exception as e:
             traceback.print_exc()
             await new_db.rollback()

@@ -40,7 +40,7 @@ async def create_kb_files(
         category_id=category_id,
         category_name=category_name,
         description=description,
-        files=[files],  # Chuyển thành list để giữ tương thích với service
+        files=[files],
         user_id=user_id,
         db=db
     )
@@ -61,13 +61,13 @@ async def update_kb_rich_text(
         db=db
     )
 
-@router.delete("/detail/{detail_id}")
-async def delete_kb_detail(
-    detail_id: int,
+@router.delete("/details")
+async def delete_kb_details(
+    data: dict = Body(...),
     db: AsyncSession = Depends(get_db)
 ):
-
-    return await knowledge_base_controller.delete_kb_detail_controller(detail_id, db)
+    
+    return await knowledge_base_controller.delete_multiple_kb_details_controller(data, db)
 
 @router.post("/rich-text/{kb_id}")
 async def add_kb_rich_text(

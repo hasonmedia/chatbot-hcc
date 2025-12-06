@@ -80,7 +80,8 @@ async def create_chunks(
     
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ". ", " ", ""]
     )
     all_chunks = text_splitter.split_text(content)
 
@@ -133,7 +134,7 @@ async def process_uploaded_file(
         if ext == '.pdf':
             content = await extract_text_from_pdf(file_path)
         elif ext in ['.docx', '.doc']:
-            content = await extract_text_from_docx(file_path)
+            content = await extract_text_from_docx(file_path)     
         elif ext in ['.xlsx', '.xls']:
             if "dịch vụ công" in category_name.lower():
                 content = await extract_procedures_from_excel_tthc(file_path)

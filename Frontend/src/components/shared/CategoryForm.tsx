@@ -56,16 +56,19 @@ export const CategoryForm = ({
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="description">Mô tả</Label>
+                <Label htmlFor="description">
+                    Mô tả <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) =>
                         setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="Nhập mô tả (tùy chọn)"
+                    placeholder="Nhập mô tả"
                     rows={4}
                     disabled={isLoading}
+                    required
                 />
             </div>
 
@@ -78,7 +81,7 @@ export const CategoryForm = ({
                 >
                     Hủy
                 </Button>
-                <Button type="submit" disabled={isLoading || !formData.name.trim()}>
+                <Button type="submit" disabled={isLoading || !formData.name.trim() || !formData.description.trim()}>
                     {isLoading ? "Đang xử lý..." : category ? "Cập nhật" : "Tạo mới"}
                 </Button>
             </div>

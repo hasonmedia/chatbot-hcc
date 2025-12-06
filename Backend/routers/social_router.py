@@ -34,7 +34,7 @@ async def customer_ws(websocket: WebSocket):
         return
 
     try:
-        # customer_chat tự tạo DB session khi cần
+        
         await customer_chat(websocket, session_id)
     except WebSocketDisconnect:
         print(f"Customer WS disconnected: {session_id}")
@@ -76,12 +76,8 @@ async def admin_ws(websocket: WebSocket):
 
 
 async def process_message(platform: str, body: dict):
-    """
-    Hàm helper chung để xử lý tin nhắn trong background
-    để đảm bảo mỗi task có DB session riêng.
-    """
     try:
-        # Tạo session CSDL mới chỉ cho task này
+        
         async with AsyncSessionLocal() as db:
             await chat_platform(platform, body, db)
     except Exception as e:
@@ -90,23 +86,21 @@ async def process_message(platform: str, body: dict):
 
 # FB
 @router.get("/webhook/fb") 
-async def verify_fb_webhook(request: Request): # Đổi tên hàm
+async def receive_message(request: Request):
     mode = request.query_params.get("hub.mode")
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
- 
-    VERIFY_TOKEN = "YOUR_VERIFY_TOKEN" # Bạn nên lấy từ .env
-     
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        print("✅ WEBHOOK_VERIFIED")
-        return Response(content=challenge, media_type="text/plain", status_code=200)
-    else:
-        print("❌ WEBHOOK_VERIFICATION_FAILED")
-        return Response(status_code=403)
+    
+    if mode and token:
+        if mode == "subscribe":
+            return Response(content=challenge, media_type="text/plain", status_code=200)
+        else:
+            return Response(status_code=403)
+    return Response(status_code=400)
 
 
 @router.post("/webhook/fb")
-async def receive_fb_message(request: Request): # Đổi tên hàm
+async def receive_fb_message(request: Request):
     body = await request.json()
     asyncio.create_task(process_message("fb", body))
     return Response(status_code=200)
@@ -114,18 +108,18 @@ async def receive_fb_message(request: Request): # Đổi tên hàm
 
 # TELEGRAM_BOT
 @router.post("/webhook/telegram") 
-async def receive_tele_message(request: Request): # Đổi tên hàm
+async def receive_tele_message(request: Request): 
     data = await request.json()
      
-    # SỬA: Không 'await' ở đây, dùng task background
+    
     asyncio.create_task(process_message("tele", data))
 
-    return Response(status_code=200) # Trả về OK ngay lập tức
+    return Response(status_code=200)
 
 
 # ZALO
 @router.post("/zalo/webhook") 
-async def receive_zalo_message(request: Request): # Đổi tên hàm
+async def receive_zalo_message(request: Request): 
     data = await request.json()
     asyncio.create_task(process_message("zalo", data))
     return Response(status_code=200)

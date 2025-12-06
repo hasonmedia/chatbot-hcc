@@ -36,6 +36,7 @@ async def prompt_builder(knowledge, history, query) -> str:
         - **url**
         - Nếu hỏi về **thời hạn, cơ quan tiếp nhận, phí/lệ phí**, trình bày **rõ ràng trong các dòng riêng biệt**.
         - Nếu câu hỏi mơ hồ, hãy **hỏi lại để làm rõ ý**.
+        - Nếu người dùng chỉ hỏi về **một mục cụ thể** (ví dụ: “phí”, “lệ phí”, “thời hạn giải quyết”, “cách thức thực hiện”, “cơ quan tiếp nhận”…), bạn **chỉ trả lời đúng mục đó**, không liệt kê thêm các phần khác.
         
         YÊU CẦU BẮT BUỘC:
         - Không được bỏ sót link/url đối với **thủ tục hành chính**
