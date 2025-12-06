@@ -89,6 +89,8 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isDeletingSessions, setIsDeletingSessions] = useState(false);
+  const [isDeletingMessages, setIsDeletingMessages] = useState(false);
   const handleSelectSessionResponsive = (sessionId: number) => {
     handleSelectSession(sessionId);
   };
@@ -146,41 +148,49 @@ export default function ChatPage() {
     setIsBlockBotSheetOpen(true);
   };
 
-  const handleDeleteSession = async () => {
-    const sessionsToDelete =
-      selectedSessions.length > 0
-        ? selectedSessions
-        : [currentSessionId].filter(Boolean);
-    if (sessionsToDelete.length === 0) return;
-    const result = await deleteChatSessions(sessionsToDelete as number[]);
+  const handleDeleteSessions = async () => {
+    if (selectedSessions.length === 0) return;
 
-    if (result.success) {
-      toast.success(`Xóa ${result.count} phiên chat thành công!`);
-      setSelectedSessions([]);
-      setIsSessionSelectionMode(false);
-    } else {
-      toast.error(result.error || "Xóa phiên chat thất bại!");
+    setIsDeletingSessions(true);
+    try {
+      const result = await deleteChatSessions(selectedSessions as number[]);
+      if (result.success) {
+        toast.success(`Đã xóa ${result.count} phiên chat!`);
+        setSelectedSessions([]);
+        // Local state sẽ được cập nhật qua WebSocket
+      } else {
+        toast.error(result.error || "Xóa phiên chat thất bại!");
+      }
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xóa phiên chat!");
+    } finally {
+      setIsDeletingSessions(false);
+      setIsDeleteSessionDialogOpen(false);
     }
-
-    setIsDeleteSessionDialogOpen(false);
   };
 
+  // Cập nhật hàm xử lý xóa messages
   const handleDeleteMessages = async () => {
-    if (!currentSessionId || selectedMessages.length === 0) return;
+    if (selectedMessages.length === 0) return;
 
-    const result = await deleteMessages(selectedMessages);
-
-    if (result.success) {
-      toast.success(`Xóa ${result.count} tin nhắn thành công!`);
-      setSelectedMessages([]);
-      setIsSelectionMode(false);
-    } else {
-      toast.error(result.error || "Xóa tin nhắn thất bại!");
+    setIsDeletingMessages(true);
+    try {
+      const result = await deleteMessages(selectedMessages);
+      if (result.success) {
+        toast.success(`Đã xóa ${result.count} tin nhắn!`);
+        setSelectedMessages([]);
+        setIsSelectionMode(false);
+        // Local state sẽ được cập nhật qua WebSocket
+      } else {
+        toast.error(result.error || "Xóa tin nhắn thất bại!");
+      }
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xóa tin nhắn!");
+    } finally {
+      setIsDeletingMessages(false);
+      setIsDeleteMessagesDialogOpen(false);
     }
-
-    setIsDeleteMessagesDialogOpen(false);
   };
-
   const handleSelectAllSessions = () => {
     if (selectedSessions.length === filteredSessions.length) {
       setSelectedSessions([]);
@@ -478,6 +488,18 @@ export default function ChatPage() {
                 </h3>
               </div>
               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={!currentSessionId}
+                  onClick={() => {
+                    console.log("Handle auto archive");
+                  }}
+                  className="hidden sm:flex text-xs lg:text-sm"
+                >
+                  <Archive className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
+                  Mở bot
+                </Button>
                 <Button
                   variant="default"
                   size="sm"
@@ -853,10 +875,14 @@ export default function ChatPage() {
                   Hủy
                 </AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleDeleteSession}
-                  className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
+                  onClick={handleDeleteSessions}
+                  disabled={isDeletingSessions}
+                  className="bg-red-600 hover:bg-red-700"
                 >
-                  Xóa
+                  {isDeletingSessions && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {isDeletingSessions ? "Đang xóa..." : "Xác nhận xóa"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -883,9 +909,13 @@ export default function ChatPage() {
                 </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteMessages}
-                  className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
+                  disabled={isDeletingMessages}
+                  className="bg-red-600 hover:bg-red-700"
                 >
-                  Xóa
+                  {isDeletingMessages && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {isDeletingMessages ? "Đang xóa..." : "Xác nhận xóa"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

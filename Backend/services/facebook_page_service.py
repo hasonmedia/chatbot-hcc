@@ -1,3 +1,4 @@
+import requests
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.facebook_page import FacebookPage
@@ -38,6 +39,23 @@ async def create_page_service(data: dict, db: AsyncSession):
         company_id=1  # cố định company_id
     )
     db.add(page)
+    page_id = data["page_id"]
+    page_token = data["access_token"]
+
+    webhook_url = f"https://graph.facebook.com/v21.0/{page_id}/subscribed_apps"
+
+    subscribe_params = {
+        "subscribed_fields": "messages",
+        "access_token": page_token
+    }
+
+    webhook_res = requests.post(webhook_url, data=subscribe_params)
+
+    if webhook_res.status_code != 200:
+        print(f"Lỗi subscribe webhook Page {page_id}: {webhook_res.text}")
+    else:
+        print(f"Đã đăng ký webhook cho Page {page_id}")
+
     await db.commit()
     await db.refresh(page)
     return page
@@ -84,6 +102,17 @@ async def update_page_service(page_id: int, data: dict, db: AsyncSession):
 async def delete_page_service(page_id: int, db: AsyncSession):
     result = await db.execute(select(FacebookPage).filter(FacebookPage.id == page_id))
     page = result.scalar_one_or_none()
+    webhook_url = f"https://graph.facebook.com/v21.0/{page.page_id}/subscribed_apps"
+    subscribe_params = {
+        "subscribed_fields": "messages",
+        "access_token": page.access_token
+    }
+    webhook_res = requests.delete(webhook_url, data=subscribe_params)   
+    if webhook_res.status_code != 200:
+        return False
+    else:
+        print(f"Đã hủy đăng ký webhook cho Page {page.page_name}")
+    
     if not page:
         return None
     await db.delete(page)

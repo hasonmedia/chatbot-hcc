@@ -79,36 +79,94 @@ export const useAdminChat = () => {
     // Hàm callback khi có tin nhắn mới từ BẤT KỲ ai
     const handleNewMessage = (data: any) => {
       console.log("Admin nhận tin nhắn:", data);
-
-      // Xử lý sự kiện cập nhật session (từ admin khác)
-      if (data.type === "session_update") {
-        console.log("Nhận sự kiện cập nhật session:", data);
+      if (data.type === "sessions_deleted") {
+        console.log("Nhận sự kiện xóa sessions:", data);
 
         setChatSessions((prevSessions) => {
-          const sessionId = Number(data.chat_session_id);
-          const sessionIndex = prevSessions.findIndex(
-            (s) => s.chat_session_id === sessionId
+          // Lọc bỏ các session đã bị xóa
+          const updatedSessions = prevSessions.filter(
+            (session) =>
+              !data.deleted_session_ids.includes(session.chat_session_id)
           );
 
-          if (sessionIndex > -1) {
-            const updatedSession: ChatSession = {
-              ...prevSessions[sessionIndex],
-              status: data.session_status,
-              current_receiver: data.current_receiver,
-              previous_receiver: data.previous_receiver,
-              time: data.time,
-            };
-            const newSessionsList = [...prevSessions];
-            newSessionsList[sessionIndex] = updatedSession;
-            return newSessionsList;
-          }
-
-          return prevSessions;
+          return updatedSessions;
         });
 
-        // Nếu đang xem session này, cập nhật currentSessionInfo
-        // (currentSessionInfo sẽ tự động cập nhật qua useMemo)
-        return; // Không xử lý thêm cho session_update
+        // Nếu session hiện tại bị xóa, reset về null
+        if (data.deleted_session_ids.includes(currentSessionIdRef.current)) {
+          setCurrentSessionId(null);
+          setMessages([]);
+        }
+
+        return; // Không xử lý thêm
+      }
+
+      if (data.type === "messages_deleted") {
+        console.log("🗑️ Nhận sự kiện xóa messages:", data);
+
+        const sessionId = Number(data.chat_session_id);
+
+        // Nếu đang xem session này, cập nhật messages
+        if (sessionId === currentSessionIdRef.current) {
+          console.log("📍 Current session ID matches:", sessionId);
+
+          setMessages((prevMessages) => {
+            console.log("📝 Messages trước khi xóa:", prevMessages.length);
+            console.log("🎯 IDs cần xóa:", data.deleted_message_ids);
+            console.log(
+              "📋 Chi tiết messages:",
+              prevMessages.map((m) => ({
+                id: m.id,
+                type: typeof m.id,
+                content: m.content?.substring(0, 30),
+              }))
+            );
+
+            const updatedMessages = prevMessages.filter((message) => {
+              // Kiểm tra message.id tồn tại trước khi so sánh
+              if (!message.id) {
+                console.log("⚠️ Message không có ID, giữ lại");
+                return true;
+              }
+
+              // Đảm bảo so sánh đúng kiểu dữ liệu
+              const messageId = Number(message.id);
+              const shouldDelete = data.deleted_message_ids.includes(messageId);
+
+              console.log(
+                `📨 Message ID ${messageId} (${typeof messageId}): ${
+                  shouldDelete ? "XÓA" : "GIỮ"
+                }`
+              );
+
+              return !shouldDelete;
+            });
+
+            console.log("✅ Messages sau khi xóa:", updatedMessages.length);
+            return updatedMessages;
+          });
+        } else {
+          console.log("❌ Session ID không khớp:", {
+            sessionId,
+            current: currentSessionIdRef.current,
+          });
+        }
+
+        // Cập nhật last_message của session trong danh sách
+        setChatSessions((prevSessions) => {
+          return prevSessions.map((session) => {
+            if (session.chat_session_id === sessionId) {
+              return {
+                ...session,
+                last_message: "Một số tin nhắn đã bị xóa",
+                last_updated: new Date().toISOString(),
+              };
+            }
+            return session;
+          });
+        });
+
+        return; // Không xử lý thêm
       }
 
       // Xử lý format mới: data có chat_session_id (từ socket admin/customer)
@@ -502,17 +560,6 @@ export const useAdminChat = () => {
     try {
       const response = await deleteSessionChat(sessionIds);
       if (response.status === 200) {
-        setChatSessions((prevSessions) =>
-          prevSessions.filter(
-            (session) => !sessionIds.includes(session.chat_session_id)
-          )
-        );
-
-        if (sessionIds.includes(currentSessionId || -1)) {
-          setCurrentSessionId(null);
-          setMessages([]);
-        }
-
         return { success: true, count: sessionIds.length };
       } else {
         return { success: false, error: "Xóa phiên chat thất bại!" };
@@ -529,54 +576,19 @@ export const useAdminChat = () => {
       return { success: false, error: "Không có phiên chat được chọn!" };
     }
 
+    console.log("🚀 Bắt đầu xóa messages:", { messageIds, currentSessionId });
+
     try {
       const response = await deleteMess(messageIds, currentSessionId);
+      console.log("📤 Response từ backend:", response);
+
       if (response.status === 200) {
-        // Cập nhật danh sách tin nhắn - xóa các tin nhắn đã bị xóa
-        setMessages((prevMessages) =>
-          prevMessages.filter(
-            (message) => !messageIds.includes(message.id || -1)
-          )
-        );
-
-        // Cập nhật last_message của phiên nếu tin nhắn cuối cùng bị xóa
-        const remainingMessages = messages.filter(
-          (message) => !messageIds.includes(message.id || -1)
-        );
-
-        if (remainingMessages.length > 0) {
-          const lastMessage = remainingMessages[remainingMessages.length - 1];
-          setChatSessions((prevSessions) =>
-            prevSessions.map((session) =>
-              session.chat_session_id === currentSessionId
-                ? {
-                    ...session,
-                    last_message: lastMessage.content,
-                    last_updated: lastMessage.created_at,
-                  }
-                : session
-            )
-          );
-        } else {
-          // Nếu không còn tin nhắn nào, cập nhật last_message thành rỗng
-          setChatSessions((prevSessions) =>
-            prevSessions.map((session) =>
-              session.chat_session_id === currentSessionId
-                ? {
-                    ...session,
-                    last_message: "",
-                  }
-                : session
-            )
-          );
-        }
-
         return { success: true, count: messageIds.length };
       } else {
         return { success: false, error: "Xóa tin nhắn thất bại!" };
       }
     } catch (error) {
-      console.error("Lỗi khi xóa tin nhắn:", error);
+      console.error("❌ Lỗi khi xóa tin nhắn:", error);
       return { success: false, error: "Có lỗi xảy ra khi xóa tin nhắn!" };
     }
   };
