@@ -36,4 +36,5 @@ export interface BackendSessionData {
 
 export interface MessageItemProps {
   msg: MessageData;
+  botName?: string;
 }

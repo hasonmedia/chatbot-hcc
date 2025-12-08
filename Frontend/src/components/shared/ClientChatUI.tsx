@@ -22,15 +22,13 @@ import {
 } from "lucide-react";
 import type { MessageItemProps } from "@/types/message";
 import { formatTime } from "@/lib/formatDateTime";
-import { useLLM } from "@/hooks/useLLM";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
+export const MessageItem: React.FC<MessageItemProps> = ({ msg, botName }) => {
   const isCustomer = msg.sender_type === "customer";
   const isBot = msg.sender_type === "bot";
   const isAdmin = msg.sender_type === "admin";
-  const { llmConfig } = useLLM();
   const getAvatarFallback = () => {
     if (isCustomer) return <UserCircle2 />;
     if (isBot) return <Bot />;
@@ -52,7 +50,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg }) => {
     displayContent = msg.content;
   }
   const getSenderName = () => {
-    if (isBot) return llmConfig?.botName || "Bot hỗ trợ";
+    if (isBot) return botName || "Bot hỗ trợ";
     if (isAdmin) return `Cán bộ: ${msg.sender_type || "Hỗ trợ viên"}`;
     return null;
   };

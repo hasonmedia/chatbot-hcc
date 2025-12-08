@@ -13,7 +13,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1
+ACCESS_TOKEN_EXPIRE_MINUTES = 90
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 def create_access_token(data: dict):
@@ -172,11 +172,6 @@ async def get_current_user(
     referer = request.headers.get("referer", "")
 
     token = request.cookies.get("access_token")
-    if not token:
-        token = request.cookies.get("access-token")  # Try kebab-case
-    if not token:
-        token = request.cookies.get("accessToken")   # Try camelCase
-        
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
 

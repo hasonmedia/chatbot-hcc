@@ -11,7 +11,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/context/AuthContext";
-
+import { Eye, EyeOff } from "lucide-react";
 export function LoginForm({
   className,
   ...props
@@ -19,6 +19,7 @@ export function LoginForm({
   const { loginUser, loading, error, user } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,13 +28,15 @@ export function LoginForm({
       const res = await loginUser(username, password);
       console.log("Đăng nhập thành công:", res);
       toast.success(`Xin chào, ${user?.full_name || username}!`);
-      navigate("/trang-chu"); // ✅ chuyển về trang chính
+      navigate("/trang-chu");
     } catch (err: any) {
       console.error("Lỗi đăng nhập:", err);
       toast.error(err.response?.data?.detail || "Đăng nhập thất bại");
     }
   };
-
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
+  };
   return (
     <form
       className={cn("flex flex-col gap-6", className)}
@@ -62,16 +65,32 @@ export function LoginForm({
               Bạn quên mật khẩu?
             </a>
           </div>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="pr-10"
+            />
+
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
         </Field>
 
-        {/* Hiển thị lỗi từ context nếu có */}
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <Field>

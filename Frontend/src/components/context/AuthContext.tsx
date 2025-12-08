@@ -22,31 +22,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserCreateRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const fetchUser = async () => {
-    try {
-      setLoading(true);
-      const me = await getMe();
-      setUser(me);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
-        console.error("Fetch user error:", error);
-      }
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => {
-    fetchUser();
 
-    // Listen for auth failure events from axios interceptor
+  useEffect(() => {
+    let isMounted = true;
+
+    // Thêm timeout để tránh loading vô hạn
+    const timeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn("Auth loading timeout - forcing loading to false");
+        setLoading(false);
+      }
+    }, 5000); // 10 seconds timeout
+
+    const runFetchUser = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const me = await getMe();
+        if (isMounted) {
+          setUser(me);
+        }
+      } catch (error: any) {
+        if (isMounted) {
+          // Chỉ log lỗi nếu không phải 401 (unauthorized)
+          if (error.response?.status !== 401) {
+            console.error("Fetch user error:", error);
+          }
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+        clearTimeout(timeoutId);
+      }
+    };
+
+    runFetchUser();
+
     const handleAuthFailed = () => {
-      setUser(null);
+      if (isMounted) {
+        setUser(null);
+        setLoading(false); // Đảm bảo loading = false khi auth failed
+      }
     };
 
     window.addEventListener("auth-failed", handleAuthFailed);
 
     return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
       window.removeEventListener("auth-failed", handleAuthFailed);
     };
   }, []);
@@ -54,8 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      await login(username, password);
-      const me = await getMe(); // Gọi lại để lấy thông tin user
+      const res = await login(username, password);
+      const me = await getMe();
       setUser(me);
     } catch (err: any) {
       console.error("Login error:", err);

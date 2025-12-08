@@ -11,9 +11,8 @@ import {
   deleteMess,
 } from "@/services/chatService";
 
-// Type này từ file gốc của bạn
 export type ChatSession = {
-  chat_session_id: number; // Đổi từ string sang number để đồng nhất với backend
+  chat_session_id: number;
   customer_name: string;
   last_message: string;
   last_updated: string;
@@ -495,8 +494,6 @@ export const useAdminChat = () => {
     time: string
   ) => {
     try {
-      // Chỉ gọi API, không cập nhật state trực tiếp
-      // Socket event sẽ tự động cập nhật UI cho tất cả admin
       const res = await updateChatSession(String(sessionId), { status, time });
       return res;
     } catch (error) {

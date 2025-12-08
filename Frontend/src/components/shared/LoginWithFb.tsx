@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 const FB_APP_ID = "864035886072571";
 // const Url = `https://ardis-nondistracting-cogitatively.ngrok-free.dev`;
-const Url = `https://ardis-nondistracting-cogitatively.ngrok-free.dev`;
+const Url = `http://localhost:8000`;
 const REDIRECT_URI = `${Url}/facebook-pages/callback`;
 
 const FB_SCOPE =

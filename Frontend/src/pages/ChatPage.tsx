@@ -52,6 +52,7 @@ import { SessionItem, MessageItem } from "@/components/shared/ChatComponents";
 import { RadioGroupSetting } from "../components/shared/RadioGroup";
 import Countdown from "@/components/shared/Countdown";
 import { toast } from "react-toastify";
+import { useLLM } from "@/hooks/useLLM";
 
 export default function ChatPage() {
   const {
@@ -72,6 +73,8 @@ export default function ChatPage() {
     deleteMessages,
     messagesEndRef,
   } = useAdminChat();
+
+  const { llmConfig } = useLLM();
 
   const [isInfoSheetOpen, setIsInfoSheetOpen] = useState(false);
   const [isBlockBotSheetOpen, setIsBlockBotSheetOpen] = useState(false);
@@ -168,7 +171,7 @@ export default function ChatPage() {
 
   const handleDeleteMessages = async () => {
     if (!currentSessionId || selectedMessages.length === 0) return;
-
+    console.log("Deleting messages:", selectedMessages);
     const result = await deleteMessages(selectedMessages);
 
     if (result.success) {
@@ -729,26 +732,38 @@ export default function ChatPage() {
                       className={`relative min-w-0 ${
                         isSelectionMode ? "cursor-pointer" : ""
                       }`}
-                      onClick={() => {
-                        // Không làm gì khi click vào message trong selection mode
-                        // Chỉ checkbox mới handle selection
-                      }}
+                      onClick={() => {}}
                     >
                       {isSelectionMode && (
                         <div className="absolute bottom-2 left-2 z-10 bg-white/90 rounded p-0.5">
                           <Checkbox
                             checked={
-                              msg.id ? selectedMessages.includes(msg.id) : false
+                              msg.id &&
+                              !msg.isOptimistic &&
+                              Number(msg.id) < 1000000000000
+                                ? selectedMessages.includes(Number(msg.id))
+                                : false
                             }
                             onCheckedChange={(checked) => {
-                              if (msg.id) {
+                              if (
+                                msg.id &&
+                                !msg.isOptimistic &&
+                                Number(msg.id) < 1000000000000
+                              ) {
                                 setSelectedMessages((prev) =>
                                   checked
-                                    ? [...prev, msg.id!]
-                                    : prev.filter((id) => id !== msg.id!)
+                                    ? [...prev, Number(msg.id!)]
+                                    : prev.filter(
+                                        (id) => id !== Number(msg.id!)
+                                      )
                                 );
                               }
                             }}
+                            disabled={
+                              !msg.id ||
+                              msg.isOptimistic ||
+                              Number(msg.id) >= 1000000000000
+                            }
                             className="w-4 h-4 sm:w-3 sm:h-3"
                           />
                         </div>
@@ -765,6 +780,7 @@ export default function ChatPage() {
                         <MessageItem
                           msg={msg}
                           onImageClick={handleImageClick}
+                          botName={llmConfig?.botName}
                         />
                       </div>
                     </div>

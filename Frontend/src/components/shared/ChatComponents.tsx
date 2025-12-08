@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import type { MessageData } from "@/types/message";
 import type { ChatSession } from "@/hooks/useAdminChat";
 import { UserCircle2, Bot } from "lucide-react";
-import { useLLM } from "@/hooks/useLLM";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 export const formatTime = (isoString: string) => {
@@ -143,11 +142,13 @@ export function SessionItem({
 type MessageItemProps = {
   msg: MessageData;
   onImageClick?: (imageUrl: string) => void;
+  botName?: string;
 };
 
 export const MessageItem: React.FC<MessageItemProps> = ({
   msg,
   onImageClick,
+  botName,
 }) => {
   const isCustomer = msg.sender_type === "customer";
   const isBot = msg.sender_type === "bot";
@@ -178,9 +179,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   } catch (error) {
     displayContent = msg.content;
   }
-  const { llmConfig } = useLLM();
   const getSenderName = () => {
-    if (isBot) return llmConfig?.botName || "Bot hỗ trợ";
+    if (isBot) return botName || "Bot hỗ trợ";
     if (isAdmin) return `Cán bộ: ${msg.sender_type || "Hỗ trợ viên"}`;
     return null; // Không hiển thị tên cho customer
   };

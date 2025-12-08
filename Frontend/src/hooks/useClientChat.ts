@@ -130,14 +130,8 @@ export const useClientChat = () => {
               console.log("Nhận khi chặn", data);
             }
           } else if (data.type === "session_deleted") {
-            console.log("Nhận sự kiện xóa session:", data);
-
-            // const deletedIds = data.deleted_ids || [data.chat_session_id];
             const numericSessionId = Number(sessionId);
-            console.log("ID phiên hiện tại:", numericSessionId);
             if (numericSessionId == 0) {
-              console.log("Phiên chat hiện tại đã bị xoá. Reset UI.");
-
               localStorage.removeItem("chatSessionId");
               initializeChat();
               setSessionId(null);
@@ -154,8 +148,26 @@ export const useClientChat = () => {
             }
 
             return;
-          }
+          } else if (data.type === "messages_deleted_from_session") {
+            // Xử lý xóa tin nhắn theo ID
+            if (
+              data.deleted_message_ids &&
+              Array.isArray(data.deleted_message_ids)
+            ) {
+              setMessages((prevMessages) => {
+                const filteredMessages = prevMessages.filter((message) => {
+                  const messageId = message.id;
+                  const isDeleted = data.deleted_message_ids.some(
+                    (deleteId: any) => Number(deleteId) === Number(messageId)
+                  );
+                  return !isDeleted;
+                });
+                return filteredMessages;
+              });
+            }
 
+            return;
+          }
           const normalizedMessage: MessageData = {
             ...data,
             created_at: data.created_at || new Date().toISOString(),

@@ -53,7 +53,11 @@ const ChatUI = () => {
           ) : (
             <div className="space-y-2 sm:space-y-3">
               {messages.map((msg, index) => (
-                <MessageItem key={msg.id || index} msg={msg} />
+                <MessageItem
+                  key={msg.id || index}
+                  msg={msg}
+                  botName={llmConfig?.botName}
+                />
               ))}
 
               <TypingIndicator isVisible={isBotActive} />

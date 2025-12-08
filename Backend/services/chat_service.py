@@ -293,7 +293,6 @@ async def delete_message(chatId: int, ids: list[int], db):
             .limit(1)
         )
         last_message = last_message_result.scalar_one_or_none()
-        # Gửi socket event cho tất cả admin về việc xóa messages
         socket_data = {
             "type": "messages_deleted_from_session",
             "chat_session_id": chatId,
