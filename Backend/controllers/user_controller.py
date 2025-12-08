@@ -2,10 +2,10 @@ from models.exceptions import AuthException, InactiveAccountException, InvalidCr
 from fastapi import Response, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from services import user_service
-from middleware.jwt import create_access_token, set_cookie, create_refresh_token
+from middleware.jwt import create_access_token, set_cookie, create_refresh_token, save_refresh_token
 
 async def login_user_controller(data: dict, response: Response, db: AsyncSession):
-    try:
+    try:        
         user = await user_service.authenticate_user(db, data["username"], data["password"])
         if not user:
             raise InvalidCredentialsException()
@@ -17,16 +17,15 @@ async def login_user_controller(data: dict, response: Response, db: AsyncSession
             "fullname": user.full_name,
             "email": user.email,
             "company_id": user.company_id
-        }
-        access_token = create_access_token(access_token_data)
-        
+        }        
+        access_token = create_access_token(access_token_data)        
         refresh_token_data = {
             "sub": user.username,
             "id": user.id,
             "type": "refresh" 
         }
         refresh_token = create_refresh_token(refresh_token_data)
-        
+        await save_refresh_token(user.id, refresh_token)
         set_cookie(response, access_token, refresh_token)
         
         return { 

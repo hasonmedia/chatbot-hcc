@@ -36,6 +36,9 @@ async def generate_gpt_response(
             return json.dumps(fallback_response, ensure_ascii=False)
 
     except Exception as e:
+        
+        print("Error generating GPT response:", str(e))
+        
         error_response = {
             "message": "Xin lỗi, đã có lỗi xảy ra khi xử lý câu hỏi của bạn.",
             "links": []

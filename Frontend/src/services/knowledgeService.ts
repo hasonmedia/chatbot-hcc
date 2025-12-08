@@ -58,12 +58,15 @@ export const updateRichTextKnowledgeBaseEndpoint = async (
     );
     return response.data;
 };
-export const deleteKnowledgeBaseDetailEndpoint = async (detail_id: number) => {
+
+export const deleteMultipleKnowledgeBaseDetailsEndpoint = async (detail_ids: number[]) => {
     const response = await axiosClient.delete(
-        API_ENDPOINT.KNOWLEDGE_BASE.DELETE_DETAIL(detail_id)
+        API_ENDPOINT.KNOWLEDGE_BASE.DELETE_MULTIPLE,
+        { data: { detail_ids } }
     );
     return response.data;
 };
+
 export const addRichTextToKnowledgeBaseEndpoint = async (
     kb_id: number,
     data: {

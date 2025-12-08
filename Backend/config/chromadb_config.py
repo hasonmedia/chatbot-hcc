@@ -100,21 +100,32 @@ async def add_chunks_tthc(
     
 # Đang dùng 
 async def delete_chunks(
-    knowledge_id: str,
+    knowledge_id: Optional[str] = None,
+    category_id: Optional[str] = None,
     collection_name: str = "document_chunks"
 ) -> bool:
 
     try:
+        if not knowledge_id and not category_id:
+            raise ValueError("Ít nhất phải cung cấp knowledge_id hoặc category_id")
         
         collection = get_or_create_collection(collection_name)
 
-        results = collection.get(where={"knowledge_id": str(knowledge_id)})
+        # Xây dựng filter dựa trên tham số được truyền vào
+        if knowledge_id:
+            where_filter = {"knowledge_id": str(knowledge_id)}
+            filter_type = f"knowledge_id='{knowledge_id}'"
+        else:
+            where_filter = {"category_id": str(category_id)}
+            filter_type = f"category_id='{category_id}'"
+
+        results = collection.get(where=where_filter)
 
         if results and results['ids']:
             collection.delete(ids=results['ids'])
-            logger.info(f"✅ Đã xóa {len(results['ids'])} documents của knowledge_id='{knowledge_id}' từ ChromaDB")
+            logger.info(f"✅ Đã xóa {len(results['ids'])} documents của {filter_type} từ ChromaDB")
         else:
-            logger.info(f"ℹ️ Không tìm thấy documents nào với knowledge_id='{knowledge_id}'")
+            logger.info(f"ℹ️ Không tìm thấy documents nào với {filter_type}")
         
 
         return True

@@ -19,6 +19,7 @@ async def extract_text_from_pdf(file_path: str) -> Optional[str]:
             text = page.extract_text()
             if text:
                 contents.append(text.strip())
+                
 
         return "\n\n".join(contents).strip()
 
@@ -43,6 +44,8 @@ async def extract_text_from_docx(file_path: str) -> Optional[str]:
                 if row_text:
                     contents.append(row_text)
 
+        
+        
         return "\n\n".join(contents).strip()
 
     except Exception as e:
@@ -58,7 +61,6 @@ async def extract_text_from_excel(file_path: str) -> Optional[str]:
                 try:
                     df = pd.read_excel(excel, sheet_name=sheet)
                     
-                    # Sử dụng map thay vì applymap (deprecated)
                     df = df.map(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime, date, time)) else x)
                     if df.empty:
                         continue

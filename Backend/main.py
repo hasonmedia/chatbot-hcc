@@ -48,11 +48,16 @@ app.include_router(social_router.router)
 app.include_router(rating_router.router)
 
 URL = os.getenv("URL")
-origins = [f"{URL}"]
+origins = [
+    f"{URL}",
+    "http://localhost:5173",  # Vite dev server
+    "http://localhost:3000",  # React dev server backup
+    "http://127.0.0.1:5173",  # Alternative localhost
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,         # Chỉ định cụ thể các domain được phép
+    allow_origins=origins,         # Cho phép localhost và ngrok
     allow_credentials=True,        # Cho phép gửi cookies/credentials
     allow_methods=["*"],           # GET, POST, PUT, DELETE ...
     allow_headers=["*"],           # Cho phép tất cả headers

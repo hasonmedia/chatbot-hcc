@@ -30,9 +30,6 @@ export const useClientChat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // --- Effects ---
-
-  // Effect (1): Tự động cuộn khi có tin nhắn mới
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
@@ -91,10 +88,9 @@ export const useClientChat = () => {
         setIsLoading(false);
 
         // Định nghĩa hàm callback khi có tin nhắn mới
-        const handleNewMessage = (data: MessageData) => {
+        const handleNewMessage = (data: any) => {
           console.log("Received new message via socket:", data);
 
-          // Xử lý sự kiện cập nhật session (admin chặn/mở khóa bot)
           if ((data as any).type === "session_update") {
             console.log("Nhận sự kiện cập nhật trạng thái bot:", data);
 
@@ -133,6 +129,31 @@ export const useClientChat = () => {
               setIsWaitingBot(false);
               console.log("Nhận khi chặn", data);
             }
+          } else if (data.type === "session_deleted") {
+            console.log("Nhận sự kiện xóa session:", data);
+
+            // const deletedIds = data.deleted_ids || [data.chat_session_id];
+            const numericSessionId = Number(sessionId);
+            console.log("ID phiên hiện tại:", numericSessionId);
+            if (numericSessionId == 0) {
+              console.log("Phiên chat hiện tại đã bị xoá. Reset UI.");
+
+              localStorage.removeItem("chatSessionId");
+              initializeChat();
+              setSessionId(null);
+
+              setMessages([]);
+
+              setisBotActive(false);
+              setIsWaitingBot(false);
+
+              if (botTypingTimeoutRef.current) {
+                clearTimeout(botTypingTimeoutRef.current);
+                botTypingTimeoutRef.current = null;
+              }
+            }
+
+            return;
           }
 
           const normalizedMessage: MessageData = {

@@ -7,7 +7,6 @@ import {
 } from "react";
 import { getMe, login, logout } from "@/services/userService";
 import type { UserCreateRequest } from "@/types/user";
-import { clearAuthCookies, setAuthFlag, getAuthFlag } from "@/utils/auth";
 
 type AuthContextType = {
   user: UserCreateRequest | null;
@@ -26,21 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUser = async () => {
     try {
       setLoading(true);
-
-      if (!getAuthFlag()) {
-        setUser(null);
-        return;
-      }
-
       const me = await getMe();
       setUser(me);
-      setAuthFlag(true);
     } catch (error: any) {
       if (error.response?.status !== 401) {
         console.error("Fetch user error:", error);
       }
       setUser(null);
-      setAuthFlag(false);
     } finally {
       setLoading(false);
     }
@@ -51,7 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth failure events from axios interceptor
     const handleAuthFailed = () => {
       setUser(null);
-      setAuthFlag(false);
     };
 
     window.addEventListener("auth-failed", handleAuthFailed);
@@ -67,11 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await login(username, password);
       const me = await getMe(); // Gọi lại để lấy thông tin user
       setUser(me);
-      setAuthFlag(true); // Set flag khi login thành công
     } catch (err: any) {
       console.error("Login error:", err);
       setError(err.response?.data?.details || "Đăng nhập thất bại");
-      setAuthFlag(false); // Clear flag khi login thất bại
       throw err;
     } finally {
       setLoading(false);
@@ -84,10 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      // Clear user state, cookies và localStorage flag
+      // Clear user state - HTTP-only cookies sẽ được xóa tự động bởi backend
       setUser(null);
-      clearAuthCookies();
-      setAuthFlag(false);
     }
   };
 

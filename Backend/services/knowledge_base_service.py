@@ -135,19 +135,22 @@ async def create_kb_with_files_service(
     files: List[UploadFile],
     db: AsyncSession
 ):
+
+    successful_files = []
+    failed_files = []
     
     try:
-        
         for file in files:
             detail = None
             file_path = None
-            successful_files = []
-            failed_files = []
+            error_message = None
+            
             try:
                 file_path = os.path.join(UPLOAD_DIR, file.filename)
                 async with aiofiles.open(file_path, 'wb') as f:
                     content_file = await file.read()
                     await f.write(content_file)
+                
                 
                 detail = KnowledgeBaseDetail(
                     category_id=category_id,  
@@ -161,11 +164,10 @@ async def create_kb_with_files_service(
                 )
                 db.add(detail)
                 await db.flush() 
-                await db.commit() 
+                await db.commit()
                 
                 
-                
-                success  = await process_uploaded_file(
+                success = await process_uploaded_file(
                     category_id,
                     category_name,
                     file_path, 
@@ -173,51 +175,88 @@ async def create_kb_with_files_service(
                     knowledge_base_detail_id=detail.id,
                     db=db
                 )
+                
                 if success:
-                    logger.info(f"✅ Đã xử lý thành công file: {file.filename}")
-                    successful_files.append(file.filename)
+                    logger.info(f"✅ Xử lý thành công file: {file.filename}")
+                    successful_files.append({
+                        "filename": file.filename,
+                        "detail_id": detail.id
+                    })
                 else:
-                    logger.error(f"❌ Lỗi xử lý file: {file.filename}")
-                    failed_files.append(file.filename)
+                    error_message = "Không thể xử lý nội dung file (extract hoặc chunking thất bại)"
+                    logger.error(f"❌ {error_message}: {file.filename}")
+                    
                     try:
                         await delete_chunks(detail.id)
-                    except:
-                        pass
+                    except Exception as chunk_err:
+                        logger.warning(f"Không thể xóa chunks: {str(chunk_err)}")
                     
                     await db.refresh(detail)
                     await db.delete(detail)
                     await db.commit()
+                    
                     if os.path.exists(file_path):
                         try:
                             os.remove(file_path)
                         except Exception as e:
                             logger.error(f"Không thể xóa file: {str(e)}")
+                    
+                    failed_files.append({
+                        "filename": file.filename,
+                        "error": error_message
+                    })
                         
             except Exception as e:
-                logger.error(f"Lỗi khi xử lý file {file.filename}: {str(e)}")
-                failed_files.append(file.filename)
+                error_message = str(e)
+                logger.error(f"❌ Lỗi khi xử lý file {file.filename}: {error_message}")
+                
+                failed_files.append({
+                    "filename": file.filename,
+                    "error": error_message
+                })
+                
                 await db.rollback()
+                
                 if detail and detail.id:
                     try:
                         await delete_chunks(detail.id)
                     except:
                         pass
+                
                 if file_path and os.path.exists(file_path):
                     try:
                         os.remove(file_path)
                     except Exception as rm_e:
                         logger.error(f"Không thể xóa file sau lỗi: {str(rm_e)}")
+                
                 continue
         
+        total_files = len(files)
+        success_count = len(successful_files)
+        failed_count = len(failed_files)
+        
+        if success_count == total_files:
+            status = "success"
+            message = f"Đã xử lý thành công tất cả {success_count} file"
+        elif success_count > 0:
+            status = "partial_success"
+            message = f"Đã xử lý thành công {success_count}/{total_files} file"
+        else:
+            status = "error"
+            message = f"Tất cả {total_files} file đều bị lỗi"
+        
         return {
-        "status": "partial_success" if successful_files and failed_files else "success" if successful_files else "error",
-        "message": "Hoàn tất xử lý file." if successful_files else "Tất cả file đều bị lỗi.",
-        "successful": successful_files,
-        "failed": failed_files
+            "status": status,
+            "message": message,
+            "total": total_files,
+            "successful_count": success_count,
+            "failed_count": failed_count,
+            "successful": successful_files,
+            "failed": failed_files
         }
         
     except Exception as e:
-        logger.error(f"Lỗi khi tạo knowledge base: {str(e)}")
+        logger.error(f"Lỗi nghiêm trọng khi tạo knowledge base: {str(e)}")
         await db.rollback()
         raise
 
@@ -429,6 +468,44 @@ async def delete_kb_detail_service(detail_id: int, db: AsyncSession):
     except Exception as e:
         await db.rollback()
         return False
+
+async def delete_multiple_kb_details_service(detail_ids: list, db: AsyncSession):
+    """
+    Xóa nhiều knowledge base details cùng lúc
+    """
+    deleted_count = 0
+    failed_count = 0
+    failed_ids = []
+    
+    for detail_id in detail_ids:
+        try:
+            # Xóa chunks trong ChromaDB
+            await delete_chunks(knowledge_id=str(detail_id))
+            
+            # Xóa detail trong database
+            detail = await db.get(KnowledgeBaseDetail, detail_id)
+            if detail:
+                await db.delete(detail)
+                await db.commit()
+                deleted_count += 1
+                logger.info(f"Đã xóa detail ID {detail_id}")
+            else:
+                failed_count += 1
+                failed_ids.append(detail_id)
+                logger.warning(f"Không tìm thấy detail ID {detail_id}")
+            
+        except Exception as e:
+            await db.rollback()
+            failed_count += 1
+            failed_ids.append(detail_id)
+            logger.error(f"Lỗi khi xóa detail {detail_id}: {str(e)}")
+    
+    return {
+        "total_count": len(detail_ids),
+        "deleted_count": deleted_count,
+        "failed_count": failed_count,
+        "failed_ids": failed_ids
+    }
     
 
 async def search_kb_service(query: str, db: AsyncSession):
@@ -476,18 +553,25 @@ async def get_all_categories_service(db: AsyncSession):
         )
         categories = result.scalars().all()
         
-        # Chuyển đổi sang list of dict
-        categories_list = [
-            {
+        
+        categories_list = []
+        for category in categories:
+            # Đếm số lượng file trong danh mục
+            count_result = await db.execute(
+                select(KnowledgeBaseDetail)
+                .filter(KnowledgeBaseDetail.category_id == category.id)
+            )
+            file_count = len(count_result.scalars().all())
+            
+            categories_list.append({
                 "id": category.id,
                 "name": category.name,
                 "description": category.description,
                 "knowledge_base_id": category.knowledge_base_id,
                 "created_at": category.created_at,
-                "updated_at": category.updated_at
-            }
-            for category in categories
-        ]
+                "updated_at": category.updated_at,
+                "file_count": file_count
+            })
         
         return categories_list
         
@@ -498,9 +582,16 @@ async def get_all_categories_service(db: AsyncSession):
 async def create_category_service(name: str, description: Optional[str], db: AsyncSession):
 
     try:
+        # Kiểm tra tên danh mục đã tồn tại chưa
+        existing_category = await db.execute(
+            select(KnowledgeCategory).filter(KnowledgeCategory.name == name.strip())
+        )
+        if existing_category.scalar_one_or_none():
+            raise Exception("Tên danh mục đã tồn tại")
+        
         category = KnowledgeCategory(
-            name=name,
-            description=description,
+            name=name.strip(),
+            description=description.strip(),
             knowledge_base_id=1  # Luôn là 1
         )
         db.add(category)
@@ -534,8 +625,18 @@ async def update_category_service(category_id: int, name: str, description: Opti
         if not category:
             return None
         
-        category.name = name
-        category.description = description
+        # Kiểm tra tên danh mục trùng với danh mục khác (không phải chính nó)
+        existing_category = await db.execute(
+            select(KnowledgeCategory).filter(
+                KnowledgeCategory.name == name.strip(),
+                KnowledgeCategory.id != category_id
+            )
+        )
+        if existing_category.scalar_one_or_none():
+            raise Exception("Tên danh mục đã tồn tại")
+        
+        category.name = name.strip()
+        category.description = description.strip()
         
         await db.commit()
         await db.refresh(category)
@@ -567,15 +668,9 @@ async def delete_category_service(category_id: int, db: AsyncSession):
         if not category:
             return False
         
-        # Xóa tất cả chunks của các details thuộc category này
-        details_result = await db.execute(
-            select(KnowledgeBaseDetail).filter(KnowledgeBaseDetail.category_id == category_id)
-        )
-        details = details_result.scalars().all()
-        
-        for detail in details:
-            await delete_chunks_by_detail_id(detail.id)
-            logger.info(f"Đã xóa chunks của detail_id={detail.id}")
+        # Xóa tất cả chunks của category này bằng 1 lần gọi
+        await delete_chunks(category_id=str(category_id))
+        logger.info(f"Đã xóa tất cả chunks của category_id={category_id}")
         
         # Xóa category (cascade sẽ xóa các details)
         await db.delete(category)

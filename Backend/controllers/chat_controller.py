@@ -59,11 +59,6 @@ async def update_chat_session_controller(id: int, data: dict, user, db: AsyncSes
 
 async def delete_chat_session_controller(ids: list[int], db: AsyncSession):
     deleted_count = await delete_chat_session(ids, db) 
-    await manager.broadcast_to_admins({
-        "type": "sessions_deleted",
-        "deleted_session_ids": ids,
-        "deleted_count": deleted_count
-    })
     return {
         "deleted": deleted_count,
         "ids": ids
@@ -71,12 +66,6 @@ async def delete_chat_session_controller(ids: list[int], db: AsyncSession):
 
 async def delete_message_controller(chatId: int, ids: list[int], db: AsyncSession):
     deleted_count = await delete_message(chatId, ids, db)
-    await manager.broadcast_to_admins({
-        "type": "messages_deleted",
-        "chat_session_id": chatId,
-        "deleted_message_ids": ids,
-        "deleted_count": deleted_count
-    })
     return {
         "deleted": deleted_count,
         "ids": ids

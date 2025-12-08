@@ -30,9 +30,10 @@ export interface KnowledgeCategory {
   knowledge_base_id: number;
   created_at: string;
   updated_at: string;
+  file_count?: number;
 }
 
 export interface CategoryFormData {
   name: string;
-  description?: string;
+  description: string;
 }

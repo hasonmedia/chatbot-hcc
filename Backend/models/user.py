@@ -15,6 +15,6 @@ class User(Base):
     last_login = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     is_active = Column(Boolean, default=True)
-    
+    refresh_token = Column(String(512), nullable=True)
     company_id = Column(Integer, ForeignKey("company.id"), nullable=False)
 

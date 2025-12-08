@@ -89,8 +89,6 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [isDeletingSessions, setIsDeletingSessions] = useState(false);
-  const [isDeletingMessages, setIsDeletingMessages] = useState(false);
   const handleSelectSessionResponsive = (sessionId: number) => {
     handleSelectSession(sessionId);
   };
@@ -105,7 +103,8 @@ export default function ChatPage() {
             Thông tin phiên hỗ trợ
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm">
-            {currentSessionInfo?.time ? (
+            {currentSessionInfo?.status === "false" &&
+            currentSessionInfo?.time ? (
               <Countdown
                 targetDate={currentSessionInfo.time}
                 onComplete={() => console.log("Bot duoc khoi dong lai")}
@@ -148,49 +147,41 @@ export default function ChatPage() {
     setIsBlockBotSheetOpen(true);
   };
 
-  const handleDeleteSessions = async () => {
-    if (selectedSessions.length === 0) return;
+  const handleDeleteSession = async () => {
+    const sessionsToDelete =
+      selectedSessions.length > 0
+        ? selectedSessions
+        : [currentSessionId].filter(Boolean);
+    if (sessionsToDelete.length === 0) return;
+    const result = await deleteChatSessions(sessionsToDelete as number[]);
 
-    setIsDeletingSessions(true);
-    try {
-      const result = await deleteChatSessions(selectedSessions as number[]);
-      if (result.success) {
-        toast.success(`Đã xóa ${result.count} phiên chat!`);
-        setSelectedSessions([]);
-        // Local state sẽ được cập nhật qua WebSocket
-      } else {
-        toast.error(result.error || "Xóa phiên chat thất bại!");
-      }
-    } catch (error) {
-      toast.error("Có lỗi xảy ra khi xóa phiên chat!");
-    } finally {
-      setIsDeletingSessions(false);
-      setIsDeleteSessionDialogOpen(false);
+    if (result.success) {
+      toast.success(`Xóa ${result.count} phiên chat thành công!`);
+      setSelectedSessions([]);
+      setIsSessionSelectionMode(false);
+    } else {
+      toast.error(result.error || "Xóa phiên chat thất bại!");
     }
+
+    setIsDeleteSessionDialogOpen(false);
   };
 
-  // Cập nhật hàm xử lý xóa messages
   const handleDeleteMessages = async () => {
-    if (selectedMessages.length === 0) return;
+    if (!currentSessionId || selectedMessages.length === 0) return;
 
-    setIsDeletingMessages(true);
-    try {
-      const result = await deleteMessages(selectedMessages);
-      if (result.success) {
-        toast.success(`Đã xóa ${result.count} tin nhắn!`);
-        setSelectedMessages([]);
-        setIsSelectionMode(false);
-        // Local state sẽ được cập nhật qua WebSocket
-      } else {
-        toast.error(result.error || "Xóa tin nhắn thất bại!");
-      }
-    } catch (error) {
-      toast.error("Có lỗi xảy ra khi xóa tin nhắn!");
-    } finally {
-      setIsDeletingMessages(false);
-      setIsDeleteMessagesDialogOpen(false);
+    const result = await deleteMessages(selectedMessages);
+
+    if (result.success) {
+      toast.success(`Xóa ${result.count} tin nhắn thành công!`);
+      setSelectedMessages([]);
+      setIsSelectionMode(false);
+    } else {
+      toast.error(result.error || "Xóa tin nhắn thất bại!");
     }
+
+    setIsDeleteMessagesDialogOpen(false);
   };
+
   const handleSelectAllSessions = () => {
     if (selectedSessions.length === filteredSessions.length) {
       setSelectedSessions([]);
@@ -488,18 +479,33 @@ export default function ChatPage() {
                 </h3>
               </div>
               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                <Button
-                  variant="default"
-                  size="sm"
-                  disabled={!currentSessionId}
-                  onClick={() => {
-                    console.log("Handle auto archive");
-                  }}
-                  className="hidden sm:flex text-xs lg:text-sm"
-                >
-                  <Archive className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
-                  Mở bot
-                </Button>
+                {currentSessionInfo?.status === "false" &&
+                  currentSessionInfo?.time && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={!currentSessionId}
+                      onClick={async () => {
+                        try {
+                          await updateChatSessionStatus(
+                            currentSessionId!,
+                            "true",
+                            "null"
+                          );
+                          // UI sẽ tự động cập nhật qua socket event
+                          toast.success("Mở chặn bot thành công!");
+                        } catch (error) {
+                          toast.error(
+                            "Mở chặn bot thất bại. Vui lòng thử lại."
+                          );
+                        }
+                      }}
+                      className="hidden sm:flex text-xs lg:text-sm bg-green-600 hover:bg-green-700"
+                    >
+                      <Archive className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
+                      Mở chặn
+                    </Button>
+                  )}
                 <Button
                   variant="default"
                   size="sm"
@@ -525,6 +531,38 @@ export default function ChatPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {currentSessionInfo?.status === "false" &&
+                      currentSessionInfo?.time && (
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            try {
+                              await updateChatSessionStatus(
+                                currentSessionId!,
+                                "true",
+                                "null"
+                              );
+                              // UI sẽ tự động cập nhật qua socket event
+                              toast.success("Mở chặn bot thành công!");
+                            } catch (error) {
+                              toast.error(
+                                "Mở chặn bot thất bại. Vui lòng thử lại."
+                              );
+                            }
+                          }}
+                          className="text-green-600 focus:text-green-600"
+                        >
+                          <Archive className="mr-2 h-4 w-4" />
+                          Mở chặn bot
+                        </DropdownMenuItem>
+                      )}
+                    <DropdownMenuItem
+                      onClick={() => {
+                        handleArchive();
+                      }}
+                    >
+                      <Archive className="mr-2 h-4 w-4" />
+                      Thủ công
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
                         setSelectedSessions([currentSessionId as number]);
@@ -602,18 +640,21 @@ export default function ChatPage() {
                       </Button>
                       <Button
                         onClick={async () => {
-                          const res = await updateChatSessionStatus(
-                            currentSessionId!,
-                            "false",
-                            selectedBlockOption
-                          );
-                          if (res.id) {
+                          try {
+                            await updateChatSessionStatus(
+                              currentSessionId!,
+                              "false",
+                              selectedBlockOption
+                            );
+                            // UI sẽ tự động cập nhật qua socket event
                             toast.success("Chặn bot thành công!");
                             setIsBlockBotSheetOpen(false);
-                          } else {
+                            setSelectedBlockOption("");
+                          } catch (error) {
                             toast.error("Chặn bot thất bại. Vui lòng thử lại.");
                           }
                         }}
+                        disabled={!selectedBlockOption}
                         className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm"
                       >
                         Xác nhận chặn
@@ -875,14 +916,10 @@ export default function ChatPage() {
                   Hủy
                 </AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleDeleteSessions}
-                  disabled={isDeletingSessions}
-                  className="bg-red-600 hover:bg-red-700"
+                  onClick={handleDeleteSession}
+                  className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
                 >
-                  {isDeletingSessions && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {isDeletingSessions ? "Đang xóa..." : "Xác nhận xóa"}
+                  Xóa
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -909,13 +946,9 @@ export default function ChatPage() {
                 </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteMessages}
-                  disabled={isDeletingMessages}
-                  className="bg-red-600 hover:bg-red-700"
+                  className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
                 >
-                  {isDeletingMessages && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {isDeletingMessages ? "Đang xóa..." : "Xác nhận xóa"}
+                  Xóa
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

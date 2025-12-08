@@ -7,6 +7,11 @@ from middleware.jwt import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     get_current_user,  
     create_access_token,
+    create_refresh_token,
+    verify_refresh_token,
+    save_refresh_token,
+    revoke_refresh_token,
+    set_cookie,
     SECRET_KEY,
     ALGORITHM
 )
@@ -24,6 +29,7 @@ async def get_me(
     current_user: User = Depends(get_current_user) 
 ):
     access_token = request.cookies.get("access_token") 
+    refresh_token = request.cookies.get("refresh_token")
     abilities = get_global_abilities_for_user(current_user)
     return {
         "id": current_user.id,
@@ -57,10 +63,27 @@ async def get_all_users(
     return await role_controller.get_users_with_permission_controller(db, current_user)
 
 @router.post("/logout")
-async def logout_user(response: Response):
-    # SỬA: Xóa cookie một cách an toàn hơn
-    response.delete_cookie("access_token", httponly=True,samesite="lax")
-    response.delete_cookie("refresh_token", httponly=True,  samesite="lax")
+async def logout_user(
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user)
+):
+    # Xóa refresh token khỏi database
+    await revoke_refresh_token(current_user.id)
+    
+    # Xóa cookie với settings tương thích môi trường
+    import os
+    is_development = os.getenv("ENVIRONMENT", "development") == "development"
+    
+    cookie_settings = {
+        "httponly": True,
+        "path": "/",
+        "samesite": "lax" if is_development else "none",
+        "secure": not is_development
+    }
+    
+    response.delete_cookie("access_token", **cookie_settings)
+    response.delete_cookie("refresh_token", **cookie_settings)
     return {"message": "Logged out successfully"}
 
 @router.post("/")
@@ -126,24 +149,20 @@ async def delete_user(
 @router.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
+    
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token not found")
 
     try:
+        
+        user = await verify_refresh_token(refresh_token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+            
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
-        
-        user_id = payload.get("id")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
-        
-        result = await db.execute(select(User).filter(User.id == user_id))
-        user = result.scalar_one_or_none()
-        if not user:
-             raise HTTPException(status_code=401, detail="User not found")
-
-        # Tạo access token mới
+            
         access_token = create_access_token({
             "sub": user.username,
             "id": user.id,
@@ -153,17 +172,65 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
             "company_id": user.company_id
         })
         
-        # Chỉ set lại access_token cookie
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax"
-        )
-        return {"message": "Token refreshed successfully", "access_token": access_token}
+        new_refresh_token = create_refresh_token({
+            "sub": user.username,
+            "id": user.id,
+            "type": "refresh"
+        })
+        
+        await save_refresh_token(user.id, new_refresh_token)
+        
+        set_cookie(response, access_token, new_refresh_token)
+        
+        return {
+            "message": "Token refreshed successfully", 
+            "access_token": access_token,
+            "access_token_length": len(access_token),
+            "refresh_token_length": len(new_refresh_token),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            },
+            "debug": {
+                "cookies_set": True,
+                "cookie_settings": "httponly=True, path=/, samesite=lax, secure=False"
+            }
+        }
 
-    except jwt.ExpiredSignatureError:
+    except HTTPException as e:
+        raise e
+    except jwt.ExpiredSignatureError as e:
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+            user_id = payload.get("id")
+            if user_id:
+                await revoke_refresh_token(user_id)
+        except Exception as cleanup_error:
+            print(f"Error during cleanup: {cleanup_error}")
         raise HTTPException(status_code=401, detail="Refresh token expired")
-    except jwt.JWTError:
+    except jwt.JWTError as e:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/token-status")  
+async def check_token_status(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """Debug endpoint để kiểm tra trạng thái token"""
+    access_token = request.cookies.get("access_token")
+    refresh_token = request.cookies.get("refresh_token")
+    
+    return {
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "has_access_token": bool(access_token),
+        "has_refresh_token": bool(refresh_token),
+        "access_token_preview": access_token[:20] + "..." if access_token else None,
+        "refresh_token_preview": refresh_token[:20] + "..." if refresh_token else None,
+        "refresh_token_in_db": bool(current_user.refresh_token),
+        "refresh_token_db_preview": current_user.refresh_token[:20] + "..." if current_user.refresh_token else None
+    }
+

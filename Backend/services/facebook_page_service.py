@@ -141,10 +141,8 @@ async def toggle_page_status_service(page_id: int, db: AsyncSession):
         
 async def facebook_callback_service(payload: dict, db: AsyncSession):
     
-    print(payload)
     
     pages = payload.get("data", []) 
-    print(pages)
     
     for page in pages:
         page_access_token = page.get("access_token")

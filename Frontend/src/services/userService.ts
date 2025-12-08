@@ -16,10 +16,16 @@ export const login = async (
   username: string,
   password: string
 ): Promise<User> => {
-  const response = await axiosClient.post<User>(API_ENDPOINT.USER.LOGIN, {
-    username,
-    password,
-  });
+  const response = await axiosClient.post<User>(
+    API_ENDPOINT.USER.LOGIN,
+    {
+      username,
+      password,
+    },
+    {
+      withCredentials: true, // Đảm bảo nhận cookies từ backend
+    }
+  );
   return response.data;
 };
 export const getAllUsers = async (): Promise<UserResponse[]> => {
@@ -36,7 +42,13 @@ export const registerUser = async (userData: Partial<User>): Promise<User> => {
   return response.data;
 };
 export const logout = async (): Promise<void> => {
-  await axiosClient.post<void>(API_ENDPOINT.USER.LOGOUT);
+  await axiosClient.post<void>(
+    API_ENDPOINT.USER.LOGOUT,
+    {},
+    {
+      withCredentials: true, // Đảm bảo gửi cookies để backend có thể xóa chúng
+    }
+  );
 };
 export const updateUser = async (
   id: number,
@@ -62,7 +74,12 @@ export const getCustomers = async (): Promise<User[]> => {
 };
 export const refreshToken = async (): Promise<string> => {
   const response = await axiosClient.post<{ access_token: string }>(
-    API_ENDPOINT.USER.REFRESH_TOKEN
+    API_ENDPOINT.USER.REFRESH_TOKEN,
+    {},
+    {
+      withCredentials: true, // Đảm bảo gửi cookies cho refresh token
+    }
   );
+  // Backend sẽ tự động set cookies mới với token rotation
   return response.data.access_token;
 };

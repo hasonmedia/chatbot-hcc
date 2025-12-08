@@ -54,21 +54,17 @@ export const useAdminChat = () => {
     currentSessionIdRef.current = id;
   };
 
-  // --- Effects ---
-
-  // Effect (1): Tải session ban đầu và kết nối WebSocket
   useEffect(() => {
     const fetchChatSessions = async () => {
       setIsLoadingSessions(true);
       try {
-        // (3) Sửa tên hàm
         const sessions = await getAllChatHistory();
         sessions.sort(
           (a, b) =>
             new Date(b.last_updated).getTime() -
             new Date(a.last_updated).getTime()
         );
-        setChatSessions(sessions || []); // Đảm bảo là mảng
+        setChatSessions(sessions || []);
       } catch (error) {
         console.error("Lỗi tải danh sách phiên chat:", error);
       } finally {
@@ -76,100 +72,103 @@ export const useAdminChat = () => {
       }
     };
 
-    // Hàm callback khi có tin nhắn mới từ BẤT KỲ ai
     const handleNewMessage = (data: any) => {
       console.log("Admin nhận tin nhắn:", data);
-      if (data.type === "sessions_deleted") {
-        console.log("Nhận sự kiện xóa sessions:", data);
+
+      if (data.type === "session_update") {
+        console.log("Nhận sự kiện cập nhật session:", data);
 
         setChatSessions((prevSessions) => {
-          // Lọc bỏ các session đã bị xóa
-          const updatedSessions = prevSessions.filter(
-            (session) =>
-              !data.deleted_session_ids.includes(session.chat_session_id)
+          const sessionId = Number(data.chat_session_id);
+          const sessionIndex = prevSessions.findIndex(
+            (s) => s.chat_session_id === sessionId
           );
 
-          return updatedSessions;
+          if (sessionIndex > -1) {
+            const updatedSession: ChatSession = {
+              ...prevSessions[sessionIndex],
+              status: data.session_status,
+              current_receiver: data.current_receiver,
+              previous_receiver: data.previous_receiver,
+              time: data.time,
+            };
+            const newSessionsList = [...prevSessions];
+            newSessionsList[sessionIndex] = updatedSession;
+            return newSessionsList;
+          }
+
+          return prevSessions;
         });
 
-        // Nếu session hiện tại bị xóa, reset về null
-        if (data.deleted_session_ids.includes(currentSessionIdRef.current)) {
+        return;
+      }
+
+      if (data.type === "session_deleted") {
+        console.log("Nhận sự kiện xóa session:", data);
+
+        const deletedIds = data.deleted_ids || [data.chat_session_id];
+
+        setChatSessions((prevSessions) => {
+          return prevSessions.filter(
+            (session) => !deletedIds.includes(session.chat_session_id)
+          );
+        });
+
+        if (deletedIds.includes(currentSessionIdRef.current || -1)) {
           setCurrentSessionId(null);
           setMessages([]);
         }
 
-        return; // Không xử lý thêm
+        return;
       }
 
-      if (data.type === "messages_deleted") {
-        console.log("🗑️ Nhận sự kiện xóa messages:", data);
+      if (data.type === "messages_deleted_from_session") {
+        console.log("Nhận sự kiện xóa messages:", data);
 
+        const deletedMessageIds = data.deleted_message_ids || [];
         const sessionId = Number(data.chat_session_id);
+        const newLastMessage = data.new_last_message || "";
+        const newLastUpdated = data.new_last_updated;
 
-        // Nếu đang xem session này, cập nhật messages
-        if (sessionId === currentSessionIdRef.current) {
-          console.log("📍 Current session ID matches:", sessionId);
-
+        if (sessionId === Number(currentSessionIdRef.current)) {
           setMessages((prevMessages) => {
-            console.log("📝 Messages trước khi xóa:", prevMessages.length);
-            console.log("🎯 IDs cần xóa:", data.deleted_message_ids);
-            console.log(
-              "📋 Chi tiết messages:",
-              prevMessages.map((m) => ({
-                id: m.id,
-                type: typeof m.id,
-                content: m.content?.substring(0, 30),
-              }))
-            );
-
-            const updatedMessages = prevMessages.filter((message) => {
-              // Kiểm tra message.id tồn tại trước khi so sánh
-              if (!message.id) {
-                console.log("⚠️ Message không có ID, giữ lại");
-                return true;
-              }
-
-              // Đảm bảo so sánh đúng kiểu dữ liệu
-              const messageId = Number(message.id);
-              const shouldDelete = data.deleted_message_ids.includes(messageId);
-
-              console.log(
-                `📨 Message ID ${messageId} (${typeof messageId}): ${
-                  shouldDelete ? "XÓA" : "GIỮ"
-                }`
+            const filtered = prevMessages.filter((message) => {
+              const shouldKeep = !deletedMessageIds.includes(
+                Number(message.id)
               );
-
-              return !shouldDelete;
+              if (!shouldKeep) {
+                console.log("Removing message:", message.id, message.content);
+              }
+              return shouldKeep;
             });
 
-            console.log("✅ Messages sau khi xóa:", updatedMessages.length);
-            return updatedMessages;
-          });
-        } else {
-          console.log("❌ Session ID không khớp:", {
-            sessionId,
-            current: currentSessionIdRef.current,
+            return filtered;
           });
         }
 
-        // Cập nhật last_message của session trong danh sách
         setChatSessions((prevSessions) => {
-          return prevSessions.map((session) => {
+          const updatedSessions = prevSessions.map((session) => {
             if (session.chat_session_id === sessionId) {
               return {
                 ...session,
-                last_message: "Một số tin nhắn đã bị xóa",
-                last_updated: new Date().toISOString(),
+                last_message: newLastMessage,
+                last_updated: newLastUpdated || session.last_updated,
               };
             }
             return session;
           });
+
+          const sorted = updatedSessions.sort(
+            (a, b) =>
+              new Date(b.last_updated).getTime() -
+              new Date(a.last_updated).getTime()
+          );
+
+          return sorted;
         });
 
-        return; // Không xử lý thêm
+        return;
       }
-
-      // Xử lý format mới: data có chat_session_id (từ socket admin/customer)
       if (data.chat_session_id !== undefined) {
         const sessionId = Number(data.chat_session_id);
 
@@ -178,7 +177,6 @@ export const useAdminChat = () => {
             (s) => s.chat_session_id === sessionId
           );
 
-          // Nếu session ĐÃ TỒN TẠI - cập nhật
           if (sessionIndex > -1) {
             const updatedSession: ChatSession = {
               ...prevSessions[sessionIndex],
@@ -190,7 +188,6 @@ export const useAdminChat = () => {
             return [updatedSession, ...newSessionsList];
           }
 
-          // Nếu session CHƯA TỒN TẠI - tạo mới
           const newSession: ChatSession = {
             chat_session_id: sessionId,
             customer_name: data.session_name || `Session-${sessionId}`,
@@ -200,11 +197,9 @@ export const useAdminChat = () => {
             sender_type: data.sender_type,
             channel: data.channel,
           };
-          console.log("Tạo session mới:", newSession);
           return [newSession, ...prevSessions];
         });
 
-        // Nếu tin nhắn thuộc phiên đang xem, cập nhật UI (cột 2)
         if (sessionId === currentSessionIdRef.current) {
           const messageData: MessageData = {
             id: data.id || String(Date.now()),
@@ -212,67 +207,26 @@ export const useAdminChat = () => {
             sender_type: data.sender_type,
             content: data.content || "",
             created_at: data.created_at || new Date().toISOString(),
-            image:
-              data.image && Array.isArray(data.image) && data.image.length > 0
-                ? data.image
-                : null,
+            image: data.image && data.image.length > 0 ? data.image[0] : null,
           };
 
           setMessages((prevMessages) => {
-            const isOwnMessage =
-              messageData.sender_type === "admin" &&
-              (window as any).lastSentMessageTimestamp &&
-              Math.abs(
-                new Date(messageData.created_at).getTime() -
-                  (window as any).lastSentMessageTimestamp
-              ) < 5000;
-
-            let removedOptimistic = false;
-            const withoutOptimistic = prevMessages.filter((msg) => {
-              if (!msg.isOptimistic) return true;
-
-              if (
-                isOwnMessage &&
-                msg.optimisticId === (window as any).lastOptimisticId
-              ) {
-                console.log("🗑️ Removing optimistic message by ID:", msg);
-                removedOptimistic = true;
-                delete (window as any).lastSentMessageTimestamp;
-                delete (window as any).lastOptimisticId;
-                return false;
-              }
-
-              const isMatch =
-                msg.content === messageData.content &&
-                msg.sender_type === messageData.sender_type;
-
-              if (isMatch) {
-                removedOptimistic = true;
-                return false;
-              }
-
-              return true;
-            });
-
-            const exists = withoutOptimistic.some(
+            const exists = prevMessages.some(
               (msg) =>
-                !msg.isOptimistic &&
-                (msg.id === messageData.id ||
-                  (msg.content === messageData.content &&
-                    msg.sender_type === messageData.sender_type &&
-                    Math.abs(
-                      new Date(msg.created_at).getTime() -
-                        new Date(messageData.created_at).getTime()
-                    ) < 2000))
+                msg.id === messageData.id ||
+                (msg.content === messageData.content &&
+                  msg.sender_type === messageData.sender_type &&
+                  Math.abs(
+                    new Date(msg.created_at).getTime() -
+                      new Date(messageData.created_at).getTime()
+                  ) < 1000)
             );
 
             if (!exists) {
-              console.log("✅ Adding real message:", messageData);
-              return [...withoutOptimistic, messageData];
+              return [...prevMessages, messageData];
             }
 
-            console.log("⚠️ Message already exists, skipping");
-            return withoutOptimistic;
+            return prevMessages;
           });
         }
       } else if (data.session_id !== undefined) {
@@ -328,6 +282,33 @@ export const useAdminChat = () => {
                 ? data.image
                 : null,
           };
+
+          setMessages((prevMessages) => {
+            const withoutOptimistic = prevMessages.filter(
+              (msg) =>
+                !(
+                  msg.isOptimistic &&
+                  msg.content === messageData.content &&
+                  msg.sender_type === messageData.sender_type
+                )
+            );
+
+            const exists = withoutOptimistic.some(
+              (msg) =>
+                msg.content === messageData.content &&
+                msg.sender_type === messageData.sender_type &&
+                Math.abs(
+                  new Date(msg.created_at).getTime() -
+                    new Date(messageData.created_at).getTime()
+                ) < 1000
+            );
+
+            if (!exists) {
+              return [...withoutOptimistic, messageData];
+            }
+
+            return withoutOptimistic;
+          });
         }
       }
     };
@@ -435,7 +416,6 @@ export const useAdminChat = () => {
       }
 
       // Tạo optimistic message để hiển thị ngay lập tức
-      const optimisticId = `optimistic_${Date.now()}_${Math.random()}`;
       const optimisticMessage = {
         id: Date.now(),
         chat_session_id: String(currentSessionId),
@@ -444,21 +424,13 @@ export const useAdminChat = () => {
         created_at: new Date().toISOString(),
         image: imageUrls.length > 0 ? imageUrls : null,
         isOptimistic: true, // Flag để đánh dấu tin nhắn tạm thời
-        optimisticId, // Unique ID để match với real message
       };
-
-      console.log("🚀 Creating optimistic message:", optimisticMessage);
 
       // Thêm tin nhắn tạm thời vào danh sách
       setMessages((prev) => [...prev, optimisticMessage]);
 
       // Scroll xuống để thấy tin nhắn mới
       setTimeout(() => scrollToBottom(), 100);
-
-      // Lưu timestamp để match với response
-      const sendTimestamp = Date.now();
-      (window as any).lastSentMessageTimestamp = sendTimestamp;
-      (window as any).lastOptimisticId = optimisticId;
 
       // Gửi tin nhắn qua WebSocket
       sendMessage(
@@ -493,8 +465,8 @@ export const useAdminChat = () => {
         resetImages(); // Reset ảnh đã chọn
       }
 
-      // Cleanup URL objects sau khi server response hoặc sau một thời gian để tránh memory leak
-      const cleanupUrls = () => {
+      // Cleanup URL objects sau một thời gian để tránh memory leak
+      setTimeout(() => {
         imageUrls.forEach((url) => {
           try {
             URL.revokeObjectURL(url);
@@ -502,22 +474,7 @@ export const useAdminChat = () => {
             // Ignore cleanup errors
           }
         });
-      };
-
-      // Cleanup sau 10 giây (server thường response nhanh)
-      setTimeout(cleanupUrls, 10000);
-
-      // Timeout để remove optimistic message nếu server không response
-      setTimeout(() => {
-        if ((window as any).lastOptimisticId === optimisticId) {
-          console.log("⏰ Timeout - removing stuck optimistic message");
-          setMessages((prev) =>
-            prev.filter((msg) => msg.optimisticId !== optimisticId)
-          );
-          delete (window as any).lastSentMessageTimestamp;
-          delete (window as any).lastOptimisticId;
-        }
-      }, 15000); // 15 giây timeout
+      }, 30000); // 30 giây
     },
     [newMessage, currentSessionId]
   ); // Phụ thuộc 2 giá trị này
@@ -529,7 +486,7 @@ export const useAdminChat = () => {
         handleSendMessage();
       }
     },
-    [handleSendMessage] // Phụ thuộc vào hàm handleSendMessage
+    [handleSendMessage]
   );
 
   const updateChatSessionStatus = async (
@@ -538,26 +495,18 @@ export const useAdminChat = () => {
     time: string
   ) => {
     try {
+      // Chỉ gọi API, không cập nhật state trực tiếp
+      // Socket event sẽ tự động cập nhật UI cho tất cả admin
       const res = await updateChatSession(String(sessionId), { status, time });
-      await getAllChatHistory();
-      setChatSessions((prevSessions) =>
-        prevSessions.map((session) =>
-          session.chat_session_id === sessionId
-            ? {
-                ...session,
-                status: res.id.status,
-                time: res.id.time,
-              }
-            : session
-        )
-      );
       return res;
     } catch (error) {
       console.error("Lỗi khi cập nhật trạng thái phiên chat:", error);
+      throw error;
     }
   };
   const deleteChatSessions = async (sessionIds: number[]) => {
     try {
+      // Chỉ gọi API, socket event sẽ tự động cập nhật UI
       const response = await deleteSessionChat(sessionIds);
       if (response.status === 200) {
         return { success: true, count: sessionIds.length };
@@ -570,25 +519,21 @@ export const useAdminChat = () => {
     }
   };
 
-  // Xóa tin nhắn trong phiên hiện tại
   const deleteMessages = async (messageIds: number[]) => {
     if (!currentSessionId) {
       return { success: false, error: "Không có phiên chat được chọn!" };
     }
 
-    console.log("🚀 Bắt đầu xóa messages:", { messageIds, currentSessionId });
-
     try {
+      // Chỉ gọi API, socket event sẽ tự động cập nhật UI
       const response = await deleteMess(messageIds, currentSessionId);
-      console.log("📤 Response từ backend:", response);
-
       if (response.status === 200) {
         return { success: true, count: messageIds.length };
       } else {
         return { success: false, error: "Xóa tin nhắn thất bại!" };
       }
     } catch (error) {
-      console.error("❌ Lỗi khi xóa tin nhắn:", error);
+      console.error("Lỗi khi xóa tin nhắn:", error);
       return { success: false, error: "Có lỗi xảy ra khi xóa tin nhắn!" };
     }
   };
