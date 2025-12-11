@@ -3,46 +3,52 @@ name: Build and Deploy FE
 on:
   push:
     branches:
-      - hcc_v1 # chỉ chạy khi push lên nhánh main
-permissions:
-  contents: write
+      - production 
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v3
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v3
+      - name: Deploy using ssh
+        uses: appleboy/ssh-action@master
         with:
-          node-version: 20
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          script: |
+            cd /services/deploy-next-docker
+            git fetch origin
+            git checkout production
+            git pull
 
-      - name: Install dependencies
-        run: npm install
-        working-directory: ./Frontend
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" > .env
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+            
+            echo "" >> .env
+            echo "# Redis" >> .env
+            echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> .env
+            echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env
+            echo "REDIS_DEFAULT_TTL=${{ secrets.REDIS_DEFAULT_TTL }}" >> .env
+            echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:${{ secrets.REDIS_PORT }}/0" >> .env
+            
+            echo "" >> .env
+            echo "# Chroma" >> .env
+            echo "CHROMA_DATA_PATH=${{ secrets.CHROMA_DATA_PATH }}" >> .env
+            
+            echo "" >> .env
+            echo "# App secret" >> .env
+            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+            
+            echo "" >> .env
+            echo "# URLs" >> .env
+            echo "URL=${{ secrets.URL }}" >> .env
+            echo "URL_BE=${{ secrets.URL_BE }}" >> .env
+            echo "URL_WS=${{ secrets.URL_WS }}" >> .env
+            echo "URL_IMAGE=${{ secrets.URL_IMAGE }}" >> .env
 
-      - name: Build project
-        run: npm run build
-        working-directory: ./Frontend
-
-      - name: Deploy to branch
-        run: |
-          rm -rf .git
-          mkdir deploy
-          # copy nguyên dist folder
-          cp -r Frontend/dist deploy/
-          # copy Dockerfile và nginx.conf
-          cp Frontend/Dockerfile deploy/
-          cp Frontend/nginx.conf deploy/
-
-          cd deploy
-          git init
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "Deploy FE"
-          git branch -M deploy
-          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git push -f origin deploy
+            docker compose down  || true
+            docker compose build --no-cache
+            docker compose up -d
