@@ -22,32 +22,32 @@ jobs:
             git checkout production
             git pull
 
-            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" > .env
-            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
-            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
-            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" > Backend/.env
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> Backend/.env
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> Backend/.env
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> Backend/.env
             
-            echo "" >> .env
-            echo "# Redis" >> .env
-            echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> .env
-            echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env
-            echo "REDIS_DEFAULT_TTL=${{ secrets.REDIS_DEFAULT_TTL }}" >> .env
-            echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:${{ secrets.REDIS_PORT }}/0" >> .env
+            echo "" >> Backend/.env
+            echo "# Redis" >> Backend/.env
+            echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> Backend/.env
+            echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> Backend/.env
+            echo "REDIS_DEFAULT_TTL=${{ secrets.REDIS_DEFAULT_TTL }}" >> Backend/.env
+            echo "REDIS_URL=redis://${{ secrets.REDIS_HOST }}:${{ secrets.REDIS_PORT }}/0" >> Backend/.env
             
-            echo "" >> .env
-            echo "# Chroma" >> .env
-            echo "CHROMA_DATA_PATH=${{ secrets.CHROMA_DATA_PATH }}" >> .env
+            echo "" >> Backend/.env
+            echo "# Chroma" >> Backend/.env
+            echo "CHROMA_DATA_PATH=${{ secrets.CHROMA_DATA_PATH }}" >> Backend/.env
             
-            echo "" >> .env
-            echo "# App secret" >> .env
-            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+            echo "" >> Backend/.env
+            echo "# App secret" >> Backend/.env
+            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> Backend/.env
             
-            echo "" >> .env
-            echo "# URLs" >> .env
-            echo "URL=${{ secrets.URL }}" >> .env
-            echo "URL_BE=${{ secrets.URL_BE }}" >> .env
-            echo "URL_WS=${{ secrets.URL_WS }}" >> .env
-            echo "URL_IMAGE=${{ secrets.URL_IMAGE }}" >> .env
+            echo "" >> Backend/.env
+            echo "# URLs" >> Backend/.env
+            echo "URL=${{ secrets.URL }}" >> Backend/.env
+            echo "URL_BE=${{ secrets.URL_BE }}" >> Backend/.env
+            echo "URL_WS=${{ secrets.URL_WS }}" >> Backend/.env
+            echo "URL_IMAGE=${{ secrets.URL_IMAGE }}" >> Backend/.env
 
             docker compose down  || true
             docker compose build --no-cache
